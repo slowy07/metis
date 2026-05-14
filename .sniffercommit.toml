@@ -22,3 +22,6 @@ paths = ["third_party/", "build/", ".git/"]
 [output]
 local_hook = true
 github_actions = true
+
+[execution]
+parallel = true
