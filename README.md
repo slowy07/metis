@@ -15,7 +15,9 @@ make sure works very well before push it with C++20 standard.
 
 ```bash
 mkdir build && cd build
+# release type
 cmake .. -DCMAKE_BUILD_TYPE=Release
+# active build with parallel options
 cmake --build . --parallel
 
 ./sniffercommit init
