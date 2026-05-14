@@ -20,6 +20,7 @@ struct Config {
   std::vector<std::string> exclude_paths;
   bool generate_local_hook = true;
   bool generate_gha = false;
+  bool parallel = true;
 };
 
 Config load_config(const std::filesystem::path &path);

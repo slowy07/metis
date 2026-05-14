@@ -1,5 +1,4 @@
 #include "../include/sniffercommit/config.hpp"
-#include <optional>
 #include <stdexcept>
 #include <toml++/toml.hpp>
 
@@ -23,8 +22,10 @@ Config load_config(const std::filesystem::path &path) {
   Config cfg;
 
   // [project]
-  cfg.project_name =
-      tbl["project"]["name"].value<std::string>().value_or("unnamed");
+  if (auto project = tbl["project"].as_table()) {
+    cfg.project_name =
+        (*project)["name"].value<std::string>().value_or("unnamed");
+  }
 
   // [[checks]]
   if (auto *checks_arr = tbl["checks"].as_array()) {
@@ -63,15 +64,31 @@ Config load_config(const std::filesystem::path &path) {
   }
 
   // [output]
-  cfg.generate_local_hook =
-      tbl["output"]["local_hook"].value<bool>().value_or(true);
-  cfg.generate_gha =
-      tbl["output"]["github_actions"].value<bool>().value_or(false);
+  if (auto *output = tbl["output"].as_table()) {
+    cfg.generate_local_hook =
+        (*output)["local_hook"].value<bool>().value_or(true);
+    cfg.generate_gha =
+        (*output)["github_actions"].value<bool>().value_or(false);
+  }
+
+  // [execution]
+  if (auto *exec = tbl["execution"].as_table()) {
+    cfg.parallel = (*exec)["parallel"].value<bool>().value_or(true);
+  } else {
+    cfg.parallel = true;
+  }
 
   if (cfg.checks.empty()) {
     throw std::runtime_error(
         "Config must contain at least one [[checks]] entry");
   }
+
+#ifdef SNIFFERCOMMIT_DEBUG
+  std::cerr << "[DEBUG]: config loaded: \n";
+  std::cerr << " project: " << cfg.project_name << "\n";
+  std::cerr << " checks: " << cfg.checks.size() << "\n";
+  std::cerr << " parallel: " << (cfg.parallel ? "true" : "false") << "\n";
+#endif // SNIFFERCOMMIT_DEBUG
 
   return cfg;
 }

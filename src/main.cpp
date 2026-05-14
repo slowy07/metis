@@ -56,6 +56,9 @@ paths = ["third_party/", "build/", ".git/"]
 [output]
 local_hook = true
 github_actions = true
+
+[execution]
+parallel = true
 )";
       std::cout << "[INFO] created " << config_path << "\n";
       return 0;
