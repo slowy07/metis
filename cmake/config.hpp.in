@@ -1,0 +1,30 @@
+#ifndef CONFIG_HPP_IN
+#define CONFIG_HPP_IN
+
+#include <ostream>
+#define SNIFFERCOMMIT_VERSION "@SNIFFERCOMMIT_VERSION@"
+#define SNIFFERCOMMIT_PLATFORM "@SNIFFERCOMMIT_PLATFORM@"
+#define SNIFFERCOMMIT_COMPILER "@SNIFFERCOMMIT_COMPILER@"
+#define SNIFFERCOMMIT_GIT_COMMIT "@SNIFFERCOMMIT_GIT_COMMIT@"
+#define SNIFFERCOMMIT_BUILD_TIMESTAMP "@SNIFFERCOMMIT_BUILD_TIMESTAMP@"
+
+namespace sniffercommit {
+
+struct BuildInfo {
+  static constexpr const char *version = SNIFFERCOMMIT_VERSION;
+  static constexpr const char *platform = SNIFFERCOMMIT_PLATFORM;
+  static constexpr const char *compiler = SNIFFERCOMMIT_COMPILER;
+  static constexpr const char *git_commit = SNIFFERCOMMIT_GIT_COMMIT;
+  static constexpr const char *build_timestamp = SNIFFERCOMMIT_BUILD_TIMESTAMP;
+
+  static void print(std::ostream &os) {
+    os << "sniffercommit v" << version << "\n"
+       << "  Platform: " << platform << "\n"
+       << "  Compiler: " << compiler << "\n"
+       << "  Git: " << git_commit << "\n"
+       << "  Built: " << build_timestamp << "\n";
+  }
+};
+} // namespace sniffercommit
+
+#endif // !CONFIG_HPP_IN
