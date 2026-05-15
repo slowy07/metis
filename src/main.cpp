@@ -17,8 +17,7 @@ int main(int argc, char** argv) {
 
   std::string config_path = ".sniffercommit.toml";
 
-  ArgParser app("sniffercommit",
-                "Fast C++20-powered pre-commit & CI generator");
+  ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
   app.set_version("0.1.0")
       .add_option("-c", "--config", "Config file path", config_path)
       .add_subcommand("init", "Create default .sniffercommit.toml")
@@ -35,6 +34,7 @@ int main(int argc, char** argv) {
     if (subcmd == "init") {
       constexpr auto config_path = ".sniffercommit.toml";
       constexpr auto clang_format_path = ".clang-format";
+      std::string formatter_style = "google";
 
       {
         std::ofstream config_file(config_path);
@@ -47,6 +47,19 @@ int main(int argc, char** argv) {
       }
 
       {
+        for (int i = 1; i < argc; ++i) {
+          std::string arg = argv[i];
+
+          if (arg == "--style") {
+            if (i + 1 >= argc) {
+              std::cerr << "[ERROR] --style requires value\n";
+              return 1;
+            }
+
+            formatter_style = argv[++i];
+          }
+        }
+
         std::ofstream clang_format_file(clang_format_path);
 
         if (!clang_format_file) {
@@ -54,7 +67,8 @@ int main(int argc, char** argv) {
           return 1;
         }
 
-        clang_format_file << sniffercommit::default_clang_format();
+        clang_format_file << sniffercommit::default_clang_format(
+            sniffercommit::parse_formatter_style(formatter_style));
       }
 
       std::cout << "[INFO] created " << config_path << "\n";
@@ -71,8 +85,7 @@ int main(int argc, char** argv) {
       if (cfg.generate_local_hook) {
         auto script = generate_local_hook(cfg);
         if (install_local_hook(repo_root, script)) {
-          std::cout
-              << "[INFO] pre-commit hook installed at .git/hooks/pre-commit\n";
+          std::cout << "[INFO] pre-commit hook installed at .git/hooks/pre-commit\n";
         } else {
           std::cerr << "[ERROR] failed to write hook\n";
           return 1;
@@ -130,15 +143,13 @@ int main(int argc, char** argv) {
       opts.verbose = verbose;
       opts.dry_run = dry_run;
       opts.source = all_files ? FileSource::ALL_REPO
-                              : (!run_files.empty() ? FileSource::EXPLICIT
-                                                    : FileSource::STAGED);
+                              : (!run_files.empty() ? FileSource::EXPLICIT : FileSource::STAGED);
       if (!run_files.empty()) opts.explicit_files = std::move(run_files);
 
       auto files = collect_files(repo_root, opts, cfg.exclude_paths);
 
       if (verbose) {
-        std::cout << fmt::format("[sniffercommit] Checking {} file(s)\n",
-                                 files.size());
+        std::cout << fmt::format("[sniffercommit] Checking {} file(s)\n", files.size());
       }
 
       int result = execute_checks(repo_root, cfg, files, opts);

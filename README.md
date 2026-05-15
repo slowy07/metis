@@ -44,6 +44,10 @@ cmake --build . --parallel
 
 cd /path/project
 sniffercommit init
+
+# optional formatter style (.clang-formats)
+# avaiable: llvm, google, microsoft, gnu, mozilla, webkit, default are google
+sniffercomit init --style llvm
 ```
 
 this will be create `.sniffercommit.toml` with sensible defaults

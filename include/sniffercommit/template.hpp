@@ -4,8 +4,12 @@
 #include <string>
 namespace sniffercommit {
 
-  [[nodiscard]] std::string default_sniffercommit_config();
-  [[nodiscard]] std::string default_clang_format();
-}
+enum class FormatterStyle { Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU };
 
-#endif // !SNIFFERCOMMIT_TEMPLATE_HPP
+[[nodiscard]] std::string default_sniffercommit_config();
+[[nodiscard]] std::string default_clang_format(FormatterStyle style);
+
+FormatterStyle parse_formatter_style(const std::string& style);
+}  // namespace sniffercommit
+
+#endif  // !SNIFFERCOMMIT_TEMPLATE_HPP
