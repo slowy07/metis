@@ -32,6 +32,7 @@ int main(int argc, char** argv) {
 
     // INIT
     if (subcmd == "init") {
+      std::string project_name = std::filesystem::current_path().filename().string();
       constexpr auto config_path = ".sniffercommit.toml";
       constexpr auto clang_format_path = ".clang-format";
       std::string formatter_style = "google";
@@ -43,7 +44,7 @@ int main(int argc, char** argv) {
           return 1;
         }
 
-        config_file << sniffercommit::default_sniffercommit_config();
+        config_file << sniffercommit::default_sniffercommit_config(project_name);
       }
 
       {
@@ -57,6 +58,15 @@ int main(int argc, char** argv) {
             }
 
             formatter_style = argv[++i];
+          }
+
+          if (arg == "--name") {
+            if (i + 1 >= argc) {
+              std::cerr << "[ERROR] --name requires value\n";
+              return 1;
+            }
+
+            project_name = argv[++i];
           }
         }
 

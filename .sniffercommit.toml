@@ -1,5 +1,5 @@
 [project]
-name = "my-project"
+name = "sniffercommit"
 
 [[checks]]
 name = "clang-format"

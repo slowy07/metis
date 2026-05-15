@@ -1,13 +1,15 @@
+#include <fmt/format.h>
+
 #include <stdexcept>
 #include <string>
 
-#include "fmt/format.h"
 #include "sniffercommit/template.hpp"
 
 namespace sniffercommit {
-std::string default_sniffercommit_config() {
-  return R"([project]
-name = "my-project"
+std::string default_sniffercommit_config(const std::string& project_name) {
+  return fmt::format(
+      R"([project]
+name = "{}"
 
 [[checks]]
 name = "clang-format"
@@ -30,7 +32,8 @@ github_actions = false
 
 [execution]
 parallel = true
-)";
+)",
+      project_name);
 }
 
 std::string formatter_style_name(FormatterStyle style) {
