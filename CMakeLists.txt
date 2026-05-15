@@ -104,6 +104,7 @@ add_executable(sniffercommit
   src/config.cpp
   src/generator.cpp
   src/installer.cpp
+  src/executor.cpp
 )
 
 target_include_directories(sniffercommit

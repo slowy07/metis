@@ -14,24 +14,6 @@
 
 namespace sniffercommit {
 
-template <typename T> constexpr std::string to_default_string(const T &val) {
-  if constexpr (std::is_same_v<T, std::string>) {
-    return val;
-  } else if constexpr (std::is_same_v<T, bool>) {
-    return val ? "true" : "false";
-  } else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, long> ||
-                       std::is_same_v<T, long long> ||
-                       std::is_same_v<T, unsigned> ||
-                       std::is_same_v<T, unsigned long> ||
-                       std::is_same_v<T, unsigned long long>) {
-    return std::to_string(val);
-  } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
-    return std::to_string(val);
-  } else {
-    return "";
-  }
-}
-
 template <typename T>
 concept Parsable =
     std::assignable_from<T &, T> && std::default_initializable<T>;
@@ -52,29 +34,20 @@ public:
   template <Parsable T>
   ArgParser &add_option(std::string_view short_flag, std::string_view long_flag,
                         std::string_view desc, T &storage, T default_val = {}) {
-    options_.push_back(Option{.short_flag = short_flag,
-                              .long_flag = long_flag,
-                              .description = desc,
-                              .default_value = to_default_string(default_val),
-                              .has_value = true});
-
-    option_stores_.emplace_back([&storage](const std::string &val) {
-      if constexpr (std::is_same_v<T, std::string>) {
-        storage = val;
-      } else if constexpr (std::is_same_v<T, bool>) {
-        storage = (val == "true" || val == "1" || val == "yes");
+    std::string default_str;
+    if constexpr (std::is_same_v<T, std::string>)
+      default_str = default_val;
+    else
+      default_str = std::to_string(default_val);
+    options_.emplace_back(
+        Option{short_flag, long_flag, desc, std::move(default_str), true});
+    option_stores_.emplace_back([this, &storage](const std::string &val) {
+      if constexpr (std::is_same_v<T, bool>) {
+        storage = (val == "true" || val == "1");
       } else if constexpr (std::is_same_v<T, int>) {
         storage = std::stoi(val);
-      } else if constexpr (std::is_same_v<T, long>) {
-        storage = std::stol(val);
-      } else if constexpr (std::is_same_v<T, long long>) {
-        storage = std::stoll(val);
-      } else if constexpr (std::is_same_v<T, unsigned>) {
-        storage = static_cast<unsigned>(std::stoul(val));
-      } else if constexpr (std::is_same_v<T, float>) {
-        storage = std::stof(val);
-      } else if constexpr (std::is_same_v<T, double>) {
-        storage = std::stod(val);
+      } else {
+        storage = val;
       }
     });
     return *this;
@@ -82,12 +55,8 @@ public:
 
   ArgParser &add_flag(std::string_view short_flag, std::string_view long_flag,
                       std::string_view desc, bool &storage) {
-    options_.push_back(Option{.short_flag = short_flag,
-                              .long_flag = long_flag,
-                              .description = desc,
-                              .default_value = "false",
-                              .has_value = false});
-    flag_stores_.push_back(&storage);
+    options_.emplace_back(Option{short_flag, long_flag, desc, "false", false});
+    flag_stores_.emplace_back(&storage);
     return *this;
   }
 
@@ -120,25 +89,25 @@ public:
       }
     }
 
-    if (!subcommands_.empty() && argc >= 2) {
+    if (!subcommands_.empty()) {
       std::string_view first_arg = args_[1];
-      if (!first_arg.starts_with('-')) {
+      if (!first_arg.starts_with("-")) {
         auto it =
             std::ranges::find_if(subcommands_, [first_arg](const auto &cmd) {
               return cmd.name == first_arg;
             });
+
         if (it != subcommands_.end()) {
           active_subcommand_ = it->name;
-          args_ = {args_.begin() + 2, args_.end()};
+          return true;
         } else {
-          std::cerr << "Unknown subcommand: " << first_arg << "\n\n";
+          std::cerr << "[ERROR] Unknown subcommand: " << first_arg << "\n\n";
           show_help();
           return false;
         }
       }
     }
 
-    // Parse options
     for (size_t i = 0; i < args_.size(); ++i) {
       std::string_view arg = args_[i];
       if (!arg.starts_with('-'))
@@ -149,14 +118,17 @@ public:
       });
 
       if (opt_it == options_.end()) {
-        std::cerr << "Unknown option: " << arg << "\n\n";
+        if (!active_subcommand_.empty()) {
+          continue;
+        }
+        std::cerr << "[ERROR] Unknown option: " << arg << "\n\n";
         show_help();
         return false;
       }
 
       if (opt_it->has_value) {
         if (i + 1 >= args_.size()) {
-          std::cerr << "Option " << arg << " requires a value\n";
+          std::cerr << "[ERROR] Option " << arg << " requires value\n";
           return false;
         }
         std::string value = std::string(args_[++i]);
@@ -165,7 +137,6 @@ public:
           option_stores_[idx](value);
         }
       } else {
-        // Boolean flag
         auto idx = std::distance(options_.begin(), opt_it);
         if (idx < static_cast<ptrdiff_t>(flag_stores_.size()) &&
             flag_stores_[idx]) {
@@ -173,6 +144,7 @@ public:
         }
       }
     }
+
     return true;
   }
 
@@ -201,9 +173,8 @@ public:
       }
       std::cout << "\n";
     }
-    if (!version_.empty()) {
+    if (!version_.empty())
       std::cout << "  -v, --version\tShow version\n";
-    }
     std::cout << "  -h, --help\tShow this help message\n";
   }
 
