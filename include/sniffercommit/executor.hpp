@@ -21,13 +21,12 @@ struct RunOptions {
   bool dry_run = false;
 };
 
-std::vector<std::string> collect_files(
-    const std::filesystem::path& repo_root, const RunOptions& opts,
-    const std::vector<std::string>& exclude_paths);
+std::vector<std::string> collect_files(const std::filesystem::path& repo_root,
+                                       const RunOptions& opts,
+                                       const std::vector<std::string>& exclude_paths);
 
 int execute_checks(const std::filesystem::path& repo_root, const Config& cfg,
-                   const std::vector<std::string>& files,
-                   const RunOptions& opts);
+                   const std::vector<std::string>& files, const RunOptions& opts);
 
 }  // namespace sniffercommit
 

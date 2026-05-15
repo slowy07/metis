@@ -17,8 +17,7 @@ std::filesystem::path find_git_root() {
   throw std::runtime_error("Not inside a Git repository");
 }
 
-bool install_local_hook(const std::filesystem::path& repo_root,
-                        const std::string& content) {
+bool install_local_hook(const std::filesystem::path& repo_root, const std::string& content) {
   auto hooks_dir = repo_root / ".git" / "hooks";
   std::filesystem::create_directories(hooks_dir);
 
@@ -29,19 +28,17 @@ bool install_local_hook(const std::filesystem::path& repo_root,
   out.close();
 
 #ifndef _WIN32
-  std::filesystem::permissions(hook_path,
-                               std::filesystem::perms::owner_all |
-                                   std::filesystem::perms::group_read |
-                                   std::filesystem::perms::group_exec |
-                                   std::filesystem::perms::others_read |
-                                   std::filesystem::perms::others_exec,
-                               std::filesystem::perm_options::replace);
+  std::filesystem::permissions(
+      hook_path,
+      std::filesystem::perms::owner_all | std::filesystem::perms::group_read |
+          std::filesystem::perms::group_exec | std::filesystem::perms::others_read |
+          std::filesystem::perms::others_exec,
+      std::filesystem::perm_options::replace);
 #endif
   return true;
 }
 
-bool write_github_actions(const std::filesystem::path& repo_root,
-                          const std::string& content) {
+bool write_github_actions(const std::filesystem::path& repo_root, const std::string& content) {
   auto gh_dir = repo_root / ".github" / "workflows";
   std::filesystem::create_directories(gh_dir);
 

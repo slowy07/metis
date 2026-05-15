@@ -33,8 +33,7 @@ std::string generate_local_hook(const Config& cfg) {
         patterns += " \"" + p + "\"";
       }
       execution_block +=
-          fmt::format("( run_check \"{}\" {} {} ) & PIDS+=($!)\n", check.name,
-                      cmd, patterns);
+          fmt::format("( run_check \"{}\" {} {} ) & PIDS+=($!)\n", check.name, cmd, patterns);
     }
 
     execution_block += R"DELIM(
@@ -60,8 +59,8 @@ fi
       for (const auto& arg : check.args) cmd += " \"" + arg + "\"";
       std::string patterns;
       for (const auto& p : check.patterns) patterns += " \"" + p + "\"";
-      execution_block += fmt::format("run_check \"{}\" {} {} || EXIT_CODE=$?\n",
-                                     check.name, cmd, patterns);
+      execution_block +=
+          fmt::format("run_check \"{}\" {} {} || EXIT_CODE=$?\n", check.name, cmd, patterns);
     }
     execution_block += "exit $EXIT_CODE\n";
   }
@@ -137,31 +136,84 @@ fi
       "}}\n\n"
       "EXIT_CODE=0\n"
       "{}",
-      cfg.parallel ? "PARALLEL" : "SEQUENTIAL", cfg.project_name,
-      exclude_pattern, execution_block);
+      cfg.parallel ? "PARALLEL" : "SEQUENTIAL", cfg.project_name, exclude_pattern, execution_block);
+}
+
+std::string gha_escape(const std::string& value) {
+  std::string escaped;
+
+  for (char c : value) {
+    if (c == '"') {
+      escaped += "\\\"";
+    } else {
+      escaped += c;
+    }
+  }
+
+  return escaped;
+}
+
+bool requires_clang_format(const Config& cfg) {
+  for (const auto& check : cfg.checks) {
+    if (check.command == "clang-format") {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 std::string generate_github_actions(const Config& cfg) {
-  std::string steps;
-  for (const auto& check : cfg.checks) {
-    std::string cmd = check.command;
-    for (const auto& a : check.args) cmd += " " + a;
-    steps += fmt::format(
-        "      - name: {}\n"
-        "        run: {}\n",
-        check.name, cmd);
+  std::string yml;
+
+  yml += "name: sniffercommit\n\n";
+
+  yml += "on:\n";
+  yml += "  push:\n";
+  yml += "    branches:\n";
+  yml += "      - \"**\"\n\n";
+
+  yml += "  pull_request:\n";
+  yml += "    branches:\n";
+  yml += "      - \"**\"\n\n";
+
+  yml += "concurrency:\n";
+  yml += "  group: sniffercommit-${{ github.ref }}\n";
+  yml += "  cancel-in-progress: true\n\n";
+
+  yml += "permissions:\n";
+  yml += "  contents: read\n\n";
+
+  yml += "jobs:\n";
+  yml += "  checks:\n";
+  yml += "    name: Run sniffercommit checks\n";
+  yml += "    runs-on: ubuntu-latest\n";
+  yml += "    timeout-minutes: 10\n\n";
+
+  yml += "    steps:\n";
+
+  yml += "      - name: Checkout repository\n";
+  yml += "        uses: actions/checkout@v4\n";
+  yml += "        with:\n";
+  yml += "          fetch-depth: 0\n\n";
+
+  if (requires_clang_format(cfg)) {
+    yml += "      - name: Install clang-format\n";
+    yml += "        run: |\n";
+    yml += "          sudo apt-get update\n";
+    yml += "          sudo apt-get install -y clang-format\n\n";
   }
 
-  return fmt::format(
-      "name: sniffercommit CI\n"
-      "on: [pull_request, push]\n"
-      "jobs:\n"
-      "  pre-commit:\n"
-      "    runs-on: ubuntu-latest\n"
-      "    steps:\n"
-      "      - uses: actions/checkout@v4\n"
-      "{}\n",
-      steps);
+  yml += "      - name: Make sniffercommit executable\n";
+  yml += "        run: chmod +x ./sniffercommit\n\n";
+
+  yml += "      - name: Run sniffercommit\n";
+  yml += "        shell: bash\n";
+  yml += "        run: |\n";
+  yml += "          set -euo pipefail\n";
+  yml += "          ./sniffercommit run --all-files --verbose\n";
+
+  return yml;
 }
 
 }  // namespace sniffercommit

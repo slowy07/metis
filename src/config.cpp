@@ -15,16 +15,14 @@ Config load_config(const std::filesystem::path& path) {
   try {
     tbl = toml::parse_file(path.string());
   } catch (const toml::parse_error& e) {
-    throw std::runtime_error("TOML parse error: " +
-                             std::string(e.description()));
+    throw std::runtime_error("TOML parse error: " + std::string(e.description()));
   }
 
   Config cfg;
 
   // [project]
   if (auto project = tbl["project"].as_table()) {
-    cfg.project_name =
-        (*project)["name"].value<std::string>().value_or("unnamed");
+    cfg.project_name = (*project)["name"].value<std::string>().value_or("unnamed");
   }
 
   // [[checks]]
@@ -37,8 +35,7 @@ Config load_config(const std::filesystem::path& path) {
         c.command = (*check_tbl)["command"].value<std::string>().value_or("");
 
         if (c.command.empty()) {
-          throw std::runtime_error("Check '" + c.name +
-                                   "' missing required 'command'");
+          throw std::runtime_error("Check '" + c.name + "' missing required 'command'");
         }
 
         if (auto* args = (*check_tbl)["args"].as_array()) {
@@ -65,10 +62,8 @@ Config load_config(const std::filesystem::path& path) {
 
   // [output]
   if (auto* output = tbl["output"].as_table()) {
-    cfg.generate_local_hook =
-        (*output)["local_hook"].value<bool>().value_or(true);
-    cfg.generate_gha =
-        (*output)["github_actions"].value<bool>().value_or(false);
+    cfg.generate_local_hook = (*output)["local_hook"].value<bool>().value_or(true);
+    cfg.generate_gha = (*output)["github_actions"].value<bool>().value_or(false);
   }
 
   // [execution]
@@ -79,8 +74,7 @@ Config load_config(const std::filesystem::path& path) {
   }
 
   if (cfg.checks.empty()) {
-    throw std::runtime_error(
-        "Config must contain at least one [[checks]] entry");
+    throw std::runtime_error("Config must contain at least one [[checks]] entry");
   }
 
 #ifdef SNIFFERCOMMIT_DEBUG

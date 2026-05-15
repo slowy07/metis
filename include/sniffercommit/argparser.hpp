@@ -38,8 +38,7 @@ class ArgParser {
       default_str = default_val;
     else
       default_str = std::to_string(default_val);
-    options_.emplace_back(
-        Option{short_flag, long_flag, desc, std::move(default_str), true});
+    options_.emplace_back(Option{short_flag, long_flag, desc, std::move(default_str), true});
     option_stores_.emplace_back([this, &storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
@@ -92,8 +91,7 @@ class ArgParser {
       std::string_view first_arg = args_[1];
       if (!first_arg.starts_with("-")) {
         auto it = std::ranges::find_if(
-            subcommands_,
-            [first_arg](const auto& cmd) { return cmd.name == first_arg; });
+            subcommands_, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
 
         if (it != subcommands_.end()) {
           active_subcommand_ = it->name;
@@ -135,8 +133,7 @@ class ArgParser {
         }
       } else {
         auto idx = std::distance(options_.begin(), opt_it);
-        if (idx < static_cast<ptrdiff_t>(flag_stores_.size()) &&
-            flag_stores_[idx]) {
+        if (idx < static_cast<ptrdiff_t>(flag_stores_.size()) && flag_stores_[idx]) {
           *flag_stores_[idx] = true;
         }
       }
@@ -145,7 +142,9 @@ class ArgParser {
     return true;
   }
 
-  std::string_view get_subcommand() const { return active_subcommand_; }
+  std::string_view get_subcommand() const {
+    return active_subcommand_;
+  }
 
   void show_help() const {
     std::cout << app_name_ << " - " << description_ << "\n\n";
