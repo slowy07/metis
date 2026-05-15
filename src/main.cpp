@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -8,9 +10,9 @@
 #include "sniffercommit/executor.hpp"
 #include "sniffercommit/generator.hpp"
 #include "sniffercommit/installer.hpp"
-#include <fmt/format.h>
+#include "sniffercommit/template.hpp"
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   using namespace sniffercommit;
 
   std::string config_path = ".sniffercommit.toml";
@@ -24,41 +26,40 @@ int main(int argc, char **argv) {
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("run", "Execute checks on files");
 
-  if (!app.parse(argc, argv))
-    return 0;
+  if (!app.parse(argc, argv)) return 0;
 
   try {
     auto subcmd = app.get_subcommand();
 
     // INIT
     if (subcmd == "init") {
-      std::ofstream out(config_path, std::ios::trunc);
-      out << R"([project]
-name = "my-project"
+      constexpr auto config_path = ".sniffercommit.toml";
+      constexpr auto clang_format_path = ".clang-format";
 
-[[checks]]
-name = "clang-format"
-command = "clang-format"
-args = ["-i", "-style=file"]
-patterns = ["*.cpp", "*.h", "*.hpp"]
+      {
+        std::ofstream config_file(config_path);
+        if (!config_file) {
+          std::cerr << "[ERROR] failed to create " << config_path << "\n";
+          return 1;
+        }
 
-[[checks]]
-name = "trailing-whitespace"
-command = "grep"
-args = ["-E", "--text", "[[:space:]]+$"]
-patterns = ["*"]
+        config_file << sniffercommit::default_sniffercommit_config();
+      }
 
-[exclude]
-paths = ["third_party/", "build/", ".git/"]
+      {
+        std::ofstream clang_format_file(clang_format_path);
 
-[output]
-local_hook = true
-github_actions = true
+        if (!clang_format_file) {
+          std::cerr << "[ERROR] failed to create " << clang_format_path << "\n";
+          return 1;
+        }
 
-[execution]
-parallel = true
-)";
+        clang_format_file << sniffercommit::default_clang_format();
+      }
+
       std::cout << "[INFO] created " << config_path << "\n";
+      std::cout << "  - .sniffercommit.toml\n";
+      std::cout << "  - .clang-format\n";
       return 0;
     }
 
@@ -113,8 +114,7 @@ parallel = true
       // Manually parse remaining args for 'run'
       for (int i = 1; i < argc; ++i) {
         std::string_view arg = argv[i];
-        if (arg == "run")
-          continue;
+        if (arg == "run") continue;
         if (arg == "--all-files")
           all_files = true;
         else if (arg == "--verbose" || arg == "-V")
@@ -132,8 +132,7 @@ parallel = true
       opts.source = all_files ? FileSource::ALL_REPO
                               : (!run_files.empty() ? FileSource::EXPLICIT
                                                     : FileSource::STAGED);
-      if (!run_files.empty())
-        opts.explicit_files = std::move(run_files);
+      if (!run_files.empty()) opts.explicit_files = std::move(run_files);
 
       auto files = collect_files(repo_root, opts, cfg.exclude_paths);
 
@@ -142,7 +141,7 @@ parallel = true
                                  files.size());
       }
 
-      int result = execute_checks(cfg, files, opts);
+      int result = execute_checks(repo_root, cfg, files, opts);
       return result;
     }
 
@@ -150,7 +149,7 @@ parallel = true
     app.show_help();
     return 1;
 
-  } catch (const std::exception &error) {
+  } catch (const std::exception& error) {
     std::cerr << "[ERROR] " << error.what() << "\n";
     return 1;
   } catch (...) {

@@ -105,6 +105,7 @@ add_executable(sniffercommit
   src/generator.cpp
   src/installer.cpp
   src/executor.cpp
+  src/templates.cpp
 )
 
 target_include_directories(sniffercommit

@@ -23,8 +23,8 @@ struct Config {
   bool parallel = true;
 };
 
-Config load_config(const std::filesystem::path &path);
+Config load_config(const std::filesystem::path& path);
 
-} // namespace sniffercommit
+}  // namespace sniffercommit
 
-#endif // !CONFIG_HPP
+#endif  // !CONFIG_HPP

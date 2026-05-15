@@ -1,18 +1,20 @@
 #include "../include/sniffercommit/generator.hpp"
-#include "fmt/base.h"
+
 #include <fmt/format.h>
+
 #include <sstream>
 #include <string>
 
+#include "fmt/base.h"
+
 namespace sniffercommit {
 
-std::string generate_local_hook(const Config &cfg) {
+std::string generate_local_hook(const Config& cfg) {
   std::string exclude_pattern = "^.NO_MATCH$";
   if (!cfg.exclude_paths.empty()) {
     std::ostringstream oss;
     for (size_t i = 0; i < cfg.exclude_paths.size(); ++i) {
-      if (i > 0)
-        oss << "|";
+      if (i > 0) oss << "|";
       oss << cfg.exclude_paths[i];
     }
     exclude_pattern = "(" + oss.str() + ")";
@@ -21,13 +23,13 @@ std::string generate_local_hook(const Config &cfg) {
   std::string execution_block;
   if (cfg.parallel) {
     execution_block = "declare -a PIDS=()\n\n";
-    for (const auto &check : cfg.checks) {
+    for (const auto& check : cfg.checks) {
       std::string cmd = check.command;
-      for (const auto &arg : check.args) {
+      for (const auto& arg : check.args) {
         cmd += " \"" + arg + "\"";
       }
       std::string patterns;
-      for (const auto &p : check.patterns) {
+      for (const auto& p : check.patterns) {
         patterns += " \"" + p + "\"";
       }
       execution_block +=
@@ -53,13 +55,11 @@ if [[ ${#PIDS[@]} -gt 0 ]]; then
 fi
 )DELIM";
   } else {
-    for (const auto &check : cfg.checks) {
+    for (const auto& check : cfg.checks) {
       std::string cmd = check.command;
-      for (const auto &arg : check.args)
-        cmd += " \"" + arg + "\"";
+      for (const auto& arg : check.args) cmd += " \"" + arg + "\"";
       std::string patterns;
-      for (const auto &p : check.patterns)
-        patterns += " \"" + p + "\"";
+      for (const auto& p : check.patterns) patterns += " \"" + p + "\"";
       execution_block += fmt::format("run_check \"{}\" {} {} || EXIT_CODE=$?\n",
                                      check.name, cmd, patterns);
     }
@@ -141,26 +141,27 @@ fi
       exclude_pattern, execution_block);
 }
 
-std::string generate_github_actions(const Config &cfg) {
+std::string generate_github_actions(const Config& cfg) {
   std::string steps;
-  for (const auto &check : cfg.checks) {
+  for (const auto& check : cfg.checks) {
     std::string cmd = check.command;
-    for (const auto &a : check.args)
-      cmd += " " + a;
-    steps += fmt::format("      - name: {}\n"
-                         "        run: {}\n",
-                         check.name, cmd);
+    for (const auto& a : check.args) cmd += " " + a;
+    steps += fmt::format(
+        "      - name: {}\n"
+        "        run: {}\n",
+        check.name, cmd);
   }
 
-  return fmt::format("name: sniffercommit CI\n"
-                     "on: [pull_request, push]\n"
-                     "jobs:\n"
-                     "  pre-commit:\n"
-                     "    runs-on: ubuntu-latest\n"
-                     "    steps:\n"
-                     "      - uses: actions/checkout@v4\n"
-                     "{}\n",
-                     steps);
+  return fmt::format(
+      "name: sniffercommit CI\n"
+      "on: [pull_request, push]\n"
+      "jobs:\n"
+      "  pre-commit:\n"
+      "    runs-on: ubuntu-latest\n"
+      "    steps:\n"
+      "      - uses: actions/checkout@v4\n"
+      "{}\n",
+      steps);
 }
 
-} // namespace sniffercommit
+}  // namespace sniffercommit

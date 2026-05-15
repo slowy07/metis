@@ -15,8 +15,7 @@
 namespace sniffercommit {
 
 template <typename T>
-concept Parsable =
-    std::assignable_from<T &, T> && std::default_initializable<T>;
+concept Parsable = std::assignable_from<T&, T> && std::default_initializable<T>;
 
 struct Option {
   std::string_view short_flag;
@@ -27,13 +26,13 @@ struct Option {
 };
 
 class ArgParser {
-public:
+ public:
   ArgParser(std::string_view app_name, std::string_view description)
       : app_name_(app_name), description_(description) {}
 
   template <Parsable T>
-  ArgParser &add_option(std::string_view short_flag, std::string_view long_flag,
-                        std::string_view desc, T &storage, T default_val = {}) {
+  ArgParser& add_option(std::string_view short_flag, std::string_view long_flag,
+                        std::string_view desc, T& storage, T default_val = {}) {
     std::string default_str;
     if constexpr (std::is_same_v<T, std::string>)
       default_str = default_val;
@@ -41,7 +40,7 @@ public:
       default_str = std::to_string(default_val);
     options_.emplace_back(
         Option{short_flag, long_flag, desc, std::move(default_str), true});
-    option_stores_.emplace_back([this, &storage](const std::string &val) {
+    option_stores_.emplace_back([this, &storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
       } else if constexpr (std::is_same_v<T, int>) {
@@ -53,24 +52,24 @@ public:
     return *this;
   }
 
-  ArgParser &add_flag(std::string_view short_flag, std::string_view long_flag,
-                      std::string_view desc, bool &storage) {
+  ArgParser& add_flag(std::string_view short_flag, std::string_view long_flag,
+                      std::string_view desc, bool& storage) {
     options_.emplace_back(Option{short_flag, long_flag, desc, "false", false});
     flag_stores_.emplace_back(&storage);
     return *this;
   }
 
-  ArgParser &add_subcommand(std::string_view name, std::string_view desc) {
+  ArgParser& add_subcommand(std::string_view name, std::string_view desc) {
     subcommands_.push_back({std::string(name), std::string(desc)});
     return *this;
   }
 
-  ArgParser &set_version(std::string_view version) {
+  ArgParser& set_version(std::string_view version) {
     version_ = version;
     return *this;
   }
 
-  bool parse(int argc, char **argv) {
+  bool parse(int argc, char** argv) {
     if (argc < 2) {
       show_help();
       return false;
@@ -92,10 +91,9 @@ public:
     if (!subcommands_.empty()) {
       std::string_view first_arg = args_[1];
       if (!first_arg.starts_with("-")) {
-        auto it =
-            std::ranges::find_if(subcommands_, [first_arg](const auto &cmd) {
-              return cmd.name == first_arg;
-            });
+        auto it = std::ranges::find_if(
+            subcommands_,
+            [first_arg](const auto& cmd) { return cmd.name == first_arg; });
 
         if (it != subcommands_.end()) {
           active_subcommand_ = it->name;
@@ -110,10 +108,9 @@ public:
 
     for (size_t i = 0; i < args_.size(); ++i) {
       std::string_view arg = args_[i];
-      if (!arg.starts_with('-'))
-        continue;
+      if (!arg.starts_with('-')) continue;
 
-      auto opt_it = std::ranges::find_if(options_, [arg](const Option &opt) {
+      auto opt_it = std::ranges::find_if(options_, [arg](const Option& opt) {
         return opt.short_flag == arg || opt.long_flag == arg;
       });
 
@@ -156,29 +153,27 @@ public:
 
     if (!subcommands_.empty()) {
       std::cout << "Subcommands:\n";
-      for (const auto &cmd : subcommands_) {
+      for (const auto& cmd : subcommands_) {
         std::cout << "  " << cmd.name << "\t" << cmd.description << "\n";
       }
       std::cout << "\n";
     }
 
     std::cout << "Options:\n";
-    for (const auto &opt : options_) {
+    for (const auto& opt : options_) {
       std::cout << "  ";
-      if (!opt.short_flag.empty())
-        std::cout << opt.short_flag << ", ";
+      if (!opt.short_flag.empty()) std::cout << opt.short_flag << ", ";
       std::cout << opt.long_flag << "\t" << opt.description;
       if (!opt.default_value.empty() && opt.has_value) {
         std::cout << " [default: " << opt.default_value << "]";
       }
       std::cout << "\n";
     }
-    if (!version_.empty())
-      std::cout << "  -v, --version\tShow version\n";
+    if (!version_.empty()) std::cout << "  -v, --version\tShow version\n";
     std::cout << "  -h, --help\tShow this help message\n";
   }
 
-private:
+ private:
   struct Subcommand {
     std::string name;
     std::string description;
@@ -187,14 +182,14 @@ private:
   std::string_view app_name_;
   std::string_view description_;
   std::string version_;
-  std::span<char *const> args_;
+  std::span<char* const> args_;
   std::vector<Option> options_;
-  std::vector<std::function<void(const std::string &)>> option_stores_;
-  std::vector<bool *> flag_stores_;
+  std::vector<std::function<void(const std::string&)>> option_stores_;
+  std::vector<bool*> flag_stores_;
   std::vector<Subcommand> subcommands_;
   std::string active_subcommand_;
 };
 
-} // namespace sniffercommit
+}  // namespace sniffercommit
 
-#endif // !SNIFFERCOMMIT_ARGPARSER_HPP
+#endif  // !SNIFFERCOMMIT_ARGPARSER_HPP

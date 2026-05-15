@@ -1,4 +1,9 @@
-[project]
+#include "sniffercommit/template.hpp"
+#include <string>
+
+namespace sniffercommit {
+std::string default_sniffercommit_config() {
+  return R"([project]
 name = "my-project"
 
 [[checks]]
@@ -22,3 +27,24 @@ github_actions = false
 
 [execution]
 parallel = true
+)";
+}
+
+std::string default_clang_format() {
+  return R"(---
+BasedOnStyle: Google
+
+IndentWidth: 2
+ColumnLimit: 100
+PointerAlignment: Left
+SortIncludes: true
+
+AllowShortFunctionsOnASingleLine: Empty
+BreakBeforeBraces: Attach
+
+Standard: Latest
+...
+)";
+}
+
+} // namespace sniffercommit
