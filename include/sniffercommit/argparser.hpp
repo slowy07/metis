@@ -146,30 +146,117 @@ class ArgParser {
     return active_subcommand_;
   }
 
+  void print_aligned(std::string_view left, std::string_view right) const {
+    std::cout << "  " << left;
+
+    if (left.size() < k_padding) {
+      std::cout << std::string(k_padding - left.size(), ' ');
+    } else {
+      std::cout << "\n";
+      std::cout << std::string(k_padding + 2, ' ');
+    }
+
+    std::cout << right << "\n";
+  }
+
+  void print_section_title(std::string_view title) const {
+    std::cout << title << ":\n";
+  }
+
   void show_help() const {
     std::cout << app_name_ << " - " << description_ << "\n\n";
-    std::cout << "Usage: " << app_name_ << " [OPTIONS] [SUBCOMMAND]\n\n";
 
-    if (!subcommands_.empty()) {
-      std::cout << "Subcommands:\n";
-      for (const auto& cmd : subcommands_) {
-        std::cout << "  " << cmd.name << "\t" << cmd.description << "\n";
-      }
-      std::cout << "\n";
+    std::cout << "Usage:\n";
+
+    std::cout << "  " << app_name_ << " [OPTIONS] <SUBCOMMAND> [ARGS]\n\n";
+
+    print_section_title("Core Workflow");
+
+    for (const auto& cmd : subcommands_) {
+      print_aligned(cmd.name, cmd.description);
     }
 
-    std::cout << "Options:\n";
+    std::cout << "\n";
+
+    print_section_title("Examples");
+    std::cout << "  " << app_name_ << " init\n";
+    std::cout << "  " << app_name_ << " init --style llvm\n";
+    std::cout << "  " << app_name_ << " init --name ultra-slowy\n";
+    std::cout << "  " << app_name_ << " install\n";
+    std::cout << "  " << app_name_ << " run --all-files\n";
+    std::cout << "  " << app_name_ << " run src/main.cpp\n";
+    std::cout << "  " << app_name_
+              << " generate-gha > "
+                 ".github/workflows/sniffercommit.yml\n\n";
+
+    print_section_title("Subcommands");
+
+    std::cout << "  init\n";
+
+    std::cout << "      Create:\n";
+
+    std::cout << "        - .sniffercommit.toml\n";
+
+    std::cout << "        - .clang-format\n\n";
+
+    std::cout << "      Options:\n";
+
+    std::cout << "        --style "
+                 "<google|llvm|chromium|mozilla|webkit|microsoft|gnu>\n";
+
+    std::cout << "        --name <project-name>\n\n";
+
+    std::cout << "  install\n";
+
+    std::cout << "      Generate and install:\n";
+
+    std::cout << "        .git/hooks/pre-commit\n\n";
+
+    std::cout << "  run\n";
+
+    std::cout << "      Execute configured checks.\n\n";
+
+    std::cout << "      Modes:\n";
+
+    std::cout << "        --all-files\n";
+
+    std::cout << "        --staged\n";
+
+    std::cout << "        <explicit files>\n\n";
+
+    std::cout << "  generate-gha\n";
+
+    std::cout << "      Generate production-grade "
+                 "GitHub Actions workflow.\n\n";
+
+    print_section_title("Global Options");
+
     for (const auto& opt : options_) {
-      std::cout << "  ";
-      if (!opt.short_flag.empty()) std::cout << opt.short_flag << ", ";
-      std::cout << opt.long_flag << "\t" << opt.description;
-      if (!opt.default_value.empty() && opt.has_value) {
-        std::cout << " [default: " << opt.default_value << "]";
+      std::string left;
+
+      if (!opt.short_flag.empty()) {
+        left += std::string(opt.short_flag);
+        left += ", ";
       }
-      std::cout << "\n";
+
+      left += std::string(opt.long_flag);
+
+      if (opt.has_value) left += " <value>";
+
+      std::string desc = std::string(opt.description);
+
+      if (!opt.default_value.empty() && opt.has_value) {
+        desc += " [default: " + opt.default_value + "]";
+      }
+
+      print_aligned(left, desc);
     }
-    if (!version_.empty()) std::cout << "  -v, --version\tShow version\n";
-    std::cout << "  -h, --help\tShow this help message\n";
+
+    if (!version_.empty()) {
+      print_aligned("-v, --version", "Show version");
+    }
+
+    print_aligned("-h, --help", "Show help message");
   }
 
  private:
@@ -187,6 +274,8 @@ class ArgParser {
   std::vector<bool*> flag_stores_;
   std::vector<Subcommand> subcommands_;
   std::string active_subcommand_;
+
+  static constexpr size_t k_padding = 32;
 };
 
 }  // namespace sniffercommit

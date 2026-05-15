@@ -1,5 +1,6 @@
 #include <fmt/format.h>
 
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -37,8 +38,34 @@ int main(int argc, char** argv) {
       constexpr auto clang_format_path = ".clang-format";
       std::string formatter_style = "google";
 
+      for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+
+        // INFO: style formatter
+        if (arg == "--style") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --style require value\n";
+            return 1;
+          }
+
+          formatter_style = argv[++i];
+        }
+
+        // INFO: project name
+        if (arg == "--name") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --name require value\n";
+            return 1;
+          }
+
+          project_name = argv[++i];
+        }
+      }
+
+      // INFO: generate toml files
       {
         std::ofstream config_file(config_path);
+
         if (!config_file) {
           std::cerr << "[ERROR] failed to create " << config_path << "\n";
           return 1;
@@ -47,29 +74,8 @@ int main(int argc, char** argv) {
         config_file << sniffercommit::default_sniffercommit_config(project_name);
       }
 
+      // INFO: generate clang-format file
       {
-        for (int i = 1; i < argc; ++i) {
-          std::string arg = argv[i];
-
-          if (arg == "--style") {
-            if (i + 1 >= argc) {
-              std::cerr << "[ERROR] --style requires value\n";
-              return 1;
-            }
-
-            formatter_style = argv[++i];
-          }
-
-          if (arg == "--name") {
-            if (i + 1 >= argc) {
-              std::cerr << "[ERROR] --name requires value\n";
-              return 1;
-            }
-
-            project_name = argv[++i];
-          }
-        }
-
         std::ofstream clang_format_file(clang_format_path);
 
         if (!clang_format_file) {
@@ -77,13 +83,20 @@ int main(int argc, char** argv) {
           return 1;
         }
 
-        clang_format_file << sniffercommit::default_clang_format(
-            sniffercommit::parse_formatter_style(formatter_style));
+        try {
+          clang_format_file << sniffercommit::default_clang_format(
+              sniffercommit::parse_formatter_style(formatter_style));
+        } catch (const std::exception& error_format_file) {
+          std::cerr << "[ERROR] " << error_format_file.what() << "\n";
+          return 1;
+        }
       }
 
       std::cout << "[INFO] created " << config_path << "\n";
+      std::cout << "  project: " << project_name << "\n";
       std::cout << "  - .sniffercommit.toml\n";
       std::cout << "  - .clang-format\n";
+      std::cout << "     style: " << formatter_style << "\n";
       return 0;
     }
 
