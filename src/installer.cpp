@@ -1,20 +1,49 @@
 #include "../include/sniffercommit/installer.hpp"
 
+#include <array>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 
 namespace sniffercommit {
 
 std::filesystem::path find_git_root() {
+  std::array<char, 1024> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(
+      popen("git rev-parse --show-toplevel 2>/dev/null", "r"), pclose);
+
+  if (pipe) {
+    while (fgets(buffer.data(), buffer.size(), pipe.get())) {
+      result += buffer.data();
+    }
+
+    if (!result.empty()) {
+      if (result.back() == '\n') {
+        result.pop_back();
+      }
+
+      std::filesystem::path path(result);
+      if (std::filesystem::exists(path)) {
+        return path;
+      }
+    }
+  }
+
   auto dir = std::filesystem::current_path();
   while (true) {
-    if (std::filesystem::exists(dir / ".git")) return dir;
+    if (std::filesystem::exists(dir / ".git")) {
+      return dir;
+    }
+
     auto parent = dir.parent_path();
     if (parent == dir) break;
     dir = parent;
   }
-  throw std::runtime_error("Not inside a Git repository");
+
+  throw std::runtime_error("not inside git repository (or git not in PATH)");
 }
 
 bool install_local_hook(const std::filesystem::path& repo_root, const std::string& content) {

@@ -1,90 +1,118 @@
-# sniffercomit
-make sure works very well before push it with C++20 standard.
+# sniffercommit
 
-## Depedency
+Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push.
 
-- [`tomlplusplus`](https://github.com/marzer/tomlplusplus.git)
+## Features
 
-    Header only TOML config file parser and serializer
+- **Parallel check execution** — run linters concurrently via Bash background jobs
+- **Pattern-aware filtering** — apply checks only to matching file extensions (`.cpp`, `.hpp`, etc.)
+- **Zero runtime dependencies** — single static binary; no Python/Node required
+- **Auto-generate CI workflow** — GitHub Actions workflow mirroring local hooks
+- **.clang-format scaffolding** — generate `.clang-format` with configurable style presets
 
-- [`fmt`](https://github.com/fmtlib/fmt.git)
+## Dependencies
 
-    Modern formatting library
+| Dependency | Purpose |
+|------------|---------|
+| [`tomlplusplus`](https://github.com/marzer/tomlplusplus.git) | Header-only TOML config file parser and serializer |
+| [`fmt`](https://github.com/fmtlib/fmt.git) | Modern formatting library |
 
-## Feature
+Both are fetched automatically at configure time via CMake's `FetchContent`. No system installation required.
 
-- parallel check execution
-    run linter concurrencyvia bash background jobs
-- pattern aware filtering
-    apply checks only matching file extensions (`.cpp`)
-- zero runtime Depedency
-    single static binary; no python / Node require
-- auto generate CI workflow mirroring local hooks
-
-## Build and Test it
+## Build
 
 ```bash
-mkdir build && cd build
-# release type
-cmake .. -DCMAKE_BUILD_TYPE=Release
-# active build with parallel options
-cmake --build . --parallel
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
 
 # verify
-./sniffercommit --version
-
-./sniffercommit init
-
-# install into pre-commit hooks and github actions as CI
-./sniffercommit install -c .sniffercommit.toml
+./build/sniffercommit --version
 ```
 
-```bash
-# initialize project into project
+## Usage
 
-cd /path/project
+### Initialize a project
+
+```bash
+cd /path/to/project
 sniffercommit init
 
-# optional formatter style (.clang-formats)
-# avaiable: llvm, google, microsoft, gnu, mozilla, webkit, default are google
-sniffercomit init --style llvm
+# optional: specify formatter style
+# available: google, llvm, chromium, mozilla, webkit, microsoft, gnu
+sniffercommit init --style llvm
+
+# optional: custom project name, indent width, column limit, etc.
+sniffercommit init --style google --name my-project --indent-width 4 --column-limit 120
 ```
 
-this will be create `.sniffercommit.toml` with sensible defaults
+This creates two files:
+- **`.sniffercommit.toml`** — check configuration with sensible defaults
+- **`.clang-format`** — formatter style matching your chosen preset
+
+### Install pre-commit hooks
 
 ```bash
-# install local pre-commit hooks
 sniffercommit install
+```
 
-# (optional) generate github action workflows
+Generates and installs `.git/hooks/pre-commit` (and optionally `.github/workflows/sniffercommit.yml`).
+
+### Generate CI workflow only
+
+```bash
 sniffercommit generate-gha
 ```
 
+### Run checks manually
+
 ```bash
-# commit and test verify
+# all tracked files
+sniffercommit run --all-files
+
+# specific files
+sniffercommit run src/main.cpp
+
+# dry-run
+sniffercommit run --dry-run --all-files
+```
+
+### Test the hook
+
+```bash
 echo "int main(){return 0;}" > test.cpp
 git add test.cpp
 git commit -m "chore: test sniffercommit"
 ```
 
-## Debugging tips
+## Init Options
 
-```
+| Flag | Description |
+|------|-------------|
+| `--style <name>` | `google`, `llvm`, `chromium`, `mozilla`, `webkit`, `microsoft`, `gnu` (default: `google`) |
+| `--name <name>` | Project name (default: current directory name) |
+| `--indent-width <n>` | Indentation width (default: `2`) |
+| `--column-limit <n>` | Column limit (default: `100`) |
+| `--pointer-alignment <s>` | Pointer alignment: `Left`, `Right`, `Middle` |
+| `--brace-style <s>` | Brace placement: `Attach`, `Allman`, etc. |
+
+## Debugging
+
+```bash
 # enable verbose config output
-cmake .. -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
+cmake -B build -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
 
 # build with sanitizers (catch memory bugs)
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
 
 # inspect generated hook
 cat .git/hooks/pre-commit | less
 
 # test hook manually (without git)
-bash .git/hooks/pre-commit 
+bash .git/hooks/pre-commit
 ```
 
-## Acknowledge
+## Acknowledgements
 
-- [precommit](https://pre-commit.com/) - inspiration for hook management workflow
+- [pre-commit](https://pre-commit.com/) — inspiration for hook management workflow
 
 This project was inspired by an internal tool developed at a previous company for enforcing C/C++ naming conventions. Due to licensing constraints, sniffercommit was built from scratch with the same functionality but a distinct architecture and open-source ethos.

@@ -6,8 +6,38 @@
 #include <string>
 
 #include "fmt/base.h"
+#include "sniffercommit/executor.hpp"
 
 namespace sniffercommit {
+
+std::string regex_escape(const std::string& s) {
+  std::string out;
+  for (char c : s) {
+    switch (c) {
+      case '\\':
+      case '.':
+      case '+':
+      case '*':
+      case '?':
+      case '[':
+      case ']':
+      case '^':
+      case '$':
+      case '(':
+      case ')':
+      case '{':
+      case '}':
+      case '|':
+        out += '\\';
+        break;
+      default:
+        break;
+    }
+    out += c;
+  }
+
+  return out;
+}
 
 std::string generate_local_hook(const Config& cfg) {
   std::string exclude_pattern = "^.NO_MATCH$";
@@ -15,14 +45,15 @@ std::string generate_local_hook(const Config& cfg) {
     std::ostringstream oss;
     for (size_t i = 0; i < cfg.exclude_paths.size(); ++i) {
       if (i > 0) oss << "|";
-      oss << cfg.exclude_paths[i];
+      oss << regex_escape(cfg.exclude_paths[i]);
     }
     exclude_pattern = "(" + oss.str() + ")";
   }
 
   std::string execution_block;
   if (cfg.parallel) {
-    execution_block = "declare -a PIDS=()\n\n";
+    execution_block = "declare -a PIDS=()\n";
+    execution_block += "declare -A PID_TO_NAME=()\n\n";
     for (const auto& check : cfg.checks) {
       std::string cmd = check.command;
       for (const auto& arg : check.args) {
@@ -32,25 +63,26 @@ std::string generate_local_hook(const Config& cfg) {
       for (const auto& p : check.patterns) {
         patterns += " \"" + p + "\"";
       }
+      execution_block += fmt::format("( run_check \"{}\" {} {} ) &\n", check.name, cmd, patterns);
       execution_block +=
-          fmt::format("( run_check \"{}\" {} {} ) & PIDS+=($!)\n", check.name, cmd, patterns);
+          fmt::format("PID=$!\nPIDS+=($PID)\nPID_TO_NAME[$PID]=\"{}\"\n\n", check.name);
     }
 
     execution_block += R"DELIM(
 if [[ ${#PIDS[@]} -gt 0 ]]; then
-  EXIT_CODE=0
-  for pid in "${PIDS[@]}"; do
-    if ! wait "$pid"; then
-      echo "[sniffercommit] [ERROR] Check failed (PID: $pid)" >&2
-      EXIT_CODE=1
+    EXIT_CODE=0
+    for pid in "${PIDS[@]}"; do
+        if ! wait "$pid"; then
+            echo "[sniffercommit] [ERROR] ${PID_TO_NAME[$pid]} failed" >&2
+            EXIT_CODE=1
+        fi
+    done
+    if [[ $EXIT_CODE -eq 0 ]]; then
+        echo "[sniffercommit] [INFO] All checks passed."
+    else
+        echo "[sniffercommit] [ERROR] One or more checks failed."
     fi
-  done
-  if [[ $EXIT_CODE -eq 0 ]]; then
-    echo "[sniffercommit] [INFO] All checks passed."
-  else
-    echo "[sniffercommit] [ERROR] One or more checks failed."
-  fi
-  exit $EXIT_CODE
+    exit $EXIT_CODE
 fi
 )DELIM";
   } else {

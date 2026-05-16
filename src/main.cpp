@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 #include "sniffercommit/argparser.hpp"
 #include "sniffercommit/config.hpp"
@@ -15,10 +17,41 @@
 #include "sniffercommit/installer.hpp"
 #include "sniffercommit/template.hpp"
 
+namespace {
+std::string preparse_config_path(int argc, char** argv) {
+  std::string config_path = ".sniffercommit.toml";
+  for (int i = 1; i < argc - 1; ++i) {
+    std::string_view arg = argv[i];
+    if ((arg == "-c" || arg == "--config") && i + 1 < argc) {
+      config_path = argv[i + 1];
+      break;
+    }
+  }
+
+  return config_path;
+}
+
+template <typename T>
+bool safe_stoi(const char* str, T& out) {
+  try {
+    size_t pos = 0;
+    int val = std::stoi(str, &pos);
+    if (pos != std::strlen(str)) {
+      return false;
+    }
+    out = val;
+    return true;
+  } catch (const std::exception&) {
+    return false;
+  }
+}
+
+}  // namespace
+
 int main(int argc, char** argv) {
   using namespace sniffercommit;
 
-  std::string config_path = ".sniffercommit.toml";
+  std::string config_path = preparse_config_path(argc, argv);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
   app.set_version("0.1.0")
@@ -36,8 +69,8 @@ int main(int argc, char** argv) {
     // INIT
     if (subcmd == "init") {
       std::string project_name = std::filesystem::current_path().filename().string();
-      constexpr auto config_path = ".sniffercommit.toml";
-      constexpr auto clang_format_path = ".clang-format";
+      constexpr auto default_config_path = ".sniffercommit.toml";
+      constexpr auto default_clang_format_path = ".clang-format";
       std::string formatter_style = "google";
       sniffercommit::ClangFormatConfig clang_format_cfg;
 
@@ -52,11 +85,15 @@ int main(int argc, char** argv) {
           }
 
           std::string value = argv[++i];
-
           std::ranges::transform(value, value.begin(),
                                  [](unsigned char c) { return std::tolower(c); });
 
-          clang_format_cfg.style = sniffercommit::parse_formatter_style(value);
+          try {
+            clang_format_cfg.style = sniffercommit::parse_formatter_style(value);
+          } catch (const std::exception& error_init_style) {
+            std::cerr << "[ERROR] " << error_init_style.what() << "\n";
+            return 1;
+          }
         }
 
         // INFO: indent width
@@ -66,17 +103,23 @@ int main(int argc, char** argv) {
             return 1;
           }
 
-          clang_format_cfg.ident_width = std::stoi(argv[++i]);
+          if (!safe_stoi(argv[++i], clang_format_cfg.ident_width)) {
+            std::cerr << "[ERROR] --indent-width requires integer value, got: " << argv[i] << "\n";
+            return 1;
+          }
         }
 
         // INFO: column limit
         if (arg == "--column-limit") {
           if (i + 1 >= argc) {
-            std::cerr << "[ERRO] --column-limit requires value\n";
+            std::cerr << "[ERROR] --column-limit requires value\n";
             return 1;
           }
 
-          clang_format_cfg.column_limit = std::stoi(argv[++i]);
+          if (!safe_stoi(argv[++i], clang_format_cfg.column_limit)) {
+            std::cerr << "[ERROR] --column_limit requires integer value, got: " << argv[i] << "\n";
+            return 1;
+          }
         }
 
         // INFO: pointer alignment
@@ -124,10 +167,9 @@ int main(int argc, char** argv) {
 
       // INFO: generate clang-format file
       {
-        std::ofstream clang_format_file(clang_format_path);
-
+        std::ofstream clang_format_file(default_clang_format_path);
         if (!clang_format_file) {
-          std::cerr << "[ERROR] failed to create " << clang_format_path << "\n";
+          std::cerr << "[ERROR] failed to create " << default_clang_format_path << "\n";
           return 1;
         }
 
