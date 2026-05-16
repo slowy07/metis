@@ -1,5 +1,7 @@
 #include <fmt/format.h>
 
+#include <algorithm>
+#include <cctype>
 #include <exception>
 #include <filesystem>
 #include <fstream>
@@ -37,6 +39,7 @@ int main(int argc, char** argv) {
       constexpr auto config_path = ".sniffercommit.toml";
       constexpr auto clang_format_path = ".clang-format";
       std::string formatter_style = "google";
+      sniffercommit::ClangFormatConfig clang_format_cfg;
 
       for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -48,7 +51,52 @@ int main(int argc, char** argv) {
             return 1;
           }
 
-          formatter_style = argv[++i];
+          std::string value = argv[++i];
+
+          std::ranges::transform(value, value.begin(),
+                                 [](unsigned char c) { return std::tolower(c); });
+
+          clang_format_cfg.style = sniffercommit::parse_formatter_style(value);
+        }
+
+        // INFO: indent width
+        if (arg == "--indent-width") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --indent-width requires value\n";
+            return 1;
+          }
+
+          clang_format_cfg.ident_width = std::stoi(argv[++i]);
+        }
+
+        // INFO: column limit
+        if (arg == "--column-limit") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERRO] --column-limit requires value\n";
+            return 1;
+          }
+
+          clang_format_cfg.column_limit = std::stoi(argv[++i]);
+        }
+
+        // INFO: pointer alignment
+        if (arg == "--pointer-alignment") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --pointer-alignment requires value\n";
+            return 1;
+          }
+
+          clang_format_cfg.pointer_alignment = argv[++i];
+        }
+
+        // INFO: brace style
+        if (arg == "--brace-style") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --brace-style requires value\n";
+            return 1;
+          }
+
+          clang_format_cfg.break_before_braces = argv[++i];
         }
 
         // INFO: project name
@@ -71,7 +119,7 @@ int main(int argc, char** argv) {
           return 1;
         }
 
-        config_file << sniffercommit::default_sniffercommit_config(project_name);
+        config_file << sniffercommit::default_sniffercommit_config(project_name, clang_format_cfg);
       }
 
       // INFO: generate clang-format file
@@ -84,8 +132,7 @@ int main(int argc, char** argv) {
         }
 
         try {
-          clang_format_file << sniffercommit::default_clang_format(
-              sniffercommit::parse_formatter_style(formatter_style));
+          clang_format_file << generate_clang_format(clang_format_cfg);
         } catch (const std::exception& error_format_file) {
           std::cerr << "[ERROR] " << error_format_file.what() << "\n";
           return 1;
@@ -96,7 +143,8 @@ int main(int argc, char** argv) {
       std::cout << "  project: " << project_name << "\n";
       std::cout << "  - .sniffercommit.toml\n";
       std::cout << "  - .clang-format\n";
-      std::cout << "     style: " << formatter_style << "\n";
+      std::cout << "     style: " << sniffercommit::formatter_style_name(clang_format_cfg.style)
+                << "\n";
       return 0;
     }
 

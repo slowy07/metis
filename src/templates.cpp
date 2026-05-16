@@ -6,7 +6,8 @@
 #include "sniffercommit/template.hpp"
 
 namespace sniffercommit {
-std::string default_sniffercommit_config(const std::string& project_name) {
+std::string default_sniffercommit_config(const std::string& project_name,
+                                         const ClangFormatConfig& clang_cfg) {
   return fmt::format(
       R"([project]
 name = "{}"
@@ -14,7 +15,11 @@ name = "{}"
 [[checks]]
 name = "clang-format"
 command = "clang-format"
-args = ["-i", "--fallback-style=Google", "-style=file"]
+args = [
+  "-i", 
+  "--fallback-style={}", 
+  "-style=file"
+]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]
@@ -33,7 +38,11 @@ github_actions = false
 [execution]
 parallel = true
 )",
-      project_name);
+      project_name, formatter_style_name(clang_cfg.style));
+}
+
+std::string bool_to_yaml(bool value) {
+  return value ? "true" : "false";
 }
 
 std::string formatter_style_name(FormatterStyle style) {
@@ -98,22 +107,28 @@ FormatterStyle parse_formatter_style(const std::string& style) {
   throw std::runtime_error("[ERROR] unknown formatter style " + style);
 }
 
-std::string default_clang_format(FormatterStyle style) {
-  return fmt::format(R"(---
+std::string generate_clang_format(const ClangFormatConfig& cfg) {
+  return fmt::format(
+      R"(---
 BasedOnStyle: {}
 
-IndentWidth: 2
-ColumnLimit: 100
-PointerAlignment: Left
-SortIncludes: true
+IndentWidth: {}
+ColumnLimit: {}
 
-AllowShortFunctionsOnASingleLine: Empty
-BreakBeforeBraces: Attach
+PointerAlignment: {}
+BreakBeforeBraces: {}
 
-Standard: Latest
+Standard: {}
+
+SortIncludes: {}
+ReflowComments: {}
+AlignConsecutiveAssignments: {}
+
 ...
 )",
-                     formatter_style_name(style));
+      formatter_style_name(cfg.style), cfg.ident_width, cfg.column_limit, cfg.pointer_alignment,
+      cfg.break_before_braces, cfg.standard, bool_to_yaml(cfg.sort_includes),
+      bool_to_yaml(cfg.reflow_comments), bool_to_yaml(cfg.align_consecutive_assignments));
 }
 
 }  // namespace sniffercommit
