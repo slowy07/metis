@@ -205,8 +205,7 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
   return true;
 }
 
-std::string generate_default(const std::string& project_name,
-                             const std::string& fallback_style) {
+std::string generate_default(const std::string& project_name, const std::string& fallback_style) {
   return fmt::format(
       R"([project]
 name = "{}"
