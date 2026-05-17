@@ -16,6 +16,16 @@
 
 namespace sniffercommit {
 
+// custom deleter
+struct PipeDeleter {
+  void operator()(FILE* fp) const noexcept {
+    if (fp) {
+      (void)pclose(fp);
+    }
+  }
+};
+using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
+
 // helper function
 std::string shell_escape(const std::string& value) {
   std::string escaped = "'";
@@ -33,7 +43,9 @@ std::string shell_escape(const std::string& value) {
 std::string exec_cmd(const std::string& cmd) {
   std::array<char, 4096> buffer;
   std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+
+  PipePtr pipe(popen(cmd.c_str(), "r"));
+
   if (!pipe) throw std::runtime_error("popen() failed: " + cmd);
   while (fgets(buffer.data(), buffer.size(), pipe.get())) {
     result += buffer.data();

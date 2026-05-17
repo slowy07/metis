@@ -127,13 +127,13 @@ class ArgParser {
           return false;
         }
         std::string value = std::string(args_[++i]);
-        auto idx = std::distance(options_.begin(), opt_it);
-        if (idx < static_cast<ptrdiff_t>(option_stores_.size())) {
+        auto idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
+        if (idx < option_stores_.size()) {
           option_stores_[idx](value);
         }
       } else {
-        auto idx = std::distance(options_.begin(), opt_it);
-        if (idx < static_cast<ptrdiff_t>(flag_stores_.size()) && flag_stores_[idx]) {
+        auto idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
+        if (idx < flag_stores_.size() && flag_stores_[idx]) {
           *flag_stores_[idx] = true;
         }
       }
@@ -142,9 +142,7 @@ class ArgParser {
     return true;
   }
 
-  std::string_view get_subcommand() const {
-    return active_subcommand_;
-  }
+  [[nodiscard]] std::string_view get_subcommand() const { return active_subcommand_; }
 
   void print_aligned(std::string_view left, std::string_view right) const {
     std::cout << "  " << left;
@@ -159,9 +157,7 @@ class ArgParser {
     std::cout << right << "\n";
   }
 
-  void print_section_title(std::string_view title) const {
-    std::cout << title << ":\n";
-  }
+  void print_section_title(std::string_view title) const { std::cout << title << ":\n"; }
 
   void show_help() const {
     std::cout << app_name_ << " - " << description_ << "\n\n";

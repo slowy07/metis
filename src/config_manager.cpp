@@ -17,6 +17,15 @@
 
 namespace sniffercommit {
 
+struct PipeDeleter {
+  void operator()(FILE* fp) const noexcept {
+    if (fp) {
+      (void)pclose(fp);
+    }
+  }
+};
+using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
+
 ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path& cwd,
                                                     const InitOptions& opts) const {
   InitResult result;
@@ -110,8 +119,7 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 std::filesystem::path ConfigManager::find_git_root() const {
   std::array<char, 1024> buffer;
   std::string result;
-  std::unique_ptr<FILE, decltype(&pclose)> pipe(
-      popen("git rev-parse --show-toplevel 2>/dev/null", "r"), pclose);
+  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null", "r"));
 
   if (pipe) {
     while (fgets(buffer.data(), buffer.size(), pipe.get())) {
