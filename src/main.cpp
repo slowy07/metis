@@ -1,25 +1,27 @@
-#include <fmt/format.h>
-
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <exception>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <utility>
 
-#include "sniffercommit/argparser.hpp"
-#include "sniffercommit/config.hpp"
+#include "fmt/format.h"
+#include "sniffercommit/argparse.hpp"
+#include "sniffercommit/cicd_domain.hpp"
+#include "sniffercommit/config_manager.hpp"
 #include "sniffercommit/executor.hpp"
-#include "sniffercommit/generator.hpp"
-#include "sniffercommit/installer.hpp"
-#include "sniffercommit/template.hpp"
+#include "sniffercommit/precommit_domain.hpp"
+#include "sniffercommit/project_config.hpp"
+#include "sniffercommit/tooling_config.hpp"
 
 namespace {
+
 std::string preparse_config_path(int argc, char** argv) {
   std::string config_path = ".sniffercommit.toml";
+
   for (int i = 1; i < argc - 1; ++i) {
     std::string_view arg = argv[i];
     if ((arg == "-c" || arg == "--config") && i + 1 < argc) {
@@ -27,7 +29,6 @@ std::string preparse_config_path(int argc, char** argv) {
       break;
     }
   }
-
   return config_path;
 }
 
@@ -35,10 +36,12 @@ template <typename T>
 bool safe_stoi(const char* str, T& out) {
   try {
     size_t pos = 0;
+
     int val = std::stoi(str, &pos);
     if (pos != std::strlen(str)) {
       return false;
     }
+
     out = val;
     return true;
   } catch (const std::exception&) {
@@ -61,26 +64,26 @@ int main(int argc, char** argv) {
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("run", "Execute checks on files");
 
-  if (!app.parse(argc, argv)) return 0;
+  if (!app.parse(argc, argv)) {
+    return 0;
+  }
 
   try {
     auto subcmd = app.get_subcommand();
+    ConfigManager manager;
 
-    // INIT
+    // INFO: init command
     if (subcmd == "init") {
-      std::string project_name = std::filesystem::current_path().filename().string();
-      constexpr auto default_config_path = ".sniffercommit.toml";
-      constexpr auto default_clang_format_path = ".clang-format";
-      std::string formatter_style = "google";
-      sniffercommit::ClangFormatConfig clang_format_cfg;
+      ConfigManager::InitOptions opts;
+      opts.project_name = std::filesystem::current_path().filename().string();
 
       for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
 
-        // INFO: style formatter
+        // NOTE: stye command `--style`
         if (arg == "--style") {
           if (i + 1 >= argc) {
-            std::cerr << "[ERROR] --style require value\n";
+            std::cerr << "[ERROR] --style requires value\n";
             return 1;
           }
 
@@ -89,155 +92,116 @@ int main(int argc, char** argv) {
                                  [](unsigned char c) { return std::tolower(c); });
 
           try {
-            clang_format_cfg.style = sniffercommit::parse_formatter_style(value);
-          } catch (const std::exception& error_init_style) {
-            std::cerr << "[ERROR] " << error_init_style.what() << "\n";
+            opts.style = tooling::parse_style(value);
+          } catch (const std::exception& error_style_config) {
+            std::cerr << "[ERROR] " << error_style_config.what() << "\n";
             return 1;
           }
         }
 
-        // INFO: indent width
+        // NOTE: indent width command `--indent-width`
         if (arg == "--indent-width") {
-          if (i + 1 >= argc) {
-            std::cerr << "[ERROR] --indent-width requires value\n";
-            return 1;
-          }
-
-          if (!safe_stoi(argv[++i], clang_format_cfg.ident_width)) {
-            std::cerr << "[ERROR] --indent-width requires integer value, got: " << argv[i] << "\n";
+          if (i + 1 >= argc || !safe_stoi(argv[++i], opts.indent_width)) {
+            std::cerr << "[ERROR] --indent-width require integer value\n";
             return 1;
           }
         }
 
-        // INFO: column limit
+        // NOTE: column limit command `--column-limit`
         if (arg == "--column-limit") {
-          if (i + 1 >= argc) {
-            std::cerr << "[ERROR] --column-limit requires value\n";
-            return 1;
-          }
-
-          if (!safe_stoi(argv[++i], clang_format_cfg.column_limit)) {
-            std::cerr << "[ERROR] --column_limit requires integer value, got: " << argv[i] << "\n";
+          if (i + 1 >= argc || !safe_stoi(argv[++i], opts.column_limit)) {
+            std::cerr << "[ERROR] --column-limit requires integer value\n";
             return 1;
           }
         }
 
-        // INFO: pointer alignment
+        // NOTE: pointer alignment command `--pointer-alignment`
         if (arg == "--pointer-alignment") {
           if (i + 1 >= argc) {
             std::cerr << "[ERROR] --pointer-alignment requires value\n";
             return 1;
           }
-
-          clang_format_cfg.pointer_alignment = argv[++i];
+          opts.pointer_alignment = argv[++i];
         }
 
-        // INFO: brace style
+        // NOTE: brace style command `--brace-style`
         if (arg == "--brace-style") {
           if (i + 1 >= argc) {
             std::cerr << "[ERROR] --brace-style requires value\n";
             return 1;
           }
-
-          clang_format_cfg.break_before_braces = argv[++i];
+          opts.brace_style = argv[++i];
         }
 
-        // INFO: project name
+        // NOTE: project name command `--name`
         if (arg == "--name") {
           if (i + 1 >= argc) {
-            std::cerr << "[ERROR] --name require value\n";
+            std::cerr << "[ERROR] --name-requires value\n";
             return 1;
           }
 
-          project_name = argv[++i];
+          opts.project_name = argv[++i];
         }
       }
 
-      // INFO: generate toml files
-      {
-        std::ofstream config_file(config_path);
-
-        if (!config_file) {
-          std::cerr << "[ERROR] failed to create " << config_path << "\n";
-          return 1;
-        }
-
-        config_file << sniffercommit::default_sniffercommit_config(project_name, clang_format_cfg);
-      }
-
-      // INFO: generate clang-format file
-      {
-        std::ofstream clang_format_file(default_clang_format_path);
-        if (!clang_format_file) {
-          std::cerr << "[ERROR] failed to create " << default_clang_format_path << "\n";
-          return 1;
-        }
-
-        try {
-          clang_format_file << generate_clang_format(clang_format_cfg);
-        } catch (const std::exception& error_format_file) {
-          std::cerr << "[ERROR] " << error_format_file.what() << "\n";
-          return 1;
-        }
-      }
-
-      std::cout << "[INFO] created " << config_path << "\n";
-      std::cout << "  project: " << project_name << "\n";
-      std::cout << "  - .sniffercommit.toml\n";
-      std::cout << "  - .clang-format\n";
-      std::cout << "     style: " << sniffercommit::formatter_style_name(clang_format_cfg.style)
-                << "\n";
-      return 0;
-    }
-
-    auto cfg = load_config(config_path);
-    auto repo_root = find_git_root();
-
-    // INSTALL (Strict Routing)
-    if (subcmd == "install") {
-      if (cfg.generate_local_hook) {
-        auto script = generate_local_hook(cfg);
-        if (install_local_hook(repo_root, script)) {
-          std::cout << "[INFO] pre-commit hook installed at .git/hooks/pre-commit\n";
-        } else {
-          std::cerr << "[ERROR] failed to write hook\n";
-          return 1;
-        }
-      }
-      if (cfg.generate_gha) {
-        auto yml = generate_github_actions(cfg);
-        if (write_github_actions(repo_root, yml)) {
-          std::cout << "[INFO] github action workflow generated at "
-                       ".github/workflows/sniffercommit.yml\n";
-        } else {
-          std::cerr << "[ERROR] failed to write github action workflow\n";
-          return 1;
-        }
-      }
-      return 0;
-    }
-
-    // GENERATE-GHA (Strict Routing)
-    if (subcmd == "generate-gha") {
-      auto yml = generate_github_actions(cfg);
-      if (write_github_actions(repo_root, yml)) {
-        std::cout << "[INFO] github action workflow generated at "
-                     ".github/workflows/sniffercommit.yml\n";
-      } else {
-        std::cerr << "[ERROR] failed to write github action workflow\n";
+      auto result = manager.initialize(std::filesystem::current_path(), opts);
+      if (!result.success) {
+        std::cerr << "[ERROR] " << result.error_message << "\n";
         return 1;
       }
+
+      std::cout << "[INFO] Initialized project\n";
+      std::cout << "  project: " << opts.project_name << "\n";
+      std::cout << "  " << result.project_config_path << "\n";
+      std::cout << "  " << result.tooling_config_path << "\n";
+      std::cout << "  style: " << tooling::style_name(opts.style) << "\n";
       return 0;
     }
 
-    // RUN (Manual Subcommand Parsing)
+    // INFO: install command
+    auto cfg = manager.load_project(config_path);
+    auto repo_root = manager.find_git_root();
+
+    if (subcmd == "install") {
+      auto result = manager.install(repo_root, cfg);
+
+      if (!result.error_message.empty()) {
+        std::cerr << "[ERROR] " << result.error_message << "\n";
+        return 1;
+      }
+
+      if (result.hook_installed) {
+        std::cout << "[INFO] pre-commit hook installed at " << result.hook_path << "\n";
+      }
+
+      if (result.workflow_installed) {
+        std::cout << "[INFO] workflow installed at " << result.workflow_path << "\n";
+      }
+
+      return 0;
+    }
+
+    // INFO: generate-gha command
+    if (subcmd == "generate-gha") {
+      auto wf_content = cicd::generate_github_actions(cfg, cicd::WorkflowConfig{});
+
+      if (!cicd::write_workflow(repo_root, wf_content)) {
+        std::cerr << "[ERROR] Failed to write GitHub Actions workflow\n";
+        return 1;
+      }
+
+      std::cout << "[INFO] GitHub Actions workflow generated at "
+                << (repo_root / ".github" / "workflows" / "sniffercommit.yml").string() << "\n";
+      return 0;
+    }
+
+    // INFO: run command
     if (subcmd == "run") {
       bool all_files = false;
       bool verbose = false;
       bool dry_run = false;
       std::vector<std::string> run_files;
 
-      // Manually parse remaining args for 'run'
       for (int i = 1; i < argc; ++i) {
         std::string_view arg = argv[i];
         if (arg == "run") continue;
@@ -247,9 +211,8 @@ int main(int argc, char** argv) {
           verbose = true;
         else if (arg == "--dry-run" || arg == "-n")
           dry_run = true;
-        else if (!arg.starts_with('-')) {
+        else if (!arg.starts_with('-'))
           run_files.emplace_back(arg);
-        }
       }
 
       RunOptions opts;
@@ -257,19 +220,20 @@ int main(int argc, char** argv) {
       opts.dry_run = dry_run;
       opts.source = all_files ? FileSource::ALL_REPO
                               : (!run_files.empty() ? FileSource::EXPLICIT : FileSource::STAGED);
-      if (!run_files.empty()) opts.explicit_files = std::move(run_files);
+
+      if (!run_files.empty()) {
+        opts.explicit_files = std::move(run_files);
+      }
 
       auto files = collect_files(repo_root, opts, cfg.exclude_paths);
 
       if (verbose) {
-        std::cout << fmt::format("[sniffercommit] Checking {} file(s)\n", files.size());
+        std::cout << fmt::format("[sniffercommit] Check {} file(s)\n", files.size());
       }
 
-      int result = execute_checks(repo_root, cfg, files, opts);
-      return result;
+      return execute_checks(repo_root, cfg, files, opts);
     }
 
-    // Fallback
     app.show_help();
     return 1;
 

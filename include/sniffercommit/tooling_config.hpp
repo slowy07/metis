@@ -1,0 +1,35 @@
+#ifndef SNIFFERCOMMIT_TOOLING_CONFIG_HPP
+#define SNIFFERCOMMIT_TOOLING_CONFIG_HPP
+
+#include <string>
+
+namespace sniffercommit::tooling {
+
+enum class FormatterStyle { Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU };
+
+struct ClangFormatConfig {
+  FormatterStyle style = FormatterStyle::Google;
+  int ident_width = 2;
+  int column_limit = 100;
+  std::string pointer_alignment = "Left";
+  std::string break_before_braces = "Attach";
+  std::string standard = "c++20";
+  bool sort_includes = true;
+  bool reflow_comments = true;
+  bool align_consecutive_assignments = false;
+
+  [[nodiscard]] std::string validate() const noexcept;
+};
+
+// INFO: converting between string and enum
+// and generate .clang-format configs content
+[[nodiscard]] std::string style_name(FormatterStyle style);
+[[nodiscard]] FormatterStyle parse_style(const std::string& style);
+[[nodiscard]] std::string generate_clang_format(const ClangFormatConfig& cfg);
+
+// TODO: .clang-tidy, .cmake-format
+// [[nodiscard]] std::string generate_clang_tidy(const ClangTidyConfig& cfg);
+
+}  // namespace sniffercommit::tooling
+
+#endif  // !SNIFFERCOMMIT_TOOLING_CONFIG_HPP

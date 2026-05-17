@@ -1,4 +1,4 @@
-#include "../include/sniffercommit/executor.hpp"
+#include "sniffercommit/executor.hpp"
 
 #include <fmt/format.h>
 
@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include "sniffercommit/project_config.hpp"
 
 namespace sniffercommit {
 
@@ -107,7 +108,7 @@ std::vector<std::string> collect_files(const std::filesystem::path& root, const 
   return files;
 }
 
-int execute_checks(const std::filesystem::path& repo_root, const Config& cfg,
+int execute_checks(const std::filesystem::path& repo_root, const project::ProjectConfig& cfg,
                    const std::vector<std::string>& files, const RunOptions& opts) {
   const auto original_cwd = std::filesystem::current_path();
   std::filesystem::current_path(repo_root);

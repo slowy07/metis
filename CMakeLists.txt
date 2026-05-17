@@ -101,11 +101,12 @@ FetchContent_MakeAvailable(fmt)
 # Target definition
 add_executable(sniffercommit
   src/main.cpp
-  src/config.cpp
-  src/generator.cpp
-  src/installer.cpp
+  src/project_config.cpp
+  src/tooling_config.cpp
+  src/precommit_domain.cpp
+  src/cicd_domain.cpp
+  src/config_manager.cpp
   src/executor.cpp
-  src/templates.cpp
 )
 
 target_include_directories(sniffercommit
