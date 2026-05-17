@@ -71,7 +71,17 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
         return true;
       }
 
-      if (file.starts_with(pattern)) {
+      if (pattern.ends_with("/**") &&
+          file.starts_with(pattern.substr(0, pattern.size() - 3) + "/")) {
+        return true;
+      }
+
+      if (pattern.starts_with("**/")) {
+        std::string suffix = pattern.substr(3);
+        if (file.ends_with(suffix)) return true;
+      }
+
+      if (file.starts_with(pattern) || file == pattern) {
         return true;
       }
     }
@@ -126,6 +136,15 @@ ProjectConfig load(const std::filesystem::path& path) {
     }
   }
 
+  // [exclude]
+  if (auto* exclude_tbl = tbl["exclude"].as_table()) {
+    if (auto* paths = (*exclude_tbl)["paths"].as_array()) {
+      for (auto& p : *paths) {
+        cfg.exclude_paths.push_back(p.value_or(""));
+      }
+    }
+  }
+
   // [output]
   if (auto* output = tbl["output"].as_table()) {
     cfg.generate_local_hook = (*output)["local_hook"].value_or(true);
@@ -149,36 +168,43 @@ ProjectConfig load(const std::filesystem::path& path) {
 
 // INFO: saving TOML
 bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
-  std::ofstream out(path);
+  std::ofstream out(path, std::ios::trunc);
 
   if (!out) {
     return false;
   }
 
+  auto fmt_str = [](const std::string& s) -> std::string { return fmt::format("\"{}\"", s); };
+
+  auto fmt_str_array = [&fmt_str](const std::vector<std::string>& arr) -> std::string {
+    if (arr.empty()) {
+      return "[]";
+    }
+
+    std::string result = "[";
+    for (size_t i = 0; i < arr.size(); ++i) {
+      if (i > 0) result += ", ";
+      result += fmt_str(arr[i]);
+    }
+
+    result += "]";
+    return result;
+  };
+
   out << "[project]";
-  out << fmt::format(R"(name = {})", cfg.project_name) << "\n";
+  out << "name = " << fmt_str(cfg.project_name) << "\n\n";
 
   for (const auto& check : cfg.checks) {
     out << "[[checks]]";
-    out << fmt::format(R"(name = {})", check.name) << "\n";
-    out << fmt::format(R"(command = {})", check.command) << "\n";
+    out << "name = " << fmt_str(check.name) << "\n";
+    out << "command = " << fmt_str(check.command) << "\n";
 
     if (!check.args.empty()) {
-      out << "args = [";
-
-      for (const auto& a : check.args) {
-        out << fmt::format(R"(  "{}" )", a) << "\n";
-      }
-      out << "]";
+      out << "args = " << fmt_str_array(check.args) << "\n";
     }
 
     if (!check.patterns.empty()) {
-      out << "patterns = [";
-
-      for (const auto& p : check.patterns) {
-        out << fmt::format(R"(  "{}" )", p) << "\n";
-      }
-      out << "]\n";
+      out << "patterns = " << fmt_str_array(check.patterns) << "\n";
     }
 
     out << "\n";
@@ -186,23 +212,17 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
 
   if (!cfg.exclude_paths.empty()) {
     out << "[exclude]\n";
-    out << "paths = [";
-
-    for (const auto& p : cfg.exclude_paths) {
-      out << fmt::format(R"(  "{}" )", p) << "\n";
-    }
-
-    out << "]\n";
+    out << "paths = " << fmt_str_array(cfg.exclude_paths) << "\n\n";
   }
 
   out << "[output]\n";
-  out << fmt::format("local_hook = {}", cfg.generate_local_hook ? "true" : "false") << "\n";
-  out << fmt::format("github_actions = {}", cfg.generate_gha ? "true" : "false") << "\n";
+  out << "local_hook = " << (cfg.generate_local_hook ? "true" : "false") << "\n";
+  out << "github_actions = " << (cfg.generate_gha ? "true" : "false") << "\n\n";
 
   out << "[execution]\n";
-  out << fmt::format("parallel = {}", cfg.parallel ? "true" : "false") << "\n";
+  out << "parallel = " << (cfg.parallel ? "true" : "false") << "\n";
 
-  return true;
+  return out.good();
 }
 
 std::string generate_default(const std::string& project_name, const std::string& fallback_style) {

@@ -6,7 +6,6 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
-#include <system_error>
 
 #include "sniffercommit/project_config.hpp"
 
@@ -19,67 +18,52 @@ std::string generate_github_actions(const project::ProjectConfig& cfg,
                                     const WorkflowConfig& wf_cfg) {
   std::string yml;
 
-  yml += R"(name: sniffercommit
+  yml += "name: sniffercommit\n\n";
 
-on:
-  push:
-    branches:
-      - "**"
+  yml += "on:\n";
+  yml += "  push:\n";
+  yml += "    branches:\n";
+  yml += "      - \"**\"\n\n";
 
-  pull_request:
-    branches:
-      - "**"
+  yml += "  pull_request:\n";
+  yml += "    branches:\n";
+  yml += "      - \"**\"\n\n";
 
-concurrency:
-  group: sniffercommit-${{ github.ref }}
-  cancel-in-progress: true
+  yml += "concurrency:\n";
+  yml += "  group: sniffercommit-${{ github.ref }}\n";
+  yml += "  cancel-in-progress: true\n\n";
 
-permissions:
-  contents: read
+  yml += "permissions:\n";
+  yml += "  contents: read\n\n";
 
-jobs:
-  checks:
-)";
-
-  yml += fmt::format(R"(    name: {}
-)",
-                     wf_cfg.job_name);
-
+  yml += "jobs:\n";
+  yml += "  checks:\n";
+  yml += fmt::format("    name: {}\n", wf_cfg.job_name);
   yml += "    runs-on: ubuntu-latest\n";
+  yml += fmt::format("    timeout-minutes: {}\n\n", wf_cfg.timeout_minutes);
 
-  yml += fmt::format(R"(    timeout-minutes: {}
-
-)",
-                     wf_cfg.timeout_minutes);
-
-  yml += R"(    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-)";
+  yml += "    steps:\n";
+  yml += "      - name: Checkout repository\n";
+  yml += "        uses: actions/checkout@v4\n";
+  yml += "        with:\n";
+  yml += "          fetch-depth: 0\n\n";
 
   bool need_clang = wf_cfg.install_clang_format || requires_clang_format(cfg);
-
   if (need_clang) {
-    yml += R"(      - name: Install clang-format
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
-
-)";
+    yml += "      - name: Install clang-format\n";
+    yml += "        run: |\n";
+    yml += "          sudo apt-get update\n";
+    yml += "          sudo apt-get install -y clang-format\n\n";
   }
 
-  yml += R"(      - name: Make sniffercommit executable
-        run: chmod +x ./sniffercommit
+  yml += "      - name: Make sniffercommit executable\n";
+  yml += "        run: chmod +x ./sniffercommit\n\n";
 
-      - name: Run sniffercommit
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./sniffercommit run --all-files --verbose
-)";
+  yml += "      - name: Run sniffercommit\n";
+  yml += "        shell: bash\n";
+  yml += "        run: |\n";
+  yml += "          set -euo pipefail\n";
+  yml += "          ./sniffercommit run --all-files --verbose\n";
 
   return yml;
 }
@@ -103,26 +87,40 @@ std::string generate_workflow(const project::ProjectConfig& cfg, const WorkflowC
 
 bool write_workflow(const std::filesystem::path& repo_root, const std::string& content,
                     Platform platform) {
-  auto gh_dir = repo_root / ".github" / "workflows";
-
-  std::filesystem::create_directories(gh_dir);
-
+  std::filesystem::path dir;
   std::string filename;
+
   switch (platform) {
     case Platform::GithubAction:
+      dir = repo_root / ".github" / "workflow";
       filename = "sniffercommit.yml";
       break;
     case Platform::GitLabCI:
+      dir = repo_root;
       filename = ".gitlab-ci.yml";
       break;
+    case Platform::AzureDevOps:
+      dir = repo_root / ".azure-pipeline";
+      filename = "sniffercommit.yml";
+      break;
+    case Platform::Generic:
+      dir = repo_root / ".github" / "workflow";
+      filename = "sniffercommit.yml";
+      break;
     default:
+      dir = repo_root;
       filename = "sniffercommit.yml";
       break;
   }
 
-  auto yml_path = gh_dir / filename;
+  std::filesystem::create_directories(dir);
+
+  auto yml_path = dir / filename;
   std::ofstream out(yml_path, std::ios::trunc);
-  if (!out) return false;
+  if (!out) {
+    return false;
+  }
+
   out << content;
   return out.good();
 }

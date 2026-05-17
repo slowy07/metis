@@ -117,7 +117,7 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 }
 
 std::filesystem::path ConfigManager::find_git_root() const {
-  std::array<char, 1024> buffer;
+  std::array<char, 4096> buffer;
   std::string result;
   PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null", "r"));
 
@@ -152,7 +152,8 @@ std::filesystem::path ConfigManager::find_git_root() const {
 
 bool ConfigManager::write_file(const std::filesystem::path& path,
                                const std::string& content) const {
-  std::ofstream out(path);
+  std::ofstream out(path, std::ios::trunc);
+
   if (!out) {
     return false;
   }

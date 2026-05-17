@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
   std::string config_path = preparse_config_path(argc, argv);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
-  app.set_version("0.1.0")
+  app.set_version("0.2.1")
       .add_option("-c", "--config", "Config file path", config_path)
       .add_subcommand("init", "Create default .sniffercommit.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
