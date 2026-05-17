@@ -80,23 +80,43 @@ configure_file(
 )
 
 # Dependencies
+option(SNIFFERCOMMIT_USE_SYSTEM_FMT
+  "Use system-installed fmt"
+  ON
+)
+
+option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS
+  "Use system-installed tomlplusplus"
+  OFF
+)
+
 include(FetchContent)
 
-FetchContent_Declare(
-  tomlplusplus
-  GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-  GIT_TAG        v3.4.0
-  GIT_SHALLOW    ON
-)
-FetchContent_MakeAvailable(tomlplusplus)
+# fmt
+if(SNIFFERCOMMIT_USE_SYSTEM_FMT)
+  find_package(fmt REQUIRED)
+else()
+  FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG        11.0.2
+    GIT_SHALLOW    ON
+  )
+  FetchContent_MakeAvailable(fmt)
+endif()
 
-FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG        11.0.2
-  GIT_SHALLOW    ON
-)
-FetchContent_MakeAvailable(fmt)
+# tomlplusplus
+if(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS)
+  find_package(tomlplusplus REQUIRED)
+else()
+  FetchContent_Declare(
+    tomlplusplus
+    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+    GIT_TAG        v3.4.0
+    GIT_SHALLOW    ON
+  )
+  FetchContent_MakeAvailable(tomlplusplus)
+endif()
 
 # Target definition
 add_executable(sniffercommit
@@ -146,7 +166,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     $<$<CONFIG:Debug>:-O0 -g3>
     $<$<CONFIG:Release>:-O3 -DNDEBUG>
   )
-  
+
   if(NOT WIN32)
     target_link_options(sniffercommit PRIVATE
       -Wl,-z,relro,-z,now
@@ -156,7 +176,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
       target_compile_options(sniffercommit PRIVATE -fstack-protector-strong)
     endif()
   endif()
-  
+
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   target_compile_options(sniffercommit PRIVATE /W4 /permissive- /sdl)
   target_link_options(sniffercommit PRIVATE /DYNAMICBASE /NXCOMPAT)
@@ -190,11 +210,44 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/sniffercommit/
   FILES_MATCHING PATTERN "*.hpp"
 )
 
+
+
+# CPack / for debian packages to
+set(CPACK_GENERATOR "DEB")
 set(CPACK_PACKAGE_NAME "sniffercommit")
+set(CPACK_PACKAGE_VENDOR "slowy07")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
+
+set(CPACK_PACKAGE_CONTACT "slowy07")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "slowy07")
+set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "git, bash")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+execute_process(
+  COMMAND dpkg --print-architecture
+  OUTPUT_VARIABLE CPACK_DEBIAN_PACKAGE_ARCHITECTURE
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
 include(CPack)
+
+install(
+  FILES
+    README.md
+    docs/docs.md
+  DESTINATION
+    ${CMAKE_INSTALL_DOCDIR}
+)
+
+install(
+  FILES LICENSE
+  DESTINATION
+    ${CMAKE_INSTALL_DATADIR}/licenses/sniffercommit
+)
 
 # Verbose config summary
 if(SNIFFERCOMMIT_VERBOSE_CONFIG)
@@ -208,3 +261,4 @@ if(SNIFFERCOMMIT_VERBOSE_CONFIG)
     "  Static     : ${SNIFFERCOMMIT_ENABLE_STATIC_LINK}\n"
   )
 endif()
+
