@@ -67,7 +67,7 @@ sniffercommit::tooling::TidyPreset parse_tidy_preset(const std::string& preset) 
 
 sniffercommit::tooling::TidySeverity parse_tidy_severity(const std::string& sev) {
   std::string lower;
-  
+
   for (char c : sev) {
     lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
   }
@@ -75,7 +75,7 @@ sniffercommit::tooling::TidySeverity parse_tidy_severity(const std::string& sev)
   if (lower == "note") return sniffercommit::tooling::TidySeverity::Note;
   if (lower == "warning") return sniffercommit::tooling::TidySeverity::Warning;
   if (lower == "error") return sniffercommit::tooling::TidySeverity::Error;
-  
+
   throw std::runtime_error("Unknown tidy severity: " + sev);
 }
 
@@ -230,7 +230,7 @@ int main(int argc, char** argv) {
       std::cout << "  " << result.project_config_path << "\n";
       std::cout << "  " << result.tooling_config_path << "\n";
       std::cout << "  style: " << tooling::style_name(opts.style) << "\n";
-      
+
       if (opts.enable_clang_tidy) {
         std::cout << " .clang-tidy (preset: " << tooling::preset_name(opts.tidy_preset) << ")\n";
       }

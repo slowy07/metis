@@ -14,7 +14,7 @@ bool requires_clang_format(const project::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-format");
 }
 
-bool requires_clang_tidy(const project::ProjectConfig &cfg) noexcept {
+bool requires_clang_tidy(const project::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-tidy");
 }
 
@@ -58,7 +58,7 @@ std::string generate_github_actions(const project::ProjectConfig& cfg,
   if (need_clang_format || need_clang_tidy) {
     yml += "      - name: Install clang-format\n";
     yml += "        run: |\n";
-    
+
     if (need_clang_format) {
       yml += "           sudo apt-get update\n";
       yml += "           sudo apt-get install -y clang-format\n";

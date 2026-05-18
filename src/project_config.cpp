@@ -1,5 +1,7 @@
 #include "sniffercommit/project_config.hpp"
 
+#include <fmt/format.h>
+
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -7,8 +9,6 @@
 #include <string_view>
 #include <toml++/toml.hpp>
 #include <utility>
-
-#include <fmt/format.h>
 
 namespace sniffercommit::project {
 std::string Check::validate() const noexcept {
