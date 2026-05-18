@@ -8,7 +8,7 @@
 #include <toml++/toml.hpp>
 #include <utility>
 
-#include "fmt/format.h"
+#include <fmt/format.h>
 
 namespace sniffercommit::project {
 std::string Check::validate() const noexcept {
@@ -191,11 +191,11 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
     return result;
   };
 
-  out << "[project]";
+  out << "[project]\n";
   out << "name = " << fmt_str(cfg.project_name) << "\n\n";
 
   for (const auto& check : cfg.checks) {
-    out << "[[checks]]";
+    out << "[[checks]]\n";
     out << "name = " << fmt_str(check.name) << "\n";
     out << "command = " << fmt_str(check.command) << "\n";
 
