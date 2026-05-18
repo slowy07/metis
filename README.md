@@ -1,6 +1,6 @@
 # sniffercommit
 
-Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies — a single static binary that replaces Python/Node-based pre-commit frameworks.
+Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies — a single static binary that replaces Python- and Node-based pre-commit frameworks.
 
 ## Features
 
@@ -9,13 +9,13 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 - **Zero runtime dependencies** : single static binary; no Python/Node required
 - **Auto-generate CI workflow** : GitHub Actions workflow mirroring local hooks
 - **.clang-format scaffolding** : generate `.clang-format` with configurable style presets
-- **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `stric`)
-- **Hook syntax validation** : generated bash hook are validated with `bash -n` before install
-- **Git worktree support** : works in worktrees, submodule, and detach checkouts
+- **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `strict`)
+- **Hook syntax validation** : generated bash hooks are validated with `bash -n` before install
+- **Git worktree support** : works in worktrees, submodules, and detached checkouts
 
-## Dependecies
+## Dependencies
 
-| Depedency | Purpose | Version |
+| Dependency | Purpose | Version |
 | ------------- | -------------- | -------------- |
 | [tomlplusplus](https://github.com/marzer/tomlplusplus.git) | Header-only TOML config file parser and serializer | `v3.4.0` |
 | [fmt](https://github.com/fmtlib/fmt.git) | Modern formatting library | `v11.0.2` |
@@ -24,10 +24,10 @@ Both are fetched automatically at configure time via CMake's `FetchContent`. No 
 Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
 
 ```bash
-# ubuntu / debian
+# Ubuntu / Debian
 sudo apt-get install libfmt-dev
 
-# macOS
+# macOS (Homebrew)
 brew install fmt
 
 # Arch
@@ -41,7 +41,7 @@ sudo pacman -S fmt
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 
-# verify
+# Verify
 ./build/sniffercommit --version
 ```
 
@@ -60,14 +60,14 @@ cmake --build build --parallel
 - `MSVC >= 2022 17.0`
 
 ```bash
-# system-wide install
+# System-wide install
 sudo cmake --install build
 
-# or create debian package
+# Or create Debian package
 cd build && cpack -G DEB
-sudo dpk -i sniffercommit_*.deb
+sudo dpkg -i sniffercommit_*.deb
 
-# install via pacman
+# Install via pacman (AUR)
 yay -S sniffercommit
 ```
 
@@ -79,27 +79,25 @@ yay -S sniffercommit
 cd /path/to/projects
 sniffercommit init
 ```
-This will be create:
+This creates:
     - `.sniffercommit.toml` : check configuration with sensible defaults
     - `.clang-format` : formatter style matching your chosen preset
-
 
 **With clang-tidy (static analysis)**
 ```bash
 # enable clang-tidy with the standard preset
-sniffercomit init --enable-clang-tidy
+sniffercommit init --enable-clang-tidy
 
 # use strict preset (all checks minus noisy ones)
-sniffercomit init --enable-clang-tidy --tidy-preset strict
+sniffercommit init --enable-clang-tidy --tidy-preset strict
 
 # custom severity
-sniffercomit init --enable-clang-tidy --tidy-severity warning
+sniffercommit init --enable-clang-tidy --tidy-severity warning
 ```
 When `--enable-clang-tidy` is used, three files are created:
-    - `.sniffercomit.toml` : includes `clang-tidy` check
+    - `.sniffercommit.toml` : includes `clang-tidy` check
     - `.clang-format` : formatter config
     - `.clang-tidy` : static analysis config with curated check preset
-
 
 **Formatter Style Options**
 ```bash
@@ -118,24 +116,22 @@ sniffercommit init \
 
 **Install pre-commit hooks**
 ```bash
-sniffercomit install
+sniffercommit install
 ```
-Generated and installs:
+Generates and installs:
     - `.git/hooks/pre-commit` : bash hook with parallel execution
-    - `.github/workflow/sniffercomit.yml` : github action workflow (if `github_action = true` in config)
+    - `.github/workflows/sniffercommit.yml` : GitHub Actions workflow (if `github_actions = true` in config)
 
-the hook is validated with `bash -n` before installation to preventing broken hooks.
-
+The hook is validated with `bash -n` before installation to prevent broken hooks.
 
 **Uninstall hooks**:
 ```bash
-# remove the pre-comit hooks
+# remove the pre-commit hooks
 rm .git/hooks/pre-commit
 
 # or regenerate from config
 sniffercommit install
 ```
-
 
 **Generate CI workflow only**
 ```bash
