@@ -1,27 +1,43 @@
 # sniffercommit
 
-Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push.
+Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies — a single static binary that replaces Python/Node-based pre-commit frameworks.
 
 ## Features
 
-- **Parallel check execution** — run linters concurrently via Bash background jobs
-- **Pattern-aware filtering** — apply checks only to matching file extensions (`.cpp`, `.hpp`, etc.)
-- **Zero runtime dependencies** — single static binary; no Python/Node required
-- **Auto-generate CI workflow** — GitHub Actions workflow mirroring local hooks
-- **.clang-format scaffolding** — generate `.clang-format` with configurable style presets
+- **Parallel check execution** : run linters concurrently via Bash background jobs
+- **Pattern-aware filtering** : apply checks only to matching file extensions (`.cpp`, `.hpp`, etc.)
+- **Zero runtime dependencies** : single static binary; no Python/Node required
+- **Auto-generate CI workflow** : GitHub Actions workflow mirroring local hooks
+- **.clang-format scaffolding** : generate `.clang-format` with configurable style presets
+- **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `stric`)
+- **Hook syntax validation** : generated bash hook are validated with `bash -n` before install
+- **Git worktree support** : works in worktrees, submodule, and detach checkouts
 
-## Dependencies
+## Dependecies
 
-| Dependency | Purpose |
-|------------|---------|
-| [`tomlplusplus`](https://github.com/marzer/tomlplusplus.git) | Header-only TOML config file parser and serializer |
-| [`fmt`](https://github.com/fmtlib/fmt.git) | Modern formatting library |
+| Depedency | Purpose | Version |
+| ------------- | -------------- | -------------- |
+| [tomlplusplus](https://github.com/marzer/tomlplusplus.git) | Header-only TOML config file parser and serializer | `v3.4.0` |
+| [fmt](https://github.com/fmtlib/fmt.git) | Modern formatting library | `v11.0.2` |
 
 Both are fetched automatically at configure time via CMake's `FetchContent`. No system installation required.
+Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
+
+```bash
+# ubuntu / debian
+sudo apt-get install libfmt-dev
+
+# macOS
+brew install fmt
+
+# Arch
+sudo pacman -S fmt
+```
 
 ## Build
 
-```bash
+```
+# Release build (recommended)
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 
@@ -29,86 +45,119 @@ cmake --build build --parallel
 ./build/sniffercommit --version
 ```
 
-## Usage
+| Option                                  | Default | Description                                       |
+| --------------------------------------- | ------- | ------------------------------------------------- |
+| `SNIFFERCOMMIT_ENABLE_SANITIZERS`       | `OFF`   | AddressSanitizer + UBSan (Debug only)             |
+| `SNIFFERCOMMIT_ENABLE_STATIC_LINK`      | `OFF`   | Fully portable static binary (Linux only)         |
+| `SNIFFERCOMMIT_VERBOSE_CONFIG`          | `ON`    | Print platform/compiler summary at configure      |
+| `SNIFFERCOMMIT_USE_SYSTEM_FMT`          | `ON`    | Use system `libfmt` instead of FetchContent       |
+| `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF`   | Use system `tomlplusplus` instead of FetchContent |
 
-### Initialize a project
+**Compiler Requirements**
+
+- `GCC >= 11`
+- `Clang >= 14`
+- `MSVC >= 2022 17.0`
 
 ```bash
-cd /path/to/project
-sniffercommit init
+# system-wide install
+sudo cmake --install build
 
-# optional: specify formatter style
-# available: google, llvm, chromium, mozilla, webkit, microsoft, gnu
-sniffercommit init --style llvm
+# or create debian package
+cd build && cpack -G DEB
+sudo dpk -i sniffercommit_*.deb
 
-# optional: custom project name, indent width, column limit, etc.
-sniffercommit init --style google --name my-project --indent-width 4 --column-limit 120
+# install via pacman
+yay -S sniffercommit
 ```
 
-This creates two files:
-- **`.sniffercommit.toml`** — check configuration with sensible defaults
-- **`.clang-format`** — formatter style matching your chosen preset
+## Usage
 
-### Install pre-commit hooks
+**Initialize Project**
 
 ```bash
+cd /path/to/projects
+sniffercommit init
+```
+This will be create:
+    - `.sniffercommit.toml` : check configuration with sensible defaults
+    - `.clang-format` : formatter style matching your chosen preset
+
+
+**With clang-tidy (static analysis)**
+```bash
+# enable clang-tidy with the standard preset
+sniffercomit init --enable-clang-tidy
+
+# use strict preset (all checks minus noisy ones)
+sniffercomit init --enable-clang-tidy --tidy-preset strict
+
+# custom severity
+sniffercomit init --enable-clang-tidy --tidy-severity warning
+```
+When `--enable-clang-tidy` is used, three files are created:
+    - `.sniffercomit.toml` : includes `clang-tidy` check
+    - `.clang-format` : formatter config
+    - `.clang-tidy` : static analysis config with curated check preset
+
+
+**Formatter Style Options**
+```bash
+# available styles: google, llvm, chromium, mozilla, webkit, microsoft, gnu
+sniffercommit init --style llvm
+
+# full customization
+sniffercommit init \
+  --style google \
+  --name my-project \
+  --indent-width 4 \
+  --column-limit 120 \
+  --pointer-alignment Left \
+  --brace-style Attach
+```
+
+**Install pre-commit hooks**
+```bash
+sniffercomit install
+```
+Generated and installs:
+    - `.git/hooks/pre-commit` : bash hook with parallel execution
+    - `.github/workflow/sniffercomit.yml` : github action workflow (if `github_action = true` in config)
+
+the hook is validated with `bash -n` before installation to preventing broken hooks.
+
+
+**Uninstall hooks**:
+```bash
+# remove the pre-comit hooks
+rm .git/hooks/pre-commit
+
+# or regenerate from config
 sniffercommit install
 ```
 
-Generates and installs `.git/hooks/pre-commit` (and optionally `.github/workflows/sniffercommit.yml`).
 
-### Generate CI workflow only
-
+**Generate CI workflow only**
 ```bash
 sniffercommit generate-gha
 ```
 
-### Run checks manually
-
+**Run check manually**
 ```bash
 # all tracked files
 sniffercommit run --all-files
 
+# staged files only (default)
+sniffercommit run
+
 # specific files
-sniffercommit run src/main.cpp
+sniffercommit run src/main.cpp include/foo.hpp
 
-# dry-run
+# dry-run (list files without executing)
 sniffercommit run --dry-run --all-files
-```
 
-### Test the hook
-
-```bash
-echo "int main(){return 0;}" > test.cpp
-git add test.cpp
-git commit -m "chore: test sniffercommit"
-```
-
-## Init Options
-
-| Flag | Description |
-|------|-------------|
-| `--style <name>` | `google`, `llvm`, `chromium`, `mozilla`, `webkit`, `microsoft`, `gnu` (default: `google`) |
-| `--name <name>` | Project name (default: current directory name) |
-| `--indent-width <n>` | Indentation width (default: `2`) |
-| `--column-limit <n>` | Column limit (default: `100`) |
-| `--pointer-alignment <s>` | Pointer alignment: `Left`, `Right`, `Middle` |
-| `--brace-style <s>` | Brace placement: `Attach`, `Allman`, etc. |
-
-## Debugging
-
-```bash
-# enable verbose config output
-cmake -B build -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
-
-# build with sanitizers (catch memory bugs)
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
-
-# inspect generated hook
-cat .git/hooks/pre-commit | less
-
-# test hook manually (without git)
-bash .git/hooks/pre-commit
+# verbose output (print each command)
+sniffercommit run --verbose --all-files
 ```
 
 ## Acknowledgements
