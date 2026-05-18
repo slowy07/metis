@@ -70,6 +70,31 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
     return result;
   }
 
+  if (opts.enable_clang_tidy) {
+    tooling::ClangTidyConfig tidy_cfg;
+    tidy_cfg.preset = opts.tidy_preset;
+    tidy_cfg.warnings_as_errors = opts.tidy_severity;
+    tidy_cfg.header_filter_level = opts.tidy_header_filter;
+
+    if (auto err = tidy_cfg.validate(); !err.empty()) {
+      result.error_message = "Invalid clang-tidy config: " + err;
+      return result;
+    }
+
+    auto tidy_path = cwd / ".clang-tidy";
+    try {
+      auto tidy_content = tooling::generate_clang_tidy(tidy_cfg);
+      if (!write_file(tidy_path, tidy_content)) {
+        result.error_message = "Failed to create " + tidy_path.string();
+        return result;
+      }
+    } catch (const std::exception& error_tidy_path) {
+      result.error_message =
+          std::string("Failed to generate .clang-tidy: ") + error_tidy_path.what();
+      return result;
+    }
+  }
+
   result.tooling_config_path = clang_path.string();
 
   result.success = true;

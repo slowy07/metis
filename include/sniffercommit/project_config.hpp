@@ -38,6 +38,12 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg);
 [[nodiscard]] std::string generate_default(const std::string& project_name,
                                            const std::string& fallback_style = "Google");
 
+// NOTE: clang-tidy aware default function generation
+// create config with both clang-format and clang-tidy checking
+[[nodiscard]] std::string generate_default_with_tidy(const std::string& project_name,
+                                                     const std::string& fallback_style = "Google",
+                                                     const std::string& tidy_preset = "standard");
+
 }  // namespace sniffercommit::project
 
 #endif  // !SNIFFERCOMMIT_PROJECT_CONFIG_HPP

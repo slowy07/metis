@@ -14,6 +14,10 @@ bool requires_clang_format(const project::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-format");
 }
 
+bool requires_clang_tidy(const project::ProjectConfig &cfg) noexcept {
+  return cfg.has_command("clang-tidy");
+}
+
 std::string generate_github_actions(const project::ProjectConfig& cfg,
                                     const WorkflowConfig& wf_cfg) {
   std::string yml;
@@ -48,12 +52,22 @@ std::string generate_github_actions(const project::ProjectConfig& cfg,
   yml += "        with:\n";
   yml += "          fetch-depth: 0\n\n";
 
-  bool need_clang = wf_cfg.install_clang_format || requires_clang_format(cfg);
-  if (need_clang) {
+  bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
+  bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
+
+  if (need_clang_format || need_clang_tidy) {
     yml += "      - name: Install clang-format\n";
     yml += "        run: |\n";
-    yml += "          sudo apt-get update\n";
-    yml += "          sudo apt-get install -y clang-format\n\n";
+    
+    if (need_clang_format) {
+      yml += "           sudo apt-get update\n";
+      yml += "           sudo apt-get install -y clang-format\n";
+    }
+
+    if (need_clang_tidy) {
+      yml += "           sudo apt-get install -y clang-tidy\n";
+    }
+    yml += "\n";
   }
 
   yml += "      - name: Make sniffercommit executable\n";

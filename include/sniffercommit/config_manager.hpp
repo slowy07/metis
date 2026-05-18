@@ -18,6 +18,11 @@ class ConfigManager {
     int column_limit = 100;
     std::string pointer_alignment = "Left";
     std::string brace_style = "Attach";
+    bool enable_clang_tidy = false;
+
+    tooling::TidyPreset tidy_preset = tooling::TidyPreset::Standard;
+    tooling::TidySeverity tidy_severity = tooling::TidySeverity::Error;
+    int tidy_header_filter = 1;
   };
 
   struct InitResult {

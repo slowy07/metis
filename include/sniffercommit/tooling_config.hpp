@@ -2,6 +2,7 @@
 #define SNIFFERCOMMIT_TOOLING_CONFIG_HPP
 
 #include <string>
+#include <vector>
 
 namespace sniffercommit::tooling {
 
@@ -27,8 +28,43 @@ struct ClangFormatConfig {
 [[nodiscard]] FormatterStyle parse_style(const std::string& style);
 [[nodiscard]] std::string generate_clang_format(const ClangFormatConfig& cfg);
 
-// TODO: .clang-tidy, .cmake-format
-// [[nodiscard]] std::string generate_clang_tidy(const ClangTidyConfig& cfg);
+// NOTE: severity level clang-tidy checking
+// mapping to -warnings-as-errors
+enum class TidySeverity { Note, Warning, Error };
+
+enum class TidyPreset {
+  Minimal,   // set to only bug-prone patterns (cppcoreguidelines-*)
+  Standard,  // bug + style + modernize (default)
+  Strict,    // everything + performance + reability
+  Custom,    // user defined
+};
+
+struct ClangTidyConfig {
+  TidyPreset preset = TidyPreset::Standard;
+  std::vector<std::string> checks;
+  std::vector<std::string> extra_checks;
+  std::vector<std::string> exclude_checks;
+
+  bool fix = false;
+  bool fix_errors = false;
+  TidySeverity warnings_as_errors = TidySeverity::Error;
+  int header_filter_level = 1;  // setting:
+                                // 0 -> none
+                                // 1 -> project
+                                // 2 -> all headers
+  bool format_style = true;
+  bool quiet = false;
+
+  [[nodiscard]] std::string validate() const noexcept;
+};
+
+// conversion
+[[nodiscard]] std::string preset_name(TidyPreset preset);
+[[nodiscard]] std::string severity_name(TidySeverity severity);
+
+// file generation (clang-tidy)
+[[nodiscard]] std::vector<std::string> preset_checks(TidyPreset preset);
+std::string generate_clang_tidy(const ClangTidyConfig& cfg);
 
 }  // namespace sniffercommit::tooling
 

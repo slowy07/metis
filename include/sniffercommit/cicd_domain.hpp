@@ -16,6 +16,7 @@ struct WorkflowConfig {
   std::string job_name = "Run sniffercommit checks";
   int timeout_minutes = 10;
   bool install_clang_format = false;
+  bool install_clang_tidy = false;
   std::string binary_path = "./sniffercommit";
 };
 
@@ -31,6 +32,9 @@ struct WorkflowConfig {
                                   Platform platform = Platform::GithubAction);
 // INFO: auto-detect project needs clang-format installation
 [[nodiscard]] bool requires_clang_format(const project::ProjectConfig& cfg) noexcept;
+
+// INFO: auto detect project needs clang-tidy installation
+[[nodiscard]] bool requires_clang_tidy(const project::ProjectConfig& cfg) noexcept;
 
 }  // namespace sniffercommit::cicd
 

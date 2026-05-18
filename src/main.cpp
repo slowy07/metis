@@ -4,6 +4,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -47,6 +48,35 @@ bool safe_stoi(const char* str, T& out) {
   } catch (const std::exception&) {
     return false;
   }
+}
+
+sniffercommit::tooling::TidyPreset parse_tidy_preset(const std::string& preset) {
+  std::string lower;
+
+  for (char c : preset) {
+    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+
+  if (lower == "minimal") return sniffercommit::tooling::TidyPreset::Minimal;
+  if (lower == "standard") return sniffercommit::tooling::TidyPreset::Standard;
+  if (lower == "strict") return sniffercommit::tooling::TidyPreset::Strict;
+  if (lower == "custom") return sniffercommit::tooling::TidyPreset::Custom;
+
+  throw std::runtime_error("Unknown tidy preset: " + preset);
+}
+
+sniffercommit::tooling::TidySeverity parse_tidy_severity(const std::string& sev) {
+  std::string lower;
+  
+  for (char c : sev) {
+    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+
+  if (lower == "note") return sniffercommit::tooling::TidySeverity::Note;
+  if (lower == "warning") return sniffercommit::tooling::TidySeverity::Warning;
+  if (lower == "error") return sniffercommit::tooling::TidySeverity::Error;
+  
+  throw std::runtime_error("Unknown tidy severity: " + sev);
 }
 
 }  // namespace
@@ -142,6 +172,51 @@ int main(int argc, char** argv) {
 
           opts.project_name = argv[++i];
         }
+
+        // NOTE: clang tidy command "--enable-clang-tidy"
+        if (arg == "--enable-clang-tidy" || arg == "--tidy") {
+          opts.enable_clang_tidy = true;
+        }
+
+        if (arg == "--tidy-preset") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --tidy-preset requires value (minimal|standard|strict|custom)\n";
+            return 1;
+          }
+
+          try {
+            opts.tidy_preset = parse_tidy_preset(argv[++i]);
+          } catch (const std::exception& error_tidy_preset) {
+            std::cerr << "[ERROR] " << error_tidy_preset.what() << "\n";
+            return 1;
+          }
+        }
+
+        if (arg == "--tidy-severity") {
+          if (i + 1 >= argc) {
+            std::cerr << "[ERROR] --tidy-severity requires value (note|warning|error)\n";
+            return 1;
+          }
+
+          try {
+            opts.tidy_severity = parse_tidy_severity(argv[++i]);
+          } catch (const std::exception& error_tidy_severity) {
+            std::cerr << "[ERROR] " << error_tidy_severity.what() << "\n";
+            return 1;
+          }
+        }
+
+        if (arg == "--tidy-header-filter") {
+          if (i + 1 >= argc || !safe_stoi(argv[++i], opts.tidy_header_filter)) {
+            std::cerr << "[ERROR] --tidy-header-filter requires integer (0|1|2)\n";
+            return 1;
+          }
+
+          if (opts.tidy_header_filter < 0 || opts.tidy_header_filter > 2) {
+            std::cerr << "[ERROR] --tidy-header-filter must be 0, 1, or 2\n";
+            return 1;
+          }
+        }
       }
 
       auto result = manager.initialize(std::filesystem::current_path(), opts);
@@ -154,6 +229,11 @@ int main(int argc, char** argv) {
       std::cout << "  project: " << opts.project_name << "\n";
       std::cout << "  " << result.project_config_path << "\n";
       std::cout << "  " << result.tooling_config_path << "\n";
+      std::cout << "  style: " << tooling::style_name(opts.style) << "\n";
+      
+      if (opts.enable_clang_tidy) {
+        std::cout << " .clang-tidy (preset: " << tooling::preset_name(opts.tidy_preset) << ")\n";
+      }
       std::cout << "  style: " << tooling::style_name(opts.style) << "\n";
       return 0;
     }
