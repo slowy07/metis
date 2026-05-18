@@ -18,16 +18,16 @@
 namespace sniffercommit {
 
 struct PipeDeleter {
-  void operator()(FILE* fp) const noexcept {
-    if (fp) {
-      (void)pclose(fp);
+  void operator()(FILE* file_ptr) const noexcept {
+    if (file_ptr != nullptr) {
+      (void)pclose(file_ptr);
     }
   }
 };
 using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
 
 ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path& cwd,
-                                                    const InitOptions& opts) const {
+                                                    const InitOptions& opts) {
   InitResult result;
 
   std::string project_name = opts.project_name;
@@ -48,7 +48,14 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
   }
 
   auto config_path = cwd / ".sniffercommit.toml";
-  auto config_content = project::generate_default(project_name, tooling::style_name(opts.style));
+  std::string config_content;
+
+  if (opts.enable_clang_tidy) {
+    config_content = project::generate_default_with_tidy(
+        project_name, tooling::style_name(opts.style), tooling::preset_name(opts.tidy_preset));
+  } else {
+    config_content = project::generate_default(project_name, tooling::style_name(opts.style));
+  }
 
   if (!write_file(config_path, config_content)) {
     result.error_message = "Failed to create " + config_path.string();
@@ -102,7 +109,7 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
 }
 
 ConfigManager::InstallResult ConfigManager::install(const std::filesystem::path& repo_root,
-                                                    const project::ProjectConfig& cfg) const {
+                                                    const project::ProjectConfig& cfg) {
   InstallResult result;
 
   if (cfg.generate_local_hook) {
@@ -137,22 +144,24 @@ ConfigManager::InstallResult ConfigManager::install(const std::filesystem::path&
   return result;
 }
 
-project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& path) const {
+project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& path) {
   return project::load(path);
 }
 
-std::filesystem::path ConfigManager::find_git_root() const {
-  std::array<char, 4096> buffer;
+std::filesystem::path ConfigManager::find_git_root() {
+  std::array<char, 4096> buffer{};
   std::string result;
-  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null", "r"));
+  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null", "r"));  // NOLINT(bugprone-command-processor)
 
   if (pipe) {
-    while (fgets(buffer.data(), buffer.size(), pipe.get())) {
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
       result += buffer.data();
     }
 
     if (!result.empty()) {
-      if (result.back() == '\n') result.pop_back();
+      if (result.back() == '\n') {
+        result.pop_back();
+      }
       std::filesystem::path path(result);
 
       if (std::filesystem::exists(path)) {
@@ -163,11 +172,15 @@ std::filesystem::path ConfigManager::find_git_root() const {
 
   auto dir = std::filesystem::current_path();
   while (true) {
-    if (std::filesystem::exists(dir / ".git")) return dir;
+    if (std::filesystem::exists(dir / ".git")) {
+      return dir;
+    }
     auto parent = dir.parent_path();
     if (parent == dir) {
       break;
     }
+
+
 
     dir = parent;
   }
@@ -176,7 +189,7 @@ std::filesystem::path ConfigManager::find_git_root() const {
 }
 
 bool ConfigManager::write_file(const std::filesystem::path& path,
-                               const std::string& content) const {
+                               const std::string& content) {
   std::ofstream out(path, std::ios::trunc);
 
   if (!out) {

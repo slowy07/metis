@@ -1,6 +1,7 @@
 #ifndef SNIFFERCOMMIT_EXECUTOR_HPP
 #define SNIFFERCOMMIT_EXECUTOR_HPP
 
+#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -8,7 +9,7 @@
 #include "sniffercommit/project_config.hpp"
 namespace sniffercommit {
 
-enum class FileSource {
+enum class FileSource : std::uint8_t {
   STAGED,    // git diff --cached
   ALL_REPO,  // git ls-files
   EXPLICIT,  // user-providing file list

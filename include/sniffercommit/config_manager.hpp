@@ -41,19 +41,19 @@ class ConfigManager {
   };
 
   // INFO: initialize  project configs (`init` command logic)
-  [[nodiscard]] InitResult initialize(const std::filesystem::path& cwd,
-                                      const InitOptions& opts) const;
+  [[nodiscard]] static InitResult initialize(const std::filesystem::path& cwd,
+                                              const InitOptions& opts);
   // INFO: install hooks and CI (`install` command logic)
-  [[nodiscard]] InstallResult install(const std::filesystem::path& repo_root,
-                                      const project::ProjectConfig& cfg) const;
+  [[nodiscard]] static InstallResult install(const std::filesystem::path& repo_root,
+                                              const project::ProjectConfig& cfg);
   // INFO: load project config with validation
-  [[nodiscard]] project::ProjectConfig load_project(const std::filesystem::path& path) const;
+  [[nodiscard]] static project::ProjectConfig load_project(const std::filesystem::path& path);
   // INFO: finding git repository root
-  [[nodiscard]] std::filesystem::path find_git_root() const;
+  [[nodiscard]] static std::filesystem::path find_git_root();
 
  private:
-  [[nodiscard]] bool write_file(const std::filesystem::path& path,
-                                const std::string& content) const;
+  [[nodiscard]] static bool write_file(const std::filesystem::path& path,
+                                       const std::string& content);
 };
 }  // namespace sniffercommit
 

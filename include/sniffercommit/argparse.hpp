@@ -27,19 +27,21 @@ struct Option {
 
 class ArgParser {
  public:
-  ArgParser(std::string_view app_name, std::string_view description)
-      : app_name_(app_name), description_(description) {}
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+  ArgParser(std::string_view name, std::string_view desc)
+      : app_name(name), description(desc) {}
 
   template <Parsable T>
   ArgParser& add_option(std::string_view short_flag, std::string_view long_flag,
                         std::string_view desc, T& storage, T default_val = {}) {
     std::string default_str;
-    if constexpr (std::is_same_v<T, std::string>)
+    if constexpr (std::is_same_v<T, std::string>) {
       default_str = default_val;
-    else
+    } else {
       default_str = std::to_string(default_val);
-    options_.emplace_back(Option{short_flag, long_flag, desc, std::move(default_str), true});
-    option_stores_.emplace_back([this, &storage](const std::string& val) {
+    }
+    options.emplace_back(Option{.short_flag = short_flag, .long_flag = long_flag, .description = desc, .default_value = std::move(default_str), .has_value = true});
+    option_stores.emplace_back([&storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
       } else if constexpr (std::is_same_v<T, int>) {
@@ -53,67 +55,70 @@ class ArgParser {
 
   ArgParser& add_flag(std::string_view short_flag, std::string_view long_flag,
                       std::string_view desc, bool& storage) {
-    options_.emplace_back(Option{short_flag, long_flag, desc, "false", false});
-    flag_stores_.emplace_back(&storage);
+    options.emplace_back(Option{.short_flag = short_flag, .long_flag = long_flag, .description = desc, .default_value = "false", .has_value = false});
+    flag_stores.emplace_back(&storage);
     return *this;
   }
 
   ArgParser& add_subcommand(std::string_view name, std::string_view desc) {
-    subcommands_.push_back({std::string(name), std::string(desc)});
+    subcommands.emplace_back(Subcommand{.name = std::string(name), .description = std::string(desc)});
     return *this;
   }
 
-  ArgParser& set_version(std::string_view version) {
-    version_ = version;
+  ArgParser& set_version(std::string_view ver) {
+    version = ver;
     return *this;
   }
 
+  // NOLINTNEXTLINE(readability-function-cognitive-complexity)
   bool parse(int argc, char** argv) {
-    if (argc < 2) {
+    auto argc_sz = static_cast<size_t>(argc);
+    if (argc_sz < 2) {
       show_help();
       return false;
     }
-    args_ = {argv, argv + argc};
+    args = std::span(argv, argc_sz);
 
-    for (int i = 1; i < argc; ++i) {
-      std::string_view arg = argv[i];
+    for (size_t i = 1; i < argc_sz; ++i) {
+      std::string_view arg = args[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       if (arg == "--help" || arg == "-h") {
         show_help();
         return false;
       }
-      if (!version_.empty() && (arg == "--version" || arg == "-v")) {
-        std::cout << app_name_ << " " << version_ << "\n";
+      if (!version.empty() && (arg == "--version" || arg == "-v")) {
+        std::cout << app_name << " " << version << "\n";
         return false;
       }
     }
 
-    if (!subcommands_.empty()) {
-      std::string_view first_arg = args_[1];
+    if (!subcommands.empty()) {
+      std::string_view first_arg = args[1]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       if (!first_arg.starts_with("-")) {
-        auto it = std::ranges::find_if(
-            subcommands_, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
+        auto found = std::ranges::find_if(
+            subcommands, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
 
-        if (it != subcommands_.end()) {
-          active_subcommand_ = it->name;
+        if (found != subcommands.end()) {
+          active_subcommand = found->name;
           return true;
-        } else {
-          std::cerr << "[ERROR] Unknown subcommand: " << first_arg << "\n\n";
-          show_help();
-          return false;
         }
+        std::cerr << "[ERROR] Unknown subcommand: " << first_arg << "\n\n";
+        show_help();
+        return false;
       }
     }
 
-    for (size_t i = 0; i < args_.size(); ++i) {
-      std::string_view arg = args_[i];
-      if (!arg.starts_with('-')) continue;
+    for (size_t i = 0; i < args.size(); ++i) {
+      std::string_view arg = args[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      if (!arg.starts_with('-')) {
+        continue;
+      }
 
-      auto opt_it = std::ranges::find_if(options_, [arg](const Option& opt) {
+      auto opt_it = std::ranges::find_if(options, [arg](const Option& opt) {
         return opt.short_flag == arg || opt.long_flag == arg;
       });
 
-      if (opt_it == options_.end()) {
-        if (!active_subcommand_.empty()) {
+      if (opt_it == options.end()) {
+        if (!active_subcommand.empty()) {
           continue;
         }
         std::cerr << "[ERROR] Unknown option: " << arg << "\n\n";
@@ -122,19 +127,19 @@ class ArgParser {
       }
 
       if (opt_it->has_value) {
-        if (i + 1 >= args_.size()) {
+        if (i + 1 >= args.size()) {
           std::cerr << "[ERROR] Option " << arg << " requires value\n";
           return false;
         }
-        std::string value = std::string(args_[++i]);
-        auto idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
-        if (idx < option_stores_.size()) {
-          option_stores_[idx](value);
+        std::string value = std::string(args[++i]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
+        if (opt_idx < option_stores.size()) {
+          option_stores[opt_idx](value); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
       } else {
-        auto idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
-        if (idx < flag_stores_.size() && flag_stores_[idx]) {
-          *flag_stores_[idx] = true;
+        auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
+        if (opt_idx < flag_stores.size() && flag_stores[opt_idx] != nullptr) { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          *flag_stores[opt_idx] = true; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
       }
     }
@@ -142,9 +147,10 @@ class ArgParser {
     return true;
   }
 
-  [[nodiscard]] std::string_view get_subcommand() const { return active_subcommand_; }
+  [[nodiscard]] std::string_view get_subcommand() const { return active_subcommand; }
 
-  void print_aligned(std::string_view left, std::string_view right) const {
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+  static void print_aligned(std::string_view left, std::string_view right) {
     std::cout << "  " << left;
 
     if (left.size() < k_padding) {
@@ -157,31 +163,31 @@ class ArgParser {
     std::cout << right << "\n";
   }
 
-  void print_section_title(std::string_view title) const { std::cout << title << ":\n"; }
+  static void print_section_title(std::string_view title) { std::cout << title << ":\n"; }
 
   void show_help() const {
-    std::cout << app_name_ << " - " << description_ << "\n\n";
+    std::cout << app_name << " - " << description << "\n\n";
 
     std::cout << "Usage:\n";
 
-    std::cout << "  " << app_name_ << " [OPTIONS] <SUBCOMMAND> [ARGS]\n\n";
+    std::cout << "  " << app_name << " [OPTIONS] <SUBCOMMAND> [ARGS]\n\n";
 
     print_section_title("Core Workflow");
 
-    for (const auto& cmd : subcommands_) {
+    for (const auto& cmd : subcommands) {
       print_aligned(cmd.name, cmd.description);
     }
 
     std::cout << "\n";
 
     print_section_title("Examples");
-    std::cout << "  " << app_name_ << " init\n";
-    std::cout << "  " << app_name_ << " init --style llvm\n";
-    std::cout << "  " << app_name_ << " init --name ultra-slowy\n";
-    std::cout << "  " << app_name_ << " install\n";
-    std::cout << "  " << app_name_ << " run --all-files\n";
-    std::cout << "  " << app_name_ << " run src/main.cpp\n";
-    std::cout << "  " << app_name_
+    std::cout << "  " << app_name << " init\n";
+    std::cout << "  " << app_name << " init --style llvm\n";
+    std::cout << "  " << app_name << " init --name ultra-slowy\n";
+    std::cout << "  " << app_name << " install\n";
+    std::cout << "  " << app_name << " run --all-files\n";
+    std::cout << "  " << app_name << " run src/main.cpp\n";
+    std::cout << "  " << app_name
               << " generate-gha > "
                  ".github/workflows/sniffercommit.yml\n\n";
 
@@ -227,7 +233,7 @@ class ArgParser {
 
     print_section_title("Global Options");
 
-    for (const auto& opt : options_) {
+    for (const auto& opt : options) {
       std::string left;
 
       if (!opt.short_flag.empty()) {
@@ -237,7 +243,9 @@ class ArgParser {
 
       left += std::string(opt.long_flag);
 
-      if (opt.has_value) left += " <value>";
+      if (opt.has_value) {
+        left += " <value>";
+      }
 
       std::string desc = std::string(opt.description);
 
@@ -248,7 +256,7 @@ class ArgParser {
       print_aligned(left, desc);
     }
 
-    if (!version_.empty()) {
+    if (!version.empty()) {
       print_aligned("-v, --version", "Show version");
     }
 
@@ -261,15 +269,15 @@ class ArgParser {
     std::string description;
   };
 
-  std::string_view app_name_;
-  std::string_view description_;
-  std::string version_;
-  std::span<char* const> args_;
-  std::vector<Option> options_;
-  std::vector<std::function<void(const std::string&)>> option_stores_;
-  std::vector<bool*> flag_stores_;
-  std::vector<Subcommand> subcommands_;
-  std::string active_subcommand_;
+  std::string_view app_name;
+  std::string_view description;
+  std::string version;
+  std::span<char*> args;
+  std::vector<Option> options;
+  std::vector<std::function<void(const std::string&)>> option_stores;
+  std::vector<bool*> flag_stores;
+  std::vector<Subcommand> subcommands;
+  std::string active_subcommand;
 
   static constexpr size_t k_padding = 32;
 };

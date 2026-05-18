@@ -99,10 +99,19 @@ When `--enable-clang-tidy` is used, three files are created:
     - `.clang-format` : formatter config
     - `.clang-tidy` : static analysis config with curated check preset
 
-**Formatter Style Options**
+**Formatter & Analyzer Options**
 ```bash
 # available styles: google, llvm, chromium, mozilla, webkit, microsoft, gnu
 sniffercommit init --style llvm
+
+# with clang-tidy static analysis (generates .clang-tidy)
+sniffercommit init --enable-clang-tidy --tidy-preset standard
+
+# tidy severity levels: note (off), warning (compiler only), error (all)
+sniffercommit init --enable-clang-tidy --tidy-severity warning
+
+# header filter: 0=none, 1=project, 2=all
+sniffercommit init --enable-clang-tidy --tidy-header-filter 1
 
 # full customization
 sniffercommit init \
@@ -111,7 +120,10 @@ sniffercommit init \
   --indent-width 4 \
   --column-limit 120 \
   --pointer-alignment Left \
-  --brace-style Attach
+  --brace-style Attach \
+  --enable-clang-tidy \
+  --tidy-preset strict \
+  --tidy-severity error
 ```
 
 **Install pre-commit hooks**
@@ -124,6 +136,15 @@ Generates and installs:
 
 The hook is validated with `bash -n` before installation to prevent broken hooks.
 
+**Tidy Presets** (used with `--enable-clang-tidy`):
+
+| Preset | Scope |
+|--------|-------|
+| `minimal` | cppcoreguidelines + bugprone + clang-analyzer |
+| `standard` (default) | minimal + modernize + performance |
+| `strict` | All checks minus noisy ones (abseil, altera, fuchsia, llvm, zircon) |
+| `custom` | User-defined via `extra_checks` / `exclude_checks` |
+
 **Uninstall hooks**:
 ```bash
 # remove the pre-commit hooks
@@ -133,7 +154,7 @@ rm .git/hooks/pre-commit
 sniffercommit install
 ```
 
-**Generate CI workflow only**
+**Generate CI workflow only** (always writes, ignores `github_actions` config)
 ```bash
 sniffercommit generate-gha
 ```

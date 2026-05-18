@@ -25,7 +25,7 @@ struct ProjectConfig {
   bool parallel = true;
 
   [[nodiscard]] std::string validate() const noexcept;
-  bool is_valid() const noexcept { return validate().empty(); }
+  [[nodiscard]] bool is_valid() const noexcept { return validate().empty(); }
 
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;
   [[nodiscard]] bool has_matching_checks(const std::string& file) const noexcept;

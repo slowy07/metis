@@ -1,12 +1,13 @@
 #ifndef SNIFFERCOMMIT_TOOLING_CONFIG_HPP
 #define SNIFFERCOMMIT_TOOLING_CONFIG_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
 namespace sniffercommit::tooling {
 
-enum class FormatterStyle { Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU };
+enum class FormatterStyle : std::uint8_t { Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU };
 
 struct ClangFormatConfig {
   FormatterStyle style = FormatterStyle::Google;
@@ -30,9 +31,9 @@ struct ClangFormatConfig {
 
 // NOTE: severity level clang-tidy checking
 // mapping to -warnings-as-errors
-enum class TidySeverity { Note, Warning, Error };
+enum class TidySeverity : std::uint8_t { Note, Warning, Error };
 
-enum class TidyPreset {
+enum class TidyPreset : std::uint8_t {
   Minimal,   // set to only bug-prone patterns (cppcoreguidelines-*)
   Standard,  // bug + style + modernize (default)
   Strict,    // everything + performance + reability

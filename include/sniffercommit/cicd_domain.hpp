@@ -1,6 +1,7 @@
 #ifndef SNIFFERCOMMIT_CICD_DOMAIN_HPP
 #define SNIFFERCOMMIT_CICD_DOMAIN_HPP
 
+#include <cstdint>
 #include <filesystem>
 
 namespace sniffercommit::project {
@@ -9,7 +10,7 @@ struct ProjectConfig;
 
 namespace sniffercommit::cicd {
 
-enum class Platform { GithubAction, GitLabCI, AzureDevOps, Generic };
+enum class Platform : std::uint8_t { GithubAction, GitLabCI, AzureDevOps, Generic };
 
 struct WorkflowConfig {
   Platform platform = Platform::GithubAction;

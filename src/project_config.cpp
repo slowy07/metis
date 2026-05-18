@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <toml++/toml.hpp>
+#include <algorithm>
 #include <utility>
 
 namespace sniffercommit::project {
@@ -41,8 +42,8 @@ std::string ProjectConfig::validate() const noexcept {
   // check duplicate name
   for (size_t i = 0; i < checks.size(); ++i) {
     for (size_t j = i + 1; j < checks.size(); ++j) {
-      if (checks[i].name == checks[j].name) {
-        return fmt::format("Duplicate check name: `{}`", checks[i].name);
+      if (checks.at(i).name == checks.at(j).name) {
+        return fmt::format("Duplicate check name: `{}`", checks.at(i).name);
       }
     }
   }
@@ -51,13 +52,8 @@ std::string ProjectConfig::validate() const noexcept {
 }
 
 bool ProjectConfig::has_command(std::string_view cmd) const noexcept {
-  for (const auto& check : checks) {
-    if (check.command == cmd) {
-      return true;
-    }
-  }
-
-  return false;
+  return std::ranges::any_of(
+      checks, [cmd](const auto& check) { return check.command == cmd; });
 }
 
 bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept {
@@ -78,7 +74,9 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
 
       if (pattern.starts_with("**/")) {
         std::string suffix = pattern.substr(3);
-        if (file.ends_with(suffix)) return true;
+        if (file.ends_with(suffix)) {
+          return true;
+        }
       }
 
       if (file.starts_with(pattern) || file == pattern) {
@@ -91,7 +89,8 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
 }
 
 // INFO: load from TOML files
-ProjectConfig load(const std::filesystem::path& path) {
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+ProjectConfig load(const std::filesystem::path& path) {  // NOLINT(readability-function-cognitive-complexity)
   if (!std::filesystem::exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
   }
@@ -106,32 +105,32 @@ ProjectConfig load(const std::filesystem::path& path) {
 
   ProjectConfig cfg;
 
-  if (auto project = tbl["project"].as_table()) {
+  if (auto* project = tbl["project"].as_table()) {
     cfg.project_name = (*project)["name"].value_or("unnamed");
   }
 
   if (auto* checks_arr = tbl["checks"].as_array()) {
     for (auto& item : *checks_arr) {
       if (auto* check_tbl = item.as_table()) {
-        Check c;
-        c.name = (*check_tbl)["name"].value_or("unnamed");
-        c.command = (*check_tbl)["command"].value_or("");
+        Check check;
+        check.name = (*check_tbl)["name"].value_or("unnamed");
+        check.command = (*check_tbl)["command"].value_or("");
 
         // args arrays
         if (auto* args = (*check_tbl)["args"].as_array()) {
-          for (auto& a : *args) {
-            c.args.push_back(a.value_or(""));
+          for (auto& arg : *args) {
+            check.args.emplace_back(arg.value_or(""));
           }
         }
 
         // patterns array
         if (auto* pats = (*check_tbl)["patterns"].as_array()) {
-          for (auto& p : *pats) {
-            c.patterns.push_back(p.value_or(""));
+          for (auto& pat : *pats) {
+            check.patterns.emplace_back(pat.value_or(""));
           }
         }
 
-        cfg.checks.push_back(std::move(c));
+        cfg.checks.emplace_back(std::move(check));
       }
     }
   }
@@ -139,8 +138,8 @@ ProjectConfig load(const std::filesystem::path& path) {
   // [exclude]
   if (auto* exclude_tbl = tbl["exclude"].as_table()) {
     if (auto* paths = (*exclude_tbl)["paths"].as_array()) {
-      for (auto& p : *paths) {
-        cfg.exclude_paths.push_back(p.value_or(""));
+      for (auto& path_item : *paths) {
+        cfg.exclude_paths.emplace_back(path_item.value_or(""));
       }
     }
   }
@@ -165,6 +164,7 @@ ProjectConfig load(const std::filesystem::path& path) {
 
   return cfg;
 }
+// NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
 // INFO: saving TOML
 bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
@@ -174,7 +174,7 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
     return false;
   }
 
-  auto fmt_str = [](const std::string& s) -> std::string { return fmt::format("\"{}\"", s); };
+  auto fmt_str = [](const std::string& str) -> std::string { return fmt::format("\"{}\"", str); };
 
   auto fmt_str_array = [&fmt_str](const std::vector<std::string>& arr) -> std::string {
     if (arr.empty()) {
@@ -183,8 +183,10 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
 
     std::string result = "[";
     for (size_t i = 0; i < arr.size(); ++i) {
-      if (i > 0) result += ", ";
-      result += fmt_str(arr[i]);
+      if (i > 0) {
+        result += ", ";
+      }
+      result += fmt_str(arr.at(i));
     }
 
     result += "]";
@@ -238,6 +240,44 @@ args = [
   "--fallback-style={}",
   "-style=file"
 ]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
+name = "trailing-whitespace"
+command = "grep"
+args = ["-E", "--text", "[[:space:]]+$"]
+patterns = ["*"]
+
+[exclude]
+paths = ["build/", "third_party/", ".git/"]
+
+[output]
+local_hook = true
+github_actions = false
+
+[execution]
+parallel = true
+)",
+      project_name, fallback_style);
+}
+
+std::string generate_default_with_tidy(const std::string& project_name,
+                                       const std::string& fallback_style,  // NOLINT(bugprone-easily-swappable-parameters)
+                                       [[maybe_unused]] const std::string& tidy_preset) {
+  return fmt::format(
+      R"([project]
+name = "{}"
+
+[[checks]]
+name = "clang-format"
+command = "clang-format"
+args = ["-i", "--fallback-style={}", "-style=file"]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
+name = "clang-tidy"
+command = "clang-tidy"
+args = ["--config-file=.clang-tidy", "--quiet"]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]

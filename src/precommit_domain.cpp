@@ -12,11 +12,11 @@
 
 namespace sniffercommit::precommit {
 
-static std::string regex_escape(const std::string& s) {
+static std::string regex_escape(const std::string& str) {
   std::string out;
 
-  for (char c : s) {
-    switch (c) {
+  for (char chr : str) {
+    switch (chr) {
       case '\\':
       case '.':
       case '+':
@@ -37,7 +37,7 @@ static std::string regex_escape(const std::string& s) {
         break;
     }
 
-    out += c;
+    out += chr;
   }
 
   return out;
@@ -48,8 +48,12 @@ std::string generate_hook(const project::ProjectConfig& cfg) {
   if (!cfg.exclude_paths.empty()) {
     std::ostringstream oss;
     for (size_t i = 0; i < cfg.exclude_paths.size(); ++i) {
-      if (i > 0) oss << "|";
-      oss << regex_escape(cfg.exclude_paths[i]);
+      if (i > 0) {
+        oss << "|";
+      }
+      oss << regex_escape(
+          cfg.exclude_paths
+              [i]);  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
     }
     exclude_pattern = "(" + oss.str() + ")";
   }
@@ -68,8 +72,8 @@ std::string generate_hook(const project::ProjectConfig& cfg) {
       }
 
       std::string patterns;
-      for (const auto& p : check.patterns) {
-        patterns += " \"" + p + "\"";
+      for (const auto& pattern : check.patterns) {
+        patterns += " \"" + pattern + "\"";
       }
 
       execution_block += fmt::format(
@@ -106,8 +110,8 @@ fi
       }
 
       std::string patterns;
-      for (const auto& p : check.patterns) {
-        patterns += " \"" + p + "\"";
+      for (const auto& pattern : check.patterns) {
+        patterns += " \"" + pattern + "\"";
       }
 
       execution_block +=
@@ -219,8 +223,8 @@ bool install(const std::filesystem::path& repo_root, const std::string& hook_con
 }
 
 bool validate_syntax(const std::string& hook_content) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
+  std::random_device random_device;
+  std::mt19937 gen(random_device());
   std::uniform_int_distribution<> dis(100000, 999999);
   auto temp_path = std::filesystem::temp_directory_path() /
                    fmt::format("sniffercommit_hook_check_{}.sh", dis(gen));
@@ -235,7 +239,7 @@ bool validate_syntax(const std::string& hook_content) {
   }
 
   std::string cmd = "bash -n " + temp_path.string() + " 2>/dev/null";
-  bool valid = (std::system(cmd.c_str()) == 0);
+  bool valid = (std::system(cmd.c_str()) == 0);  // NOLINT(bugprone-command-processor)
 
   std::filesystem::remove(temp_path);
   return valid;
