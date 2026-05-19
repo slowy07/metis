@@ -200,6 +200,8 @@ class ArgParser {
     std::cout << "  " << app_name << " init\n";
     std::cout << "  " << app_name << " init --style llvm\n";
     std::cout << "  " << app_name << " init --name ultra-slowy\n";
+    std::cout << "  " << app_name << " init --enable-clang-tidy\n";
+    std::cout << "  " << app_name << " init --enable-cmake\n";
     std::cout << "  " << app_name << " install\n";
     std::cout << "  " << app_name << " run --all-files\n";
     std::cout << "  " << app_name << " run src/main.cpp\n";
@@ -215,14 +217,53 @@ class ArgParser {
 
     std::cout << "        - .sniffercommit.toml\n";
 
-    std::cout << "        - .clang-format\n\n";
+    std::cout << "        - .clang-format\n";
+
+    std::cout << "        - [--enable-clang-tidy] .clang-tidy\n";
+
+    std::cout << "        - [--enable-cmake]     CMakeLists.txt + src/main.cpp\n";
+
+    std::cout << "        - [--generate-src]     src/main.cpp\n\n";
 
     std::cout << "      Options:\n";
 
     std::cout << "        --style "
                  "<google|llvm|chromium|mozilla|webkit|microsoft|gnu>\n";
 
-    std::cout << "        --name <project-name>\n\n";
+    std::cout << "        --name <project-name>\n";
+
+    std::cout << "        --indent-width <n>\n";
+
+    std::cout << "        --column-limit <n>\n";
+
+    std::cout << "        --pointer-alignment "
+                 "<Left|Right|Middle>\n";
+
+    std::cout << "        --brace-style <Attach|Allman|...>\n";
+
+    std::cout << "        --enable-clang-tidy, --tidy\n";
+
+    std::cout << "        --tidy-preset "
+                 "<minimal|standard|strict|custom>\n";
+
+    std::cout << "        --tidy-severity "
+                 "<note|warning|error>\n";
+
+    std::cout << "        --tidy-header-filter <0|1|2>\n";
+
+    std::cout << "        --enable-cmake, --cmake\n";
+
+    std::cout << "        --cmake-cpp-standard "
+                 "<17|20|23>\n";
+
+    std::cout << "        --cmake-target-type "
+                 "<executable|static|shared|header-only>\n";
+
+    std::cout << "        --cmake-enable-testing\n";
+
+    std::cout << "        --cmake-enable-sanitizers\n";
+
+    std::cout << "        --generate-src\n\n";
 
     std::cout << "  install\n";
 
