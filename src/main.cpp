@@ -95,6 +95,64 @@ sniffercommit::tooling::TidySeverity parse_tidy_severity(const std::string& sev)
   throw std::runtime_error("Unknown tidy severity: " + sev);
 }
 
+constexpr std::string_view bold = "\033[1m";
+constexpr std::string_view dim = "\033[2m";
+constexpr std::string_view green = "\033[32m";
+constexpr std::string_view cyan = "\033[36m";
+constexpr std::string_view reset = "\033[0m";
+constexpr std::string_view check = "✓";
+constexpr std::string_view arrow = "→";
+constexpr std::string_view bullet = "•";
+
+void print_init_summary(const sniffercommit::ConfigManager::InitOptions& opts,
+                        const sniffercommit::ConfigManager::InitResult& result) {
+  std::cout << "\n";
+  std::cout << bold << " sniffercommit initialized " << reset << "\n";
+  std::cout << "  " << dim << result.project_config_path << reset << "\n\n";
+
+  std::cout << "  " << bold << "project" << reset << "\n";
+  std::cout << "    " << bullet << " name:   " << opts.project_name << "\n";
+  std::cout << "    " << bullet << " style:  " << sniffercommit::tooling::style_name(opts.style)
+            << "\n";
+
+  std::cout << "\n  " << bold << "tooling" << reset << "\n";
+  std::cout << "    " << green << check << reset << " .clang-format";
+
+  if (opts.indent_width != 2 || opts.column_limit != 100) {
+    std::cout << "  (indent=" << opts.indent_width << ", limit=" << opts.column_limit << ")";
+  }
+  std::cout << "\n";
+
+  if (opts.enable_clang_tidy) {
+    std::cout << "    " << green << check << reset << " .clang-tidy"
+              << "  (preset: " << sniffercommit::tooling::preset_name(opts.tidy_preset)
+              << ", severity: ";
+
+    switch (opts.tidy_severity) {
+      case sniffercommit::tooling::TidySeverity::Note:
+        std::cout << "note";
+        break;
+      case sniffercommit::tooling::TidySeverity::Warning:
+        std::cout << "warning";
+        break;
+      case sniffercommit::tooling::TidySeverity::Error:
+        std::cout << "error";
+        break;
+    }
+
+    std::cout << ")\n";
+  }
+
+  if (opts.generate_source && !result.src_path.empty()) {
+    std::cout << "\n  " << bold << "source" << reset << "\n";
+    std::cout << "    " << green << check << reset << " " << result.src_path << "\n";
+    std::cout << "    " << dim << "      " << arrow << " ready to build & run" << reset << "\n";
+  }
+
+  std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "sniffercommit install"
+            << reset << " " << dim << "to set up pre-commit hooks" << reset << "\n\n";
+}
+
 // parse c++ standard
 sniffercommit::tooling::CppStandard parse_cpp_standard(const std::string& cpp_standard) {
   std::string lower;
@@ -357,11 +415,7 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
         return 1;
       }
 
-      std::cout << "[INFO] Initialized project\n";
-      std::cout << "  project: " << opts.project_name << "\n";
-      std::cout << "  " << result.project_config_path << "\n";
-      std::cout << "  " << result.tooling_config_path << "\n";
-      std::cout << "  style: " << tooling::style_name(opts.style) << "\n";
+      print_init_summary(opts, result);
 
       if (opts.enable_clang_tidy) {
         std::cout << " .clang-tidy (preset: " << tooling::preset_name(opts.tidy_preset) << ")\n";
