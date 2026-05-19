@@ -257,7 +257,6 @@ include(CPack)
 install(
   FILES
     README.md
-    docs/docs.md
   DESTINATION
     ${CMAKE_INSTALL_DOCDIR}
 )
