@@ -10,6 +10,7 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 - **Auto-generate CI workflow** : GitHub Actions workflow mirroring local hooks
 - **.clang-format scaffolding** : generate `.clang-format` with configurable style presets
 - **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `strict`)
+- **CMake scaffolding** : generate `CMakeLists.txt` with compiler warnings, sanitizers, clang-tidy/clang-format integration, and testing
 - **Hook syntax validation** : generated bash hooks are validated with `bash -n` before install
 - **Git worktree support** : works in worktrees, submodules, and detached checkouts
 
@@ -38,7 +39,7 @@ sniffercommit run --all-files
 
 | Command | Action |
 |---------|--------|
-| `init` | Generate `.sniffercommit.toml`, `.clang-format` (and `.clang-tidy` with `--enable-clang-tidy`) |
+| `init` | Generate `.sniffercommit.toml`, `.clang-format` (plus `.clang-tidy` / `CMakeLists.txt` with `--enable-*` flags) |
 | `install` | Install pre-commit hook + optional CI workflow |
 | `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
 | `generate-gha` | Write GitHub Actions workflow to `.github/workflows/sniffercommit.yml` |
@@ -153,10 +154,6 @@ sniffercommit init --enable-clang-tidy --tidy-severity warning
 # header filter: 0=none, 1=project, 2=all
 sniffercommit init --enable-clang-tidy --tidy-header-filter 1
 
-# enable cmake and generate src file
-# src/main.cpp
-sniffercommit init --enable-cmake
-
 # full customization
 sniffercommit init \
   --style google \
@@ -254,6 +251,74 @@ clang-tidy --config-file=.clang-tidy src/main.cpp --
 ```
 
 Requires `sniffercommit init --enable-clang-tidy` to have created `.clang-tidy`.
+
+---
+
+### CMake Scaffolding
+
+`sniffercommit init --enable-cmake` generates a production-grade `CMakeLists.txt` and a minimal `src/main.cpp`:
+
+```bash
+sniffercommit init --enable-cmake
+```
+
+Creates:
+- `CMakeLists.txt` — full CMake project configuration
+- `src/main.cpp` — entry point with `main()` stub
+
+**CMake Options**
+
+| Flag | Values | Default | Description |
+|------|--------|---------|-------------|
+| `--cmake-cpp-standard` | `17`, `20`, `23` | `20` | C++ standard version |
+| `--cmake-target-type` | `executable`, `static`, `shared`, `header-only` | `executable` | Build target type |
+| `--cmake-enable-testing` | (flag) | off | Add `enable_testing()` + `add_subdirectory(tests)` |
+| `--cmake-enable-sanitizers` | (flag) | off | AddressSanitizer + UBSan (Debug only) |
+
+**What the generated CMakeLists.txt includes:**
+
+- `cmake_minimum_required(VERSION 3.20)` with project declaration
+- C++ standard enforcement (`CMAKE_CXX_STANDARD_REQUIRED ON`, extensions OFF)
+- Build type configuration (Debug + Release)
+- `CMAKE_EXPORT_COMPILE_COMMANDS` for IDE support
+- Source file and include directory setup
+- Compiler warnings: `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` (GCC/Clang) or `/W4` (MSVC)
+- Sanitizers: address + undefined behaviour in Debug builds
+- **clang-tidy integration** (if `--enable-clang-tidy` was also passed)
+- **clang-format** custom target (`make format`)
+- Testing: `enable_testing() + add_subdirectory(tests)` (if `--cmake-enable-testing`)
+- Installation rules with GNUInstallDirs
+
+**Examples**
+
+```bash
+# Minimal C++20 executable project
+sniffercommit init --enable-cmake
+
+# C++17 static library with testing
+sniffercommit init --enable-cmake --cmake-cpp-standard 17 --cmake-target-type static --cmake-enable-testing
+
+# Full-featured project with clang-tidy + sanitizers
+sniffercommit init \
+  --enable-cmake \
+  --cmake-cpp-standard 20 \
+  --cmake-enable-testing \
+  --cmake-enable-sanitizers \
+  --enable-clang-tidy \
+  --tidy-preset strict \
+  --style google
+
+# Header-only library (no src/main.cpp generated)
+sniffercommit init --enable-cmake --cmake-target-type header-only
+```
+
+**Generate `src/main.cpp` without CMake:**
+
+```bash
+sniffercommit init --generate-src
+```
+
+Creates only `src/main.cpp`, no `CMakeLists.txt`.
 
 ## Troubleshooting
 
