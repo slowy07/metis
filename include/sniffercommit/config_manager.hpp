@@ -19,16 +19,27 @@ class ConfigManager {
     std::string pointer_alignment = "Left";
     std::string brace_style = "Attach";
     bool enable_clang_tidy = false;
+    bool generate_source = false;
 
     tooling::TidyPreset tidy_preset = tooling::TidyPreset::Standard;
     tooling::TidySeverity tidy_severity = tooling::TidySeverity::Error;
     int tidy_header_filter = 1;
+
+    // cmake scaffolding
+    bool enable_cmake = false;
+    tooling::CppStandard cmake_cpp_standard = tooling::CppStandard::Cpp20;
+    tooling::TargetType cmake_target_type = tooling::TargetType::Executable;
+    bool cmake_enable_warnings = true;
+    bool cmake_enable_testing = false;
+    bool cmake_enable_sanitizers = false;
   };
 
   struct InitResult {
     bool success = false;
     std::string project_config_path;
     std::string tooling_config_path;
+    std::string cmake_config_path;
+    std::string src_path;
     std::string error_message;
   };
 

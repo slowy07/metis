@@ -2,6 +2,7 @@
 #define SNIFFERCOMMIT_TOOLING_CONFIG_HPP
 
 #include <cstdint>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -74,6 +75,78 @@ struct ClangTidyConfig {
 // file generation (clang-tidy)
 [[nodiscard]] std::vector<std::string> preset_checks(TidyPreset preset);
 std::string generate_clang_tidy(const ClangTidyConfig& cfg);
+
+// NOTE: CMake config
+enum class CppStandard : std::uint8_t { Cpp17, Cpp20, Cpp23 };
+
+enum class BuildTypePreset : std::uint8_t {
+  ReleaseOnly,   // release configs
+  DebugRelease,  // debug + release (default)
+  Full,          // debug + release + RelWithDebInfo + MinSizeRel
+};
+
+// depedency management
+enum class DepedencyStrategy : std::uint8_t {
+  FetchContent,  // using cmake fetchcontent (default)
+  FindPackage,   // use find_package() for system deps
+  Conan,         // conan package manager
+  Vcpkg,         // Vcpkg toolchain
+};
+
+enum class TargetType : std::uint8_t {
+  Executable,
+  StaticLibrary,
+  SharedLibrary,
+  HeaderOnly,
+};
+
+struct CMakeConfig {
+  std::string project_name = "my-project";
+  std::string version = "0.2.1";
+  std::string description;
+  std::string homepage_url;
+
+  CppStandard cpp_standard = CppStandard::Cpp20;
+  bool cpp_standard_required = true;
+  bool enable_extension = false;
+
+  BuildTypePreset build_preset = BuildTypePreset::DebugRelease;
+  bool export_compile_commands = true;
+  bool enable_testing = false;
+  bool enable_install = true;
+
+  TargetType target_type = TargetType::Executable;
+  std::string target_name;
+  std::vector<std::string> source_files;
+  std::vector<std::string> header_files;
+  std::vector<std::string> include_dirs;
+
+  DepedencyStrategy dep_strategy = DepedencyStrategy::FetchContent;
+  std::vector<std::string> depedencies;
+
+  // compiler warnings
+  bool enable_warnings = true;
+  bool warnings_as_errors = false;
+  bool enable_sanitizers = false;
+
+  bool enable_clang_tidy = false;
+  bool enable_clang_format = false;
+  bool enable_ipo = false;
+
+  [[nodiscard]] std::string validate() const noexcept;
+};
+
+[[nodiscard]] std::string cpp_standard_name(CppStandard cppStandard);
+[[nodiscard]] std::string build_preset_name(BuildTypePreset preset);
+[[nodiscard]] std::string depedency_strategy_name(DepedencyStrategy strategy);
+[[nodiscard]] std::string target_type_name(TargetType type);
+
+// CMakeLists.txt generate
+[[nodiscard]] std::string generate_cmake_lists(const CMakeConfig& cfg);
+
+// preset CMakeLists.txt sniffercommit
+[[nodiscard]] std::string generate_cmake_lists_default(const std::string& project_name,
+                                                       CppStandard cpp_std = CppStandard::Cpp20);
 
 }  // namespace sniffercommit::tooling
 
