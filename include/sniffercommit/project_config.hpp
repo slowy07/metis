@@ -44,6 +44,11 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg);
                                                      const std::string& fallback_style = "Google",
                                                      const std::string& tidy_preset = "standard");
 
+// NOTE: CMake-aware default
+// generate config with CMakeLists.txt scaffolding checks
+[[nodiscard]] std::string generate_default_with_cmake(const std::string& project_name,
+                                                      const std::string& fallback_style = "Google");
+
 }  // namespace sniffercommit::project
 
 #endif  // !SNIFFERCOMMIT_PROJECT_CONFIG_HPP

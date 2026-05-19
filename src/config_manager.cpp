@@ -102,6 +102,45 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
     }
   }
 
+  // generate CMakeLists.txt
+  if (opts.enable_cmake) {
+    tooling::CMakeConfig cmake_cfg;
+    cmake_cfg.project_name = project_name;
+    cmake_cfg.version = "0.2.1";
+    cmake_cfg.cpp_standard = opts.cmake_cpp_standard;
+    cmake_cfg.target_type = opts.cmake_target_type;
+    cmake_cfg.target_name = project_name;
+    cmake_cfg.enable_warnings = opts.cmake_enable_warnings;
+    cmake_cfg.enable_testing = opts.cmake_enable_testing;
+    cmake_cfg.enable_sanitizers = opts.cmake_enable_sanitizers;
+    cmake_cfg.enable_clang_format = true;
+    cmake_cfg.enable_clang_tidy = opts.enable_clang_tidy;
+
+    cmake_cfg.source_files = {"src/main.cpp"};
+    cmake_cfg.include_dirs = {"${CMAKE_CURRENT_SOURCE_DIR}/include"};
+
+    if (auto err = cmake_cfg.validate(); !err.empty()) {
+      result.error_message = "Invalid CMake config: " + err;
+      return result;
+    }
+
+    auto cmake_path = cwd / "CMakeLists.txt";
+    try {
+      auto cmake_content = tooling::generate_cmake_lists(cmake_cfg);
+
+      if (!write_file(cmake_path, cmake_content)) {
+        result.error_message = "Failed to create " + cmake_path.string();
+        return result;
+      }
+    } catch (const std::exception& error_cmake_path) {
+      result.error_message =
+          std::string("Failed to generate CMakeLists.txt ") + error_cmake_path.what();
+      return result;
+    }
+
+    result.cmake_config_path = cmake_path.string();
+  }
+
   result.tooling_config_path = clang_path.string();
 
   result.success = true;

@@ -300,4 +300,41 @@ parallel = true
       project_name, fallback_style);
 }
 
+std::string generate_default_with_cmake(const std::string& project_name,
+                                        const std::string& fallback_style) {
+  return fmt::format(
+      R"([project]
+name = "{}"
+
+[[checks]]
+name = "clang-format"
+command = "clang-format"
+args = ["-i", "--fallback-style={}", "-style=file"]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
+name = "cmake-format"
+command = "cmake-format"
+args = ["-i"]
+patterns = ["CMakeLists.txt", "*.cmake"]
+
+[[checks]]
+name = "trailing-whitespace"
+command = "grep"
+args = ["-E", "--text", "[[:space:]]+$"]
+patterns = ["*"]
+
+[exclude]
+paths = ["build/", "third_party/", ".git/"]
+
+[output]
+local_hook = true
+github_actions = false
+
+[execution]
+parallel = true
+)",
+      project_name, fallback_style);
+}
+
 }  // namespace sniffercommit::project
