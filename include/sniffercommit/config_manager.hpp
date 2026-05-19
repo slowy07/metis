@@ -42,10 +42,10 @@ class ConfigManager {
 
   // INFO: initialize  project configs (`init` command logic)
   [[nodiscard]] static InitResult initialize(const std::filesystem::path& cwd,
-                                              const InitOptions& opts);
+                                             const InitOptions& opts);
   // INFO: install hooks and CI (`install` command logic)
   [[nodiscard]] static InstallResult install(const std::filesystem::path& repo_root,
-                                              const project::ProjectConfig& cfg);
+                                             const project::ProjectConfig& cfg);
   // INFO: load project config with validation
   [[nodiscard]] static project::ProjectConfig load_project(const std::filesystem::path& path);
   // INFO: finding git repository root

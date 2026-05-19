@@ -2,13 +2,13 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <toml++/toml.hpp>
-#include <algorithm>
 #include <utility>
 
 namespace sniffercommit::project {
@@ -52,8 +52,7 @@ std::string ProjectConfig::validate() const noexcept {
 }
 
 bool ProjectConfig::has_command(std::string_view cmd) const noexcept {
-  return std::ranges::any_of(
-      checks, [cmd](const auto& check) { return check.command == cmd; });
+  return std::ranges::any_of(checks, [cmd](const auto& check) { return check.command == cmd; });
 }
 
 bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept {
@@ -90,7 +89,8 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
 
 // INFO: load from TOML files
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-ProjectConfig load(const std::filesystem::path& path) {  // NOLINT(readability-function-cognitive-complexity)
+ProjectConfig load(
+    const std::filesystem::path& path) {  // NOLINT(readability-function-cognitive-complexity)
   if (!std::filesystem::exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
   }
@@ -261,9 +261,10 @@ parallel = true
       project_name, fallback_style);
 }
 
-std::string generate_default_with_tidy(const std::string& project_name,
-                                       const std::string& fallback_style,  // NOLINT(bugprone-easily-swappable-parameters)
-                                       [[maybe_unused]] const std::string& tidy_preset) {
+std::string generate_default_with_tidy(
+    const std::string& project_name,
+    const std::string& fallback_style,  // NOLINT(bugprone-easily-swappable-parameters)
+    [[maybe_unused]] const std::string& tidy_preset) {
   return fmt::format(
       R"([project]
 name = "{}"

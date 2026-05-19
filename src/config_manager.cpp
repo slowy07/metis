@@ -151,7 +151,8 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 std::filesystem::path ConfigManager::find_git_root() {
   std::array<char, 4096> buffer{};
   std::string result;
-  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null", "r"));  // NOLINT(bugprone-command-processor)
+  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null",
+                     "r"));  // NOLINT(bugprone-command-processor)
 
   if (pipe) {
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
@@ -180,16 +181,13 @@ std::filesystem::path ConfigManager::find_git_root() {
       break;
     }
 
-
-
     dir = parent;
   }
 
   throw std::runtime_error("Not inside a Git repository for git not in PATH");
 }
 
-bool ConfigManager::write_file(const std::filesystem::path& path,
-                               const std::string& content) {
+bool ConfigManager::write_file(const std::filesystem::path& path, const std::string& content) {
   std::ofstream out(path, std::ios::trunc);
 
   if (!out) {

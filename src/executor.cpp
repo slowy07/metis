@@ -195,7 +195,7 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
 
     if (opts.verbose) {
       std::cout << fmt::format("[sniffercommit] [INFO] Running: {} on {} file(s)\n", check.name,
-                                matched.size());
+                               matched.size());
     }
 
     std::string cmd = sniffercommit::shell_escape(check.command);
@@ -218,7 +218,8 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
         code = WEXITSTATUS(status);
       } else if (WIFSIGNALED(status)) {
         int sig = WTERMSIG(status);
-        std::cerr << fmt::format("[ERROR] {} killed by signal {} on {}\n", check.name, sig, file_name);
+        std::cerr << fmt::format("[ERROR] {} killed by signal {} on {}\n", check.name, sig,
+                                 file_name);
         code = 128 + sig;
       }
 

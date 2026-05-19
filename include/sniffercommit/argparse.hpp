@@ -28,8 +28,7 @@ struct Option {
 class ArgParser {
  public:
   // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-  ArgParser(std::string_view name, std::string_view desc)
-      : app_name(name), description(desc) {}
+  ArgParser(std::string_view name, std::string_view desc) : app_name(name), description(desc) {}
 
   template <Parsable T>
   ArgParser& add_option(std::string_view short_flag, std::string_view long_flag,
@@ -40,7 +39,11 @@ class ArgParser {
     } else {
       default_str = std::to_string(default_val);
     }
-    options.emplace_back(Option{.short_flag = short_flag, .long_flag = long_flag, .description = desc, .default_value = std::move(default_str), .has_value = true});
+    options.emplace_back(Option{.short_flag = short_flag,
+                                .long_flag = long_flag,
+                                .description = desc,
+                                .default_value = std::move(default_str),
+                                .has_value = true});
     option_stores.emplace_back([&storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
@@ -55,13 +58,18 @@ class ArgParser {
 
   ArgParser& add_flag(std::string_view short_flag, std::string_view long_flag,
                       std::string_view desc, bool& storage) {
-    options.emplace_back(Option{.short_flag = short_flag, .long_flag = long_flag, .description = desc, .default_value = "false", .has_value = false});
+    options.emplace_back(Option{.short_flag = short_flag,
+                                .long_flag = long_flag,
+                                .description = desc,
+                                .default_value = "false",
+                                .has_value = false});
     flag_stores.emplace_back(&storage);
     return *this;
   }
 
   ArgParser& add_subcommand(std::string_view name, std::string_view desc) {
-    subcommands.emplace_back(Subcommand{.name = std::string(name), .description = std::string(desc)});
+    subcommands.emplace_back(
+        Subcommand{.name = std::string(name), .description = std::string(desc)});
     return *this;
   }
 
@@ -80,7 +88,8 @@ class ArgParser {
     args = std::span(argv, argc_sz);
 
     for (size_t i = 1; i < argc_sz; ++i) {
-      std::string_view arg = args[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view arg =
+          args[i];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       if (arg == "--help" || arg == "-h") {
         show_help();
         return false;
@@ -92,7 +101,8 @@ class ArgParser {
     }
 
     if (!subcommands.empty()) {
-      std::string_view first_arg = args[1]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view first_arg =
+          args[1];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       if (!first_arg.starts_with("-")) {
         auto found = std::ranges::find_if(
             subcommands, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
@@ -108,7 +118,8 @@ class ArgParser {
     }
 
     for (size_t i = 0; i < args.size(); ++i) {
-      std::string_view arg = args[i]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view arg =
+          args[i];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
       if (!arg.starts_with('-')) {
         continue;
       }
@@ -131,15 +142,20 @@ class ArgParser {
           std::cerr << "[ERROR] Option " << arg << " requires value\n";
           return false;
         }
-        std::string value = std::string(args[++i]); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        std::string value = std::string(
+            args[++i]);  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
         if (opt_idx < option_stores.size()) {
-          option_stores[opt_idx](value); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          option_stores[opt_idx](
+              value);  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
       } else {
         auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
-        if (opt_idx < flag_stores.size() && flag_stores[opt_idx] != nullptr) { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-          *flag_stores[opt_idx] = true; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        if (opt_idx < flag_stores.size() &&
+            flag_stores[opt_idx] !=
+                nullptr) {  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          *flag_stores[opt_idx] =
+              true;  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
       }
     }

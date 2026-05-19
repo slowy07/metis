@@ -7,7 +7,15 @@
 
 namespace sniffercommit::tooling {
 
-enum class FormatterStyle : std::uint8_t { Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU };
+enum class FormatterStyle : std::uint8_t {
+  Google,
+  LLVM,
+  Chromium,
+  Mozilla,
+  WebKit,
+  Microsoft,
+  GNU
+};
 
 struct ClangFormatConfig {
   FormatterStyle style = FormatterStyle::Google;
