@@ -154,8 +154,9 @@ class ArgParser {
         if (opt_idx < flag_stores.size() &&
             flag_stores[opt_idx] !=
                 nullptr) {  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-          *flag_stores[opt_idx] =
-              true;  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          *flag_stores[opt_idx] = true;
+          // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
         }
       }
     }

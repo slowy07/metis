@@ -476,8 +476,8 @@ std::string generate_cmake_lists(const CMakeConfig& cfg) {
     cmake += "file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS \"src/*.cpp\" \"src/*.cc\")\n";
   } else {
     cmake += "set(SOURCES\n";
-    for (const auto& f : cfg.source_files) {
-      cmake += fmt::format("  {}\n", f);
+    for (const auto& file : cfg.source_files) {
+      cmake += fmt::format("  {}\n", file);
     }
     cmake += ")\n";
   }
@@ -485,8 +485,8 @@ std::string generate_cmake_lists(const CMakeConfig& cfg) {
 
   if (!cfg.header_files.empty()) {
     cmake += "set(HEADERS\n";
-    for (const auto& f : cfg.header_files) {
-      cmake += fmt::format("  {}\n", f);
+    for (const auto& file : cfg.header_files) {
+      cmake += fmt::format("  {}\n", file);
     }
     cmake += ")\n\n";
   }

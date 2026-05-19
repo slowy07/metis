@@ -157,8 +157,8 @@ void print_init_summary(const sniffercommit::ConfigManager::InitOptions& opts,
 sniffercommit::tooling::CppStandard parse_cpp_standard(const std::string& cpp_standard) {
   std::string lower;
 
-  for (char c : cpp_standard) {
-    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (char chr : cpp_standard) {
+    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(chr)));
   }
   if (lower == "17" || lower == "c++17") {
     return sniffercommit::tooling::CppStandard::Cpp17;
@@ -176,8 +176,8 @@ sniffercommit::tooling::CppStandard parse_cpp_standard(const std::string& cpp_st
 sniffercommit::tooling::TargetType parse_target_type(const std::string& type) {
   std::string lower;
 
-  for (char c : type) {
-    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  for (char chr : type) {
+    lower += static_cast<char>(std::tolower(static_cast<unsigned char>(chr)));
   }
 
   if (lower == "executable" || lower == "exe") {

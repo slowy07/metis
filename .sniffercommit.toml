@@ -8,6 +8,12 @@ args = ["-i", "--fallback-style=Google", "-style=file"]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]
+name = "clang-tidy"
+command = "clang-tidy"
+args = ["--config-file=.clang-tidy", "--quiet"]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
 name = "trailing-whitespace"
 command = "grep"
 args = ["-E", "--text", "[[:space:]]+$"]
