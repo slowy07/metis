@@ -304,6 +304,7 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
 
         if (arg == "--enable-cmake" || arg == "--cmake") {
           opts.enable_cmake = true;
+          opts.generate_source = true;
         }
 
         if (arg == "--cmake-cpp-standard") {
@@ -344,6 +345,10 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
         if (arg == "--cmake-enable-sanitizers") {
           opts.cmake_enable_sanitizers = true;
         }
+
+        if (arg == "--generate-src") {
+          opts.generate_source = true;
+        }
       }
 
       auto result = ConfigManager::initialize(std::filesystem::current_path(), opts);
@@ -360,6 +365,10 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
 
       if (opts.enable_clang_tidy) {
         std::cout << " .clang-tidy (preset: " << tooling::preset_name(opts.tidy_preset) << ")\n";
+      }
+
+      if (opts.generate_source && !result.src_path.empty()) {
+        std::cout << " " << result.src_path << "\n";
       }
 
       if (opts.enable_cmake) {

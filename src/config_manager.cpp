@@ -9,6 +9,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #include "sniffercommit/cicd_domain.hpp"
 #include "sniffercommit/precommit_domain.hpp"
@@ -100,6 +101,35 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
           std::string("Failed to generate .clang-tidy: ") + error_tidy_path.what();
       return result;
     }
+  }
+
+  if (opts.generate_source) {
+    auto src_dir = cwd / "src";
+
+    try {
+      if (!std::filesystem::exists(src_dir)) {
+        std::filesystem::create_directories(src_dir);
+      }
+    } catch (const std::exception& error_src_dir) {
+      result.error_message =
+          std::string("Failed to create src/ directory: ") + error_src_dir.what();
+      return result;
+    }
+
+    auto main_cpp_path = src_dir / "main.cpp";
+    constexpr std::string_view main_cpp_content = R"(#include <iostream>
+
+int main() {
+  std::cout << "sniffercommit says wello" << std::endl;
+  return 0;
+}
+)";
+
+    if (!write_file(main_cpp_path, std::string(main_cpp_content))) {
+      result.error_message = "Failed to create " + main_cpp_path.string();
+      return result;
+    }
+    result.src_path = main_cpp_path.string();
   }
 
   // generate CMakeLists.txt
