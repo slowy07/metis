@@ -371,7 +371,6 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
   }
 
   std::cout << "\n";
-  std::cout << opts.indent_width << "\n";
 }
 
 // NOTE: CLI flag information parsing
