@@ -20,7 +20,7 @@ enum class FormatterStyle : std::uint8_t {
 
 struct ClangFormatConfig {
   FormatterStyle style = FormatterStyle::Google;
-  int ident_width = 2;
+  int indent_width = 2;
   int column_limit = 100;
   std::string pointer_alignment = "Left";
   std::string break_before_braces = "Attach";

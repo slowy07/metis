@@ -38,7 +38,7 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
 
   tooling::ClangFormatConfig clang_cfg;
   clang_cfg.style = opts.style;
-  clang_cfg.ident_width = opts.indent_width;
+  clang_cfg.indent_width = opts.indent_width;
   clang_cfg.column_limit = opts.column_limit;
   clang_cfg.pointer_alignment = opts.pointer_alignment;
   clang_cfg.break_before_braces = opts.brace_style;

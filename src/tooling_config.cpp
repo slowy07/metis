@@ -9,7 +9,7 @@
 namespace sniffercommit::tooling {
 
 std::string ClangFormatConfig::validate() const noexcept {
-  if (ident_width < 1 || ident_width > 16) {
+  if (indent_width < 1 || indent_width > 16) {
     return "IndentWidth must be between 1 and 16";
   }
 
@@ -97,7 +97,7 @@ AlignConsecutiveAssignments: {}
 
 ...
 )",
-      style_name(cfg.style), cfg.ident_width, cfg.column_limit, cfg.pointer_alignment,
+      style_name(cfg.style), cfg.indent_width, cfg.column_limit, cfg.pointer_alignment,
       cfg.break_before_braces, cfg.standard, bool_str(cfg.sort_includes),
       bool_str(cfg.reflow_comments), bool_str(cfg.align_consecutive_assignments));
 }
