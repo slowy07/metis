@@ -1,0 +1,33 @@
+name: linux
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: install podman
+        run: |
+          sudo apt update
+          sudo apt install -y podman
+
+      - name: build all
+        run: |
+          chmod +x docker/scripts/*.sh
+          ./docker/scripts/build-all.sh
+
+      - name: extract artifacts
+        run: |
+          ./docker/scripts/extract-all.sh
+
+      - name: test-up-data
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: artifacts/*
+          
