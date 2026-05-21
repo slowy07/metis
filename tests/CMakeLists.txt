@@ -17,7 +17,9 @@ FetchContent_MakeAvailable(googletest)
 
 # Collect all test source files
 set(TEST_SOURCES
-    test_tooling_config.cpp
+  test_config_manager.cpp
+  test_precommit_domain.cpp
+  test_tooling_config.cpp
 )
 
 add_executable(sniffercommit_tests ${TEST_SOURCES})
