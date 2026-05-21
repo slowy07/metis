@@ -10,10 +10,12 @@ targets=(
 )
 
 for target in "${targets[@]}"; do
-  echo "build $target"
+  echo "BUILDING: $target"
 
   podman build \
     -f docker/$target/Dockerfile \
     -t sniffercommit-$target \
     .
+
+  echo
 done

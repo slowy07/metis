@@ -11,7 +11,9 @@ RUN dnf install -y \
     gcc-c++ \
     git \
     rpm-build \
-    fmt-devel
+    file \
+    fmt-devel && \
+    dnf clean all
 
 WORKDIR /build
 
@@ -26,3 +28,8 @@ RUN cmake -B build \
 RUN cmake --build build --parallel
 
 RUN cpack -G RPM --config build/CPackConfig.cmake
+
+RUN mkdir -p /artifacts && \
+    cp build/*.rpm /artifacts/
+
+CMD ["bash"]

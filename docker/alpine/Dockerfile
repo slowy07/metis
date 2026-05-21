@@ -23,3 +23,8 @@ RUN cmake -B build \
     -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF
 
 RUN cmake --build build --parallel
+
+RUN mkdir -p /artifacts && \
+    cp build/bin/sniffercommit /artifacts/
+
+CMD ["sh"]

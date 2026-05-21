@@ -15,7 +15,9 @@ RUN apt update && apt install -y \
     dpkg-dev \
     fakeroot \
     file \
-    libfmt-dev
+    libfmt-dev \
+ && apt clean \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
@@ -30,3 +32,8 @@ RUN cmake -B build \
 RUN cmake --build build --parallel
 
 RUN cpack -G DEB --config build/CPackConfig.cmake
+
+RUN mkdir -p /artifacts && \
+    cp build/*.deb /artifacts/
+
+CMD ["bash"]

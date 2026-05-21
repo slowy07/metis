@@ -1,5 +1,8 @@
 FROM archlinux:latest
 
+ENV CC=clang
+ENV CXX=clang++
+
 RUN pacman -Syu --noconfirm && \
     pacman -S --noconfirm \
         base-devel \
@@ -9,7 +12,6 @@ RUN pacman -Syu --noconfirm && \
         clang \
         lld \
         fmt \
-        tomlplusplus \
         sudo
 
 RUN useradd -m builder && \
@@ -24,3 +26,8 @@ COPY --chown=builder:builder . .
 WORKDIR /home/builder/project/packaging/aur
 
 RUN makepkg -sf --noconfirm
+
+RUN mkdir -p /home/builder/artifacts && \
+    cp *.pkg.tar.zst /home/builder/artifacts/
+
+CMD ["bash"]

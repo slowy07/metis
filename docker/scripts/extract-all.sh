@@ -8,19 +8,25 @@ extract() {
   local image="$1"
   local src="$2"
 
+  echo "extracting from $image"
+
   local cid
   cid=$(podman create "$image")
 
   podman cp "$cid:$src" artifacts/
 
   podman rm "$cid"
+  echo
 }
 
 extract sniffercommit-ubuntu \
-  /build/*.deb
+  /artifacts
 
 extract sniffercommit-fedora \
-  /build/*.rpm
+  /artifacts
 
 extract sniffercommit-archlinux \
-  /home/builder/project/packaging/aur/*.pkg.tar.zst
+  /home/builder/artifacts
+
+extract sniffercommit-alpine \
+  /artifacts
