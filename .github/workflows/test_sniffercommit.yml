@@ -2,13 +2,9 @@ name: Unit Tests
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [ main, develop ]
 
 jobs:
   test:
@@ -35,6 +31,8 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DSNIFFERCOMMIT_BUILD_TESTS=ON \
+            -DSNIFFERCOMMIT_USE_SYSTEM_FMT=OFF \
+            -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF \
             -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
 
       - name: Build tests
