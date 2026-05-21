@@ -9,7 +9,7 @@ targets=(
   alpine
 )
 
-for target in "${targets[0]}"; do
+for target in "${targets[@]}"; do
   echo "build $target"
 
   podman build \

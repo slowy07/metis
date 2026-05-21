@@ -25,10 +25,11 @@ source=()
 
 sha256sums=()
 
-build() {
-  cd "$srcdir/../.."
+_repo_root="/home/builder/project"
 
+build() {
   cmake -B build \
+    -S "$_repo_root" \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DSNIFFERCOMMIT_USE_SYSTEM_DEPS=ON
@@ -37,7 +38,5 @@ build() {
 }
 
 package() {
-  cd "$srcdir/../.."
-
   DESTDIR="$pkgdir" cmake --install build
 }
