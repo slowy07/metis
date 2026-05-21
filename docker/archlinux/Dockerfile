@@ -9,8 +9,10 @@ RUN pacman -Syu --noconfirm && \
       clang \
       lld \
       fmt \
+      sudo
 
-RUN useradd -m builder
+RUN useradd -m builder && \
+    echo "builder ALL=(ALL) NOPASSWRD: ALL" >> /etc/sudoers
 
 USER builder
 WORKDIR /home/builder/build
