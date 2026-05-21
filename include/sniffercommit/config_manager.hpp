@@ -32,6 +32,8 @@ class ConfigManager {
     bool cmake_enable_warnings = true;
     bool cmake_enable_testing = false;
     bool cmake_enable_sanitizers = false;
+
+    std::vector<tooling::Depedency> depdencies;
   };
 
   struct InitResult {
@@ -61,8 +63,7 @@ class ConfigManager {
   [[nodiscard]] static project::ProjectConfig load_project(const std::filesystem::path& path);
   // INFO: finding git repository root
   [[nodiscard]] static std::filesystem::path find_git_root();
-
- private:
+  // INFO: exposing for depedency validation in main.cpp
   [[nodiscard]] static bool write_file(const std::filesystem::path& path,
                                        const std::string& content);
 };

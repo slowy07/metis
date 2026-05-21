@@ -2,8 +2,8 @@
 #define SNIFFERCOMMIT_TOOLING_CONFIG_HPP
 
 #include <cstdint>
-#include <random>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace sniffercommit::tooling {
@@ -100,6 +100,15 @@ enum class TargetType : std::uint8_t {
   HeaderOnly,
 };
 
+struct Depedency {
+  std::string name;
+  std::string git_url;
+  std::string git_tag;
+
+  [[nodiscard]] std::string validate() const noexcept;
+  [[nodiscard]] bool is_valid_url() const noexcept;
+};
+
 struct CMakeConfig {
   std::string project_name = "my-project";
   std::string version = "0.2.1";
@@ -122,7 +131,7 @@ struct CMakeConfig {
   std::vector<std::string> include_dirs;
 
   DepedencyStrategy dep_strategy = DepedencyStrategy::FetchContent;
-  std::vector<std::string> depedencies;
+  std::vector<Depedency> depedencies;
 
   // compiler warnings
   bool enable_warnings = true;
@@ -140,6 +149,9 @@ struct CMakeConfig {
 [[nodiscard]] std::string build_preset_name(BuildTypePreset preset);
 [[nodiscard]] std::string depedency_strategy_name(DepedencyStrategy strategy);
 [[nodiscard]] std::string target_type_name(TargetType type);
+
+// depedency valid check
+[[nodiscard]] bool is_valid_git_url(std::string_view url) noexcept;
 
 // CMakeLists.txt generate
 [[nodiscard]] std::string generate_cmake_lists(const CMakeConfig& cfg);
