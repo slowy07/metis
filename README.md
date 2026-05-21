@@ -1,6 +1,9 @@
 [![AUR Version](https://img.shields.io/aur/version/sniffercommit?style=flat-square)](https://aur.archlinux.org/packages/sniffercommit)
 [![GitHub Release](https://img.shields.io/github/v/release/slowy07/sniffercommit?display_name=tag&style=flat-square)](https://github.com/slowy07/sniffercommit/releases)
 
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/sniffercommit/test_sniffercommit.yml?branch=develop&style=flat-square&label=GoogleTest)
+](https://github.com/slowy07/sniffercommit/actions)
+
 Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies — a single static binary that replaces Python- and Node-based pre-commit frameworks.
 
 ## Features
