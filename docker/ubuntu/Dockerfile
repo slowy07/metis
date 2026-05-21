@@ -14,6 +14,7 @@ RUN apt update && apt install -y \
     pkg-config \
     dpkg-dev \
     fakeroot \
+    file \
     libfmt-dev
 
 WORKDIR /build
