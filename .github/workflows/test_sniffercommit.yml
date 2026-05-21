@@ -1,0 +1,52 @@
+name: Unit Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    name: Run GoogleTest suite
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies (Ubuntu)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git bash
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DSNIFFERCOMMIT_BUILD_TESTS=ON \
+            -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
+
+      - name: Build tests
+        run: cmake --build build --parallel
+
+      - name: Run CTest
+        working-directory: build
+        run: ctest --output-on-failure -C ${{ matrix.build_type }}
+
+      - name: Upload test logs (on failure)
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-logs-${{ matrix.build_type }}
+          path: build/Testing/Temporary/

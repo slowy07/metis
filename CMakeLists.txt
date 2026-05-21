@@ -7,6 +7,7 @@ project(sniffercommit
   HOMEPAGE_URL "https://github.com/slowy07/sniffercommit"
 )
 
+# Build environment setup
 # Enforce out-of-source builds
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR
@@ -16,12 +17,13 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   )
 endif()
 
+# Set a default build type if none provided
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
   message(STATUS "Default to Release build type")
 endif()
 
-# Global config
+# Global CMake settings
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -29,41 +31,43 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# Cache options (consistent naming)
+# User options
 option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
 option(SNIFFERCOMMIT_ENABLE_STATIC_LINK "Link statically for portable binary (Unix only)" OFF)
 option(SNIFFERCOMMIT_VERBOSE_CONFIG "Print detailed configuration summary" ON)
+option(SNIFFERCOMMIT_BUILD_TESTS "Build unit tests" ON)
+option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" ON)
+option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" OFF)
 
 # Platform detection
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(SNIFFERCOMMIT_PLATFORM "linux")
-  if(DEFINED ENV{WLS_DISTRO_NAME})
+  if(DEFINED ENV{WSL_DISTRO_NAME})
     set(SNIFFERCOMMIT_PLATFORM "wsl")
   endif()
-
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(SNIFFERCOMMIT_PLATFORM "macos")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(SNIFFERCOMMIT_PLATFORM "windows")
 else()
   message(WARNING "Unknown platform: ${CMAKE_SYSTEM_NAME}")
-  set(SNIFFERCOMMIT_PLATFORM "Unknown")
+  set(SNIFFERCOMMIT_PLATFORM "unknown")
 endif()
 
 # Compiler detection
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(SNIFFERCOMMIT_COMPILER "gcc-${CMAKE_CXX_COMPILER_VERSION}" CACHE INTERNAL "Compiler")
+  set(SNIFFERCOMMIT_COMPILER "gcc-${CMAKE_CXX_COMPILER_VERSION}")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(SNIFFERCOMMIT_COMPILER "clang-${CMAKE_CXX_COMPILER_VERSION}" CACHE INTERNAL "Compiler")
+  set(SNIFFERCOMMIT_COMPILER "clang-${CMAKE_CXX_COMPILER_VERSION}")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(SNIFFERCOMMIT_COMPILER "msvc-${CMAKE_CXX_COMPILER_VERSION}" CACHE INTERNAL "Compiler")
+  set(SNIFFERCOMMIT_COMPILER "msvc-${CMAKE_CXX_COMPILER_VERSION}")
 else()
-  set(SNIFFERCOMMIT_COMPILER "unknown" CACHE INTERNAL "Compiler")
+  set(SNIFFERCOMMIT_COMPILER "unknown")
 endif()
 
-# Build metadata
-set(SNIFFERCOMMIT_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
-set(SNIFFERCOMMIT_BUILD_TIMESTAMP "$<IF:$<BOOL:${SOURCE_DATE_EPOCH}>,${SOURCE_DATE_EPOCH},$<SHELL_EXPR:date -u +%Y-%m-%dT%H:%M:%SZ>>")
+# Build metadata (git commit, timestamp)
+# Use UTC timestamp without shell expressions for portability
+string(TIMESTAMP SNIFFERCOMMIT_BUILD_TIMESTAMP "%Y-%m-%dT%H:%M:%SZ" UTC)
 
 execute_process(
   COMMAND git rev-parse --short HEAD
@@ -82,20 +86,9 @@ configure_file(
   @ONLY
 )
 
-# Dependencies
-option(SNIFFERCOMMIT_USE_SYSTEM_FMT
-  "Use system-installed fmt"
-  ON
-)
-
-option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS
-  "Use system-installed tomlplusplus"
-  OFF
-)
-
+# Dependencies: fmt and tomlplusplus
 include(FetchContent)
 
-# fmt
 if(SNIFFERCOMMIT_USE_SYSTEM_FMT)
   find_package(fmt REQUIRED)
 else()
@@ -104,11 +97,11 @@ else()
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
     GIT_TAG        11.0.2
     GIT_SHALLOW    ON
+    EXCLUDE_FROM_ALL
   )
   FetchContent_MakeAvailable(fmt)
 endif()
 
-# tomlplusplus
 if(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS)
   find_package(tomlplusplus REQUIRED)
 else()
@@ -117,25 +110,68 @@ else()
     GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
     GIT_TAG        v3.4.0
     GIT_SHALLOW    ON
+    EXCLUDE_FROM_ALL
   )
   FetchContent_MakeAvailable(tomlplusplus)
 endif()
 
-# Target definition
-add_executable(sniffercommit
-  src/main.cpp
-  src/project_config.cpp
-  src/tooling_config.cpp
-  src/precommit_domain.cpp
+# Library target (core logic)
+set(SNIFFERCOMMIT_SOURCES
   src/cicd_domain.cpp
   src/config_manager.cpp
   src/executor.cpp
+  src/precommit_domain.cpp
+  src/project_config.cpp
+  src/tooling_config.cpp
 )
+
+set(SNIFFERCOMMIT_HEADERS
+  include/sniffercommit/argparse.hpp
+  include/sniffercommit/cicd_domain.hpp
+  include/sniffercommit/config_manager.hpp
+  include/sniffercommit/executor.hpp
+  include/sniffercommit/precommit_domain.hpp
+  include/sniffercommit/project_config.hpp
+  include/sniffercommit/tooling_config.hpp
+)
+
+add_library(sniffercommit_lib STATIC ${SNIFFERCOMMIT_SOURCES})
+
+target_include_directories(sniffercommit_lib
+  PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}/generated
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_compile_features(sniffercommit_lib PUBLIC cxx_std_20)
+
+target_compile_definitions(sniffercommit_lib
+  PRIVATE
+    SNIFFERCOMMIT_VERSION="${PROJECT_VERSION}"
+    SNIFFERCOMMIT_PLATFORM="${SNIFFERCOMMIT_PLATFORM}"
+    SNIFFERCOMMIT_COMPILER="${SNIFFERCOMMIT_COMPILER}"
+    $<$<CONFIG:Debug>:SNIFFERCOMMIT_DEBUG>
+    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},wsl>:SNIFFERCOMMIT_PLATFORM_WSL>
+    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},macos>:SNIFFERCOMMIT_PLATFORM_MACOS>
+    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},windows>:SNIFFERCOMMIT_PLATFORM_WINDOWS>
+)
+
+target_link_libraries(sniffercommit_lib
+  PRIVATE
+    tomlplusplus::tomlplusplus
+    fmt::fmt
+)
+
+# Executable target (CLI frontend)
+add_executable(sniffercommit src/main.cpp)
+target_link_libraries(sniffercommit PRIVATE sniffercommit_lib)
 
 target_include_directories(sniffercommit
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_BINARY_DIR}/generated
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
@@ -144,7 +180,6 @@ target_include_directories(sniffercommit
 
 target_compile_features(sniffercommit PUBLIC cxx_std_20)
 
-# FIXED: Use target_compile_definitions for compile-time macros
 target_compile_definitions(sniffercommit
   PRIVATE
     SNIFFERCOMMIT_VERSION="${PROJECT_VERSION}"
@@ -153,57 +188,60 @@ target_compile_definitions(sniffercommit
     $<$<CONFIG:Debug>:SNIFFERCOMMIT_DEBUG>
 )
 
-# Link libraries (only actual libraries here)
-target_link_libraries(sniffercommit
-  PRIVATE
-    tomlplusplus::tomlplusplus
-    fmt::fmt
-)
-
-# Compiler warnings & hardening
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-  target_compile_options(sniffercommit PRIVATE
-    -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-    -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align
-    -Wunused -Woverloaded-virtual -Wnull-dereference
-    $<$<CONFIG:Debug>:-O0 -g3>
-    $<$<CONFIG:Release>:-O3 -DNDEBUG>
-  )
-
-  if(NOT WIN32)
-    target_link_options(sniffercommit PRIVATE
-      -Wl,-z,relro,-z,now
-      $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,-z,noexecstack>
+# Compiler warnings & hardening (applied to both library and executable)
+function(apply_warnings_and_hardening TARGET)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(${TARGET} PRIVATE
+      -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+      -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align
+      -Wunused -Woverloaded-virtual -Wnull-dereference
+      $<$<CONFIG:Debug>:-O0 -g3>
+      $<$<CONFIG:Release>:-O3 -DNDEBUG>
     )
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      target_compile_options(sniffercommit PRIVATE -fstack-protector-strong)
+
+    if(NOT WIN32)
+      target_link_options(${TARGET} PRIVATE
+        -Wl,-z,relro,-z,now
+        $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,-z,noexecstack>
+      )
+      if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${TARGET} PRIVATE -fstack-protector-strong)
+      endif()
     endif()
+
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(${TARGET} PRIVATE /W4 /permissive- /sdl)
+    target_link_options(${TARGET} PRIVATE /DYNAMICBASE /NXCOMPAT)
   endif()
+endfunction()
 
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  target_compile_options(sniffercommit PRIVATE /W4 /permissive- /sdl)
-  target_link_options(sniffercommit PRIVATE /DYNAMICBASE /NXCOMPAT)
-endif()
+apply_warnings_and_hardening(sniffercommit)
+apply_warnings_and_hardening(sniffercommit_lib)
 
-# Sanitizers (Debug only)
+# Sanitizers (Debug only, applied to both library and executable)
 if(SNIFFERCOMMIT_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(STATUS "Enabling AddressSanitizer + UndefinedBehaviorSanitizer")
-    target_compile_options(sniffercommit PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-    target_link_options(sniffercommit PRIVATE -fsanitize=address,undefined)
+    foreach(target IN ITEMS sniffercommit sniffercommit_lib)
+      target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+      target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+    endforeach()
   endif()
 endif()
 
-# Static linking (FIXED: option name consistency)
+# Static linking (Unix only, for the final executable)
 if(SNIFFERCOMMIT_ENABLE_STATIC_LINK AND NOT WIN32)
   message(STATUS "📦 Enabling static linking for portable binary")
-  set_target_properties(sniffercommit PROPERTIES
-    LINK_SEARCH_START_STATIC ON
-    LINK_SEARCH_END_STATIC ON
-  )
+  target_link_options(sniffercommit PRIVATE -static)
 endif()
 
-# Install & CPack
+# Unit tests (Google Test)
+if(SNIFFERCOMMIT_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
+
+# Installation and CPack
 include(GNUInstallDirs)
 
 install(TARGETS sniffercommit RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -213,9 +251,10 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/sniffercommit/
   FILES_MATCHING PATTERN "*.hpp"
 )
 
+install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/sniffercommit)
 
-
-# CPack / for debian packages to
+# CPack configuration
 set(CPACK_PACKAGE_NAME "sniffercommit")
 set(CPACK_PACKAGE_VENDOR "slowy07")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
@@ -223,7 +262,7 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_PACKAGE_CONTACT "slowy07")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 
-# architecture detection
+# Architecture detection for packages
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
   set(SNIFFERCOMMIT_ARCH "amd64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
@@ -234,52 +273,34 @@ else()
   set(SNIFFERCOMMIT_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
-# linux package
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CPACK_GENERATOR "DEB")
-
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER "slowy07")
   set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
   set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
   set(CPACK_DEBIAN_PACKAGE_DEPENDS "git, bash")
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
   set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "${SNIFFERCOMMIT_ARCH}")
-endif()
-
-# macos
-if(APPLE)
+elseif(APPLE)
   set(CPACK_GENERATOR "TGZ")
-
-  set(CMAKE_OSX_ARCHITECTURES
-      "x86_64;arm64"
-      CACHE STRING "" FORCE)
+  if(NOT CMAKE_OSX_ARCHITECTURES)
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "" FORCE)
+  endif()
 endif()
 
 include(CPack)
 
-install(
-  FILES
-    README.md
-  DESTINATION
-    ${CMAKE_INSTALL_DOCDIR}
-)
-
-install(
-  FILES LICENSE
-  DESTINATION
-    ${CMAKE_INSTALL_DATADIR}/licenses/sniffercommit
-)
-
-# Verbose config summary
+# Verbose configuration summary
 if(SNIFFERCOMMIT_VERBOSE_CONFIG)
   message(STATUS "\n"
-    "  sniffercommit v${PROJECT_VERSION} - Config\n"
-    "  Platform   : ${SNIFFERCOMMIT_PLATFORM}\n"
-    "  Compiler   : ${SNIFFERCOMMIT_COMPILER}\n"
-    "  Build Type : ${CMAKE_BUILD_TYPE}\n"
-    "  Git Commit : ${SNIFFERCOMMIT_GIT_COMMIT}\n"
-    "  Sanitizers : ${SNIFFERCOMMIT_ENABLE_SANITIZERS}\n"
-    "  Static     : ${SNIFFERCOMMIT_ENABLE_STATIC_LINK}\n"
+    "  sniffercommit v${PROJECT_VERSION} - Configuration\n"
+    "  Platform    : ${SNIFFERCOMMIT_PLATFORM}\n"
+    "  Compiler    : ${SNIFFERCOMMIT_COMPILER}\n"
+    "  Build type  : ${CMAKE_BUILD_TYPE}\n"
+    "  Git commit  : ${SNIFFERCOMMIT_GIT_COMMIT}\n"
+    "  Sanitizers  : ${SNIFFERCOMMIT_ENABLE_SANITIZERS}\n"
+    "  Static link : ${SNIFFERCOMMIT_ENABLE_STATIC_LINK}\n"
+    "  Tests       : ${SNIFFERCOMMIT_BUILD_TESTS}\n"
+    "  Install prefix: ${CMAKE_INSTALL_PREFIX}\n"
   )
 endif()
-
