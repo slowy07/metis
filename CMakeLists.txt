@@ -33,8 +33,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
 option(SNIFFERCOMMIT_ENABLE_STATIC_LINK "Link statically for portable binary (Unix only)" OFF)
 option(SNIFFERCOMMIT_VERBOSE_CONFIG "Print detailed configuration summary" ON)
-option(SNIFFERCOMMIT_USE_SYSTEM_FMT "use system-installed fmt" ON)
-option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" ON)
 
 # Platform detection
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")

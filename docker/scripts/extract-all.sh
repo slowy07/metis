@@ -6,17 +6,15 @@ mkdir -p artifacts
 
 extract() {
   local image="$1"
-  local pattern="$2"
+  local src="$2"
 
+  local cid
   cid=$(podman create "$image")
-  
-  podman cp "$cid":"$pattern" artifacts/ || true
+
+  podman cp "$cid:$src" artifacts/
 
   podman rm "$cid"
 }
-
-extract sniffercommit-archlinux \
-  /home/builder/build/*.pkg.tar.zst
 
 extract sniffercommit-ubuntu \
   /build/*.deb
@@ -24,5 +22,5 @@ extract sniffercommit-ubuntu \
 extract sniffercommit-fedora \
   /build/*.rpm
 
-extract sniffercommit-alpine \
-  /build/build/sniffercommit
+extract sniffercommit-archlinux \
+  /home/builder/project/packaging/aur/*.pkg.tar.zst

@@ -14,8 +14,7 @@ RUN apt update && apt install -y \
     pkg-config \
     dpkg-dev \
     fakeroot \
-    libfmt-dev \
-    tomlplusplus-dev
+    libfmt-dev
 
 WORKDIR /build
 
@@ -24,7 +23,8 @@ COPY . .
 RUN cmake -B build \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DSNIFFERCOMMIT_USE_SYSTEM_DEPS=ON
+    -DSNIFFERCOMMIT_USE_SYSTEM_FMT=ON \
+    -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF
 
 RUN cmake --build build --parallel
 

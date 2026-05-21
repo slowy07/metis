@@ -1,18 +1,25 @@
-FROM alpine:3.22
+FROM alpine:3.21
+
+ENV CC=clang
+ENV CXX=clang++
 
 RUN apk add --no-cache \
     build-base \
-    clang \
-    lld \
     cmake \
     ninja \
-    git 
+    clang \
+    lld \
+    git \
+    fmt-dev
 
 WORKDIR /build
 
 COPY . .
 
-RUN cmake -B build -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release
-    
-RUN cmake --build build
+RUN cmake -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DSNIFFERCOMMIT_USE_SYSTEM_FMT=ON \
+    -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF
+
+RUN cmake --build build --parallel
