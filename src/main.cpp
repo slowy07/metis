@@ -10,7 +10,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "fmt/format.h"
+#include <fmt/format.h>
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/cicd_domain.hpp"
 #include "sniffercommit/config_manager.hpp"

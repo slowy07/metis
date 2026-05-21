@@ -167,7 +167,12 @@ target_link_libraries(sniffercommit_lib
 
 # Executable target (CLI frontend)
 add_executable(sniffercommit src/main.cpp)
-target_link_libraries(sniffercommit PRIVATE sniffercommit_lib)
+target_link_libraries(sniffercommit 
+  PRIVATE 
+    sniffercommit_lib 
+    tomlplusplus::tomlplusplus 
+    fmt::fmt
+)
 
 target_include_directories(sniffercommit
   PRIVATE
