@@ -34,6 +34,6 @@ RUN cmake --build build --parallel
 RUN cpack -G DEB --config build/CPackConfig.cmake
 
 RUN mkdir -p /artifacts && \
-    cp build/*.deb /artifacts/
+    cp /build/*.deb /artifacts/
 
 CMD ["bash"]
