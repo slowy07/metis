@@ -27,9 +27,10 @@ RUN cmake -B build \
 
 RUN cmake --build build --parallel
 
-RUN cpack -G RPM --config build/CPackConfig.cmake
-
 RUN mkdir -p /artifacts && \
-    cp build/*.rpm /artifacts/
+    cpack \
+      -G RPM \
+      --config build/CPackConfig.cmake \
+      -B /artifacts
 
 CMD ["bash"]

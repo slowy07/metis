@@ -16,17 +16,11 @@ extract() {
   podman cp "$cid:$src" artifacts/
 
   podman rm "$cid"
+
   echo
 }
 
-extract sniffercommit-ubuntu \
-  /artifacts
-
-extract sniffercommit-fedora \
-  /artifacts
-
-extract sniffercommit-archlinux \
-  /home/builder/artifacts
-
-extract sniffercommit-alpine \
-  /artifacts
+extract sniffercommit-ubuntu /artifacts
+extract sniffercommit-fedora /artifacts
+extract sniffercommit-archlinux /home/builder/artifacts
+extract sniffercommit-alpine /artifacts
