@@ -27,27 +27,21 @@ struct PipeDeleter {
 };
 using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
 
-ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path& cwd,
-                                                    const InitOptions& opts) {
-  InitResult result;
-
-  std::string project_name = opts.project_name;
-  if (project_name.empty()) {
-    project_name = cwd.filename().string();
-  }
-
+namespace {
+[[nodiscard]] tooling::ClangFormatConfig make_clang_format(const ConfigManager::InitOptions& opts) {
   tooling::ClangFormatConfig clang_cfg;
   clang_cfg.style = opts.style;
   clang_cfg.indent_width = opts.indent_width;
   clang_cfg.column_limit = opts.column_limit;
   clang_cfg.pointer_alignment = opts.pointer_alignment;
   clang_cfg.break_before_braces = opts.brace_style;
+  return clang_cfg;
+}
 
-  if (auto err = clang_cfg.validate(); !err.empty()) {
-    result.error_message = "Invalid clang-format config: " + err;
-    return result;
-  }
-
+[[nodiscard]] ConfigManager::InitResult write_project_config(
+    const std::filesystem::path& cwd, const std::string& project_name,
+    const ConfigManager::InitOptions& opts) {
+  ConfigManager::InitResult result;
   auto config_path = cwd / ".sniffercommit.toml";
   std::string config_content;
 
@@ -58,17 +52,24 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
     config_content = project::generate_default(project_name, tooling::style_name(opts.style));
   }
 
-  if (!write_file(config_path, config_content)) {
+  if (!ConfigManager::write_file(config_path, config_content)) {
     result.error_message = "Failed to create " + config_path.string();
     return result;
   }
 
   result.project_config_path = config_path.string();
+  result.success = true;
+  return result;
+}
 
+[[nodiscard]] ConfigManager::InitResult write_clang_format(
+    const std::filesystem::path& cwd, const tooling::ClangFormatConfig& clang_cfg) {
+  ConfigManager::InitResult result;
   auto clang_path = cwd / ".clang-format";
+
   try {
     auto clang_content = tooling::generate_clang_format(clang_cfg);
-    if (!write_file(clang_path, clang_content)) {
+    if (!ConfigManager::write_file(clang_path, clang_content)) {
       result.error_message = "Failed to create " + clang_path.string();
       return result;
     }
@@ -78,100 +79,184 @@ ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path&
     return result;
   }
 
-  if (opts.enable_clang_tidy) {
-    tooling::ClangTidyConfig tidy_cfg;
-    tidy_cfg.preset = opts.tidy_preset;
-    tidy_cfg.warnings_as_errors = opts.tidy_severity;
-    tidy_cfg.header_filter_level = opts.tidy_header_filter;
+  result.tooling_config_path = clang_path.string();
+  result.success = true;
+  return result;
+}
 
-    if (auto err = tidy_cfg.validate(); !err.empty()) {
-      result.error_message = "Invalid clang-tidy config: " + err;
-      return result;
-    }
+[[nodiscard]] ConfigManager::InitResult write_clang_tidy(const std::filesystem::path& cwd,
+                                                         const ConfigManager::InitOptions& opts) {
+  ConfigManager::InitResult result;
+  tooling::ClangTidyConfig tidy_cfg;
 
-    auto tidy_path = cwd / ".clang-tidy";
-    try {
-      auto tidy_content = tooling::generate_clang_tidy(tidy_cfg);
-      if (!write_file(tidy_path, tidy_content)) {
-        result.error_message = "Failed to create " + tidy_path.string();
-        return result;
-      }
-    } catch (const std::exception& error_tidy_path) {
-      result.error_message =
-          std::string("Failed to generate .clang-tidy: ") + error_tidy_path.what();
-      return result;
-    }
+  tidy_cfg.preset = opts.tidy_preset;
+  tidy_cfg.warnings_as_errors = opts.tidy_severity;
+  tidy_cfg.header_filter_level = opts.tidy_header_filter;
+
+  if (auto err = tidy_cfg.validate(); !err.empty()) {
+    result.error_message = "Invalid clang-tidy config: " + err;
+    return result;
   }
 
-  if (opts.generate_source) {
-    auto src_dir = cwd / "src";
+  auto tidy_path = cwd / ".clang-tidy";
 
-    try {
-      if (!std::filesystem::exists(src_dir)) {
-        std::filesystem::create_directories(src_dir);
-      }
-    } catch (const std::exception& error_src_dir) {
-      result.error_message =
-          std::string("Failed to create src/ directory: ") + error_src_dir.what();
+  try {
+    auto tidy_content = tooling::generate_clang_tidy(tidy_cfg);
+    if (!ConfigManager::write_file(tidy_path, tidy_content)) {
+      result.error_message = "Failed to create: " + tidy_path.string();
       return result;
     }
+  } catch (const std::exception& error_tidy_path) {
+    result.error_message = std::string("Failed to generate .clang-tidy: ") + error_tidy_path.what();
+    return result;
+  }
 
-    auto main_cpp_path = src_dir / "main.cpp";
-    constexpr std::string_view main_cpp_content = R"(#include <iostream>
+  result.success = true;
+  return result;
+}
+
+[[nodiscard]] ConfigManager::InitResult write_source_files(const std::filesystem::path& cwd,
+                                                           const ConfigManager::InitOptions& opts) {
+  ConfigManager::InitResult result;
+
+  if (!opts.generate_source) {
+    result.success = true;
+    return result;
+  }
+
+  auto src_dir = cwd / "src";
+
+  try {
+    if (!std::filesystem::exists(src_dir)) {
+      std::filesystem::create_directories(src_dir);
+    }
+  } catch (const std::exception& error_src_dir) {
+    result.error_message = std::string("Failed to create src/ directory: ") + error_src_dir.what();
+    return result;
+  }
+
+  auto main_cpp_path = src_dir / "main.cpp";
+  constexpr std::string_view main_cpp_content = R"(#include <iostream>
 
 int main() {
-  std::cout << "sniffercommit says wello" << std::endl;
-  return 0;
+    std::cout << "sniffercommit says wello" << std::endl;
+    return 0;
 }
-)";
+  )";
 
-    if (!write_file(main_cpp_path, std::string(main_cpp_content))) {
-      result.error_message = "Failed to create " + main_cpp_path.string();
-      return result;
-    }
-    result.src_path = main_cpp_path.string();
+  if (!ConfigManager::write_file(main_cpp_path, std::string(main_cpp_content))) {
+    result.error_message = "Failed to create " + main_cpp_path.string();
+    return result;
   }
 
-  // generate CMakeLists.txt
-  if (opts.enable_cmake) {
-    tooling::CMakeConfig cmake_cfg;
-    cmake_cfg.project_name = project_name;
-    cmake_cfg.version = "0.2.1";
-    cmake_cfg.cpp_standard = opts.cmake_cpp_standard;
-    cmake_cfg.target_type = opts.cmake_target_type;
-    cmake_cfg.target_name = project_name;
-    cmake_cfg.enable_warnings = opts.cmake_enable_warnings;
-    cmake_cfg.enable_testing = opts.cmake_enable_testing;
-    cmake_cfg.enable_sanitizers = opts.cmake_enable_sanitizers;
-    cmake_cfg.enable_clang_format = true;
-    cmake_cfg.enable_clang_tidy = opts.enable_clang_tidy;
+  result.src_path = main_cpp_path.string();
+  result.success = true;
+  return result;
+}
 
-    cmake_cfg.source_files = {"src/main.cpp"};
-    cmake_cfg.include_dirs = {"${CMAKE_CURRENT_SOURCE_DIR}/include"};
+[[nodiscard]] ConfigManager::InitResult write_cmake_config(const std::filesystem::path& cwd,
+                                                           const ConfigManager::InitOptions& opts,
+                                                           const std::string& project_name) {
+  ConfigManager::InitResult result;
 
-    if (auto err = cmake_cfg.validate(); !err.empty()) {
-      result.error_message = "Invalid CMake config: " + err;
-      return result;
-    }
-
-    auto cmake_path = cwd / "CMakeLists.txt";
-    try {
-      auto cmake_content = tooling::generate_cmake_lists(cmake_cfg);
-
-      if (!write_file(cmake_path, cmake_content)) {
-        result.error_message = "Failed to create " + cmake_path.string();
-        return result;
-      }
-    } catch (const std::exception& error_cmake_path) {
-      result.error_message =
-          std::string("Failed to generate CMakeLists.txt ") + error_cmake_path.what();
-      return result;
-    }
-
-    result.cmake_config_path = cmake_path.string();
+  if (!opts.enable_cmake) {
+    result.success = true;
+    return result;
   }
 
-  result.tooling_config_path = clang_path.string();
+  auto cmake_path = cwd / "CMakeLists.txt";
+
+  try {
+    tooling::CMakeConfig cfg;
+
+    cfg.project_name = project_name;
+    cfg.version = "0.2.1";
+    cfg.cpp_standard = opts.cmake_cpp_standard;
+    cfg.target_name = project_name;
+    cfg.target_type = opts.cmake_target_type;
+    cfg.source_files = {"src/main.cpp"};
+    cfg.include_dirs = {"${CMAKE_CURRENT_SOURCE_DIR}/include"};
+    cfg.enable_warnings = opts.cmake_enable_warnings;
+    cfg.enable_testing = opts.cmake_enable_testing;
+    cfg.enable_sanitizers = opts.cmake_enable_sanitizers;
+    cfg.enable_install = true;
+    cfg.export_compile_commands = true;
+    cfg.enable_clang_tidy = opts.enable_clang_tidy;
+    cfg.depedencies = opts.depdencies;
+
+    auto cmake_content = tooling::generate_cmake_lists(cfg);
+
+    if (!ConfigManager::write_file(cmake_path, cmake_content)) {
+      result.error_message = "Failed to create " + cmake_path.string();
+      return result;
+    }
+  } catch (const std::exception& error_cmake_path) {
+    result.error_message =
+        std::string("Failed to generate CMakeLists.txt: ") + error_cmake_path.what();
+    return result;
+  }
+
+  result.cmake_config_path = cmake_path.string();
+  result.success = true;
+  return result;
+}
+
+}  // namespace
+
+ConfigManager::InitResult ConfigManager::initialize(const std::filesystem::path& cwd,
+                                                    const InitOptions& opts) {
+  InitResult result;
+
+  std::string project_name = opts.project_name;
+  if (project_name.empty()) {
+    project_name = cwd.filename().string();
+  }
+
+  for (const auto& dep : opts.depdencies) {
+    if (auto err = dep.validate(); !err.empty()) {
+      result.error_message = err;
+      return result;
+    }
+  }
+
+  auto clang_cfg = make_clang_format(opts);
+  if (auto err = clang_cfg.validate(); !err.empty()) {
+    result.error_message = "Invalid clang-format config: " + err;
+    return result;
+  }
+
+  auto project_result = write_project_config(cwd, project_name, opts);
+  if (!project_result.success) {
+    return project_result;
+  }
+
+  result.project_config_path = project_result.project_config_path;
+
+  auto format_result = write_clang_format(cwd, clang_cfg);
+  if (!format_result.success) {
+    return format_result;
+  }
+
+  result.tooling_config_path = format_result.tooling_config_path;
+
+  if (opts.enable_clang_tidy) {
+    auto tidy_result = write_clang_tidy(cwd, opts);
+    if (!tidy_result.success) {
+      return tidy_result;
+    }
+  }
+
+  auto src_result = write_source_files(cwd, opts);
+  if (!src_result.success) {
+    return src_result;
+  }
+  result.src_path = src_result.src_path;
+
+  auto cmake_result = write_cmake_config(cwd, opts, project_name);
+  if (!cmake_result.success) {
+    return cmake_result;
+  }
+  result.cmake_config_path = cmake_result.cmake_config_path;
 
   result.success = true;
   return result;
@@ -202,13 +287,15 @@ ConfigManager::InstallResult ConfigManager::install(const std::filesystem::path&
     auto wf_content = cicd::generate_github_actions(cfg, cicd::WorkflowConfig{});
 
     if (!cicd::write_workflow(repo_root, wf_content)) {
-      result.error_message = "Failed to write GitHub Actions workflow";
+      result.error_message = "Failed to write Github Action workflow";
       return result;
     }
 
     result.workflow_installed = true;
     result.workflow_path = (repo_root / ".github" / "workflows" / "sniffercommit.yml").string();
   }
+
+  return result;
 
   return result;
 }
@@ -218,8 +305,9 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 }
 
 std::filesystem::path ConfigManager::find_git_root() {
-  std::array<char, 4096> buffer{};
+  std::array<char, 1024> buffer{};
   std::string result;
+
   PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null",
                      "r"));  // NOLINT(bugprone-command-processor)
 
@@ -232,6 +320,7 @@ std::filesystem::path ConfigManager::find_git_root() {
       if (result.back() == '\n') {
         result.pop_back();
       }
+
       std::filesystem::path path(result);
 
       if (std::filesystem::exists(path)) {
@@ -245,6 +334,7 @@ std::filesystem::path ConfigManager::find_git_root() {
     if (std::filesystem::exists(dir / ".git")) {
       return dir;
     }
+
     auto parent = dir.parent_path();
     if (parent == dir) {
       break;

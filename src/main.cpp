@@ -287,6 +287,40 @@ std::string prompt_choice(std::string_view label, std::string_view default_val,
   return input;
 }
 
+void prompt_depedencies(sniffercommit::ConfigManager::InitOptions& opts) {
+  if (!prompt_bool("add depedencies", false)) {
+    return;
+  }
+
+  std::cout << "\n  " << dim << "enter depdency info (empty name to finish)" << reset << "\n";
+
+  while (true) {
+    std::cout << "\n";
+    std::string name = prompt_string("  dep name", "");
+
+    if (name.empty()) {
+      break;
+    }
+
+    std::string url =
+        prompt_string("  git url", "https://github.com/" + name + "/" + name + ".git");
+    std::string tag = prompt_string("  git tag", "main");
+
+    sniffercommit::tooling::Depedency dep;
+    dep.name = name;
+    dep.git_url = url;
+    dep.git_tag = tag;
+
+    if (auto err = dep.validate(); !err.empty()) {
+      std::cout << "    " << yellow << "!" << reset << " " << err << " — skipped\n";
+      continue;
+    }
+
+    opts.depdencies.push_back(std::move(dep));
+    std::cout << "    " << green << check << reset << " added " << name << "\n";
+  }
+}
+
 void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
   std::cout << "\n";
   std::cout << bold << "  sniffercommit init" << reset << "\n";
@@ -368,9 +402,44 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
 
     opts.cmake_enable_testing = prompt_bool("enable testing", opts.cmake_enable_testing);
     opts.cmake_enable_sanitizers = prompt_bool("enable sanitizers", opts.cmake_enable_sanitizers);
+
+    prompt_depedencies(opts);
   }
 
   std::cout << "\n";
+}
+
+// NOTE: parse -add-dep name:ult:tag from CLI
+bool parse_depedency_flag(const std::string& value, sniffercommit::ConfigManager::InitOptions& opts,
+                          std::string& error_out) {
+  auto first_colon = value.find(':');
+
+  if (first_colon == std::string::npos) {
+    error_out =
+        "--add-dep format is name:url:tag (e.g. fmt:https://github.com/fmtlib/fmt.git:11.0.2)";
+    return false;
+  }
+
+  auto second_colon = value.find(':', first_colon + 1);
+
+  sniffercommit::tooling::Depedency dep;
+  dep.name = value.substr(0, first_colon);
+
+  if (second_colon == std::string::npos) {
+    dep.git_url = value.substr(first_colon + 1);
+    dep.git_tag = "main";
+  } else {
+    dep.git_url = value.substr(first_colon + 1, second_colon - first_colon - 1);
+    dep.git_tag = value.substr(second_colon + 1);
+  }
+
+  if (auto err = dep.validate(); !err.empty()) {
+    error_out = err;
+    return false;
+  }
+
+  opts.depdencies.push_back(std::move(dep));
+  return true;
 }
 
 // NOTE: CLI flag information parsing
@@ -539,6 +608,20 @@ bool parse_cli_flags(std::span<char*> args, size_t argc_sz,
 
     if (arg == "--generate-src") {
       opts.generate_source = true;
+    }
+
+    if (arg == "--add-dep") {
+      if (i + 1 >= argc_sz) {
+        std::cerr << "[ERROR] --add-dep requires value (name:url:tag)\n";
+        return false;
+      }
+
+      ++i;
+      std::string dep_error;
+      if (!parse_depedency_flag(args[i], opts, dep_error)) {
+        std::cerr << "[ERROR] " << dep_error << "\n";
+        return false;
+      }
     }
 
     if (arg == "--interactive" || arg == "-i") {

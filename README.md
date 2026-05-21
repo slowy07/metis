@@ -118,14 +118,24 @@ yay -S sniffercommit
 
 ### init — Generate Configuration
 
+**Interactive mode (default)**
+
+Running `sniffercommit init` with no flags will launch interactive wizard:
+
 ```bash
 cd /path/to/project
 sniffercommit init
 ```
+How it works:
+    - Press enter to acept the detault value who in `[bracket value info]`
+    - Type value to overriding
+    - Invalid input is rejected with a warning; and the prompt are repeats
 
-Creates:
-- `.sniffercommit.toml` — check configuration with sensible defaults
-- `.clang-format` — formatter style matching your chosen preset
+```bash
+sniffercommit init --interactive # or using -i
+```
+if using more flag like `sniffercommit --style google` or another flag after `init` will disable interactive wizard and using CLI-only mode.
+
 
 **With clang-tidy (static analysis)**
 
