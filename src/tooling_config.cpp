@@ -347,11 +347,7 @@ bool is_valid_git_url(std::string_view url) noexcept {
   }
 
   auto second_slash = url.find('/', repo_start);
-  if (second_slash == std::string_view::npos || second_slash + 1 >= url.size()) {
-    return false;
-  }
-
-  return true;
+  return second_slash != std::string_view::npos && second_slash + 1 < url.size();
 }
 
 std::string CMakeConfig::validate() const noexcept {
@@ -739,7 +735,7 @@ std::string generate_cmake_testing(const CMakeConfig& cfg) {
 
   return "# testing\n"
          "enable_testing()\n"
-         "addd_subdirectory(tests)\n\n";
+         "add_subdirectory(tests)\n\n";
 }
 
 std::string generate_cmake_install(const CMakeConfig& cfg) {

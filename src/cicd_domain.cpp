@@ -106,7 +106,7 @@ bool write_workflow(const std::filesystem::path& repo_root, const std::string& c
 
   switch (platform) {
     case Platform::GithubAction:
-      dir = repo_root / ".github" / "workflow";
+      dir = repo_root / ".github" / "workflows";
       filename = "sniffercommit.yml";
       break;
     case Platform::GitLabCI:
@@ -118,7 +118,7 @@ bool write_workflow(const std::filesystem::path& repo_root, const std::string& c
       filename = "sniffercommit.yml";
       break;
     case Platform::Generic:
-      dir = repo_root / ".github" / "workflow";
+      dir = repo_root / ".github" / "workflows";
       filename = "sniffercommit.yml";
       break;
     default:
