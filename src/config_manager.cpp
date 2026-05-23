@@ -296,8 +296,6 @@ ConfigManager::InstallResult ConfigManager::install(const std::filesystem::path&
   }
 
   return result;
-
-  return result;
 }
 
 project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& path) {
@@ -347,14 +345,52 @@ std::filesystem::path ConfigManager::find_git_root() {
 }
 
 bool ConfigManager::write_file(const std::filesystem::path& path, const std::string& content) {
-  std::ofstream out(path, std::ios::trunc);
+  std::error_code err_code;
 
-  if (!out) {
-    return false;
+  auto parent = path.parent_path();
+
+  if (!parent.empty() && !std::filesystem::exists(parent)) {
+    std::filesystem::create_directories(parent, err_code);
+
+    if (err_code) {
+      return false;
+    }
   }
 
-  out << content;
-  return out.good();
+  auto temp_path = path;
+  temp_path += ".tmp";
+
+  {
+    std::ofstream out(temp_path, std::ios::trunc);
+
+    if (!out) {
+      std::filesystem::remove(temp_path, err_code);
+      return false;
+    }
+
+    out << content;
+    out.flush();
+
+    if (!out.good()) {
+      std::filesystem::remove(temp_path, err_code);
+      return false;
+    }
+  }
+
+  // INFO: atomic rename: on POSIX this will atomic
+  std::filesystem::rename(temp_path, path, err_code);
+
+  if (err_code) {
+    std::filesystem::copy_file(temp_path, path, std::filesystem::copy_options::overwrite_existing,
+                               err_code);
+    std::filesystem::remove(temp_path, err_code);
+
+    if (err_code) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 }  // namespace sniffercommit
