@@ -1,3 +1,5 @@
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>
@@ -10,7 +12,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <fmt/format.h>
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/cicd_domain.hpp"
 #include "sniffercommit/config_manager.hpp"
@@ -143,12 +144,6 @@ void print_init_summary(const sniffercommit::ConfigManager::InitOptions& opts,
     }
 
     std::cout << ")\n";
-  }
-
-  if (opts.generate_source && !result.src_path.empty()) {
-    std::cout << "\n  " << bold << "source" << reset << "\n";
-    std::cout << "    " << green << check << reset << " " << result.src_path << "\n";
-    std::cout << "    " << dim << "      " << arrow << " ready to build & run" << reset << "\n";
   }
 
   std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "sniffercommit install"
@@ -374,8 +369,7 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
     }
   }
 
-  // INFO: CMake and source generate
-  opts.generate_source = prompt_bool("generate src/main.cpp", opts.generate_source);
+  // INFO: CMake
   opts.enable_cmake = prompt_bool("generate CMakeLists.txt", opts.enable_cmake);
   if (opts.enable_cmake) {
     opts.generate_source = true;
@@ -604,10 +598,6 @@ bool parse_cli_flags(std::span<char*> args, size_t argc_sz,
 
     if (arg == "--cmake-enable-sanitizers") {
       opts.cmake_enable_sanitizers = true;
-    }
-
-    if (arg == "--generate-src") {
-      opts.generate_source = true;
     }
 
     if (arg == "--add-dep") {

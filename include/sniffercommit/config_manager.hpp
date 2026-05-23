@@ -19,7 +19,7 @@ class ConfigManager {
     std::string pointer_alignment = "Left";
     std::string brace_style = "Attach";
     bool enable_clang_tidy = false;
-    bool generate_source = false;
+    bool generate_source = true;
 
     tooling::TidyPreset tidy_preset = tooling::TidyPreset::Standard;
     tooling::TidySeverity tidy_severity = tooling::TidySeverity::Error;
