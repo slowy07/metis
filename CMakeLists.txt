@@ -86,6 +86,20 @@ configure_file(
   @ONLY
 )
 
+# Detect libc implement
+execute_process(
+  COMMAND ${CMAKE_CXX_COMPILER} -dM -E -x c++ /dev/null
+  OUTPUT_VARIABLE SNIFFERCOMMIT_PREDEFINED_MACROS
+)
+
+if(SNIFFERCOMMIT_PREDEFINED_MACROS MATCHES "__GLIBC__")
+  set(SNIFFERCOMMIT_LIBC "glibc")
+elseif(SNIFFERCOMMIT_PREDEFINED_MACROS MATCHES "__MUSL__")
+  set(SNIFFERCOMMIT_LIBC "musl")
+else()
+  set(SNIFFERCOMMIT_LIBC "unknown")
+endif()
+
 # Dependencies: fmt and tomlplusplus
 include(FetchContent)
 
@@ -167,10 +181,10 @@ target_link_libraries(sniffercommit_lib
 
 # Executable target (CLI frontend)
 add_executable(sniffercommit src/main.cpp)
-target_link_libraries(sniffercommit 
-  PRIVATE 
-    sniffercommit_lib 
-    tomlplusplus::tomlplusplus 
+target_link_libraries(sniffercommit
+  PRIVATE
+    sniffercommit_lib
+    tomlplusplus::tomlplusplus
     fmt::fmt
 )
 
@@ -235,9 +249,27 @@ if(SNIFFERCOMMIT_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Static linking (Unix only, for the final executable)
-if(SNIFFERCOMMIT_ENABLE_STATIC_LINK AND NOT WIN32)
-  message(STATUS "📦 Enabling static linking for portable binary")
-  target_link_options(sniffercommit PRIVATE -static)
+option(SNIFFERCOMMIT_PORTABLE_RELEASE "Build static portable release binary" OFF)
+
+if(SNIFFERCOMMIT_PORTABLE_RELEASE)
+  set(SNIFFERCOMMIT_USE_SYSTEM_FMT OFF CACHE BOOL "" FORCE)
+  set(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS OFF CACHE BOOL "" FORCE)
+endif()
+
+if(SNIFFERCOMMIT_PORTABLE_RELEASE AND UNIX AND NOT APPLE)
+  message(STATUS "building fully static portable binary")
+
+  target_compile_options(sniffercommit PRIVATE
+    -static
+    -static-libgcc
+    -static-libstdc++
+  )
+
+  target_link_options(sniffercommit PRIVATE
+    -static
+    -static-libgcc
+    -static-libstdc++
+  )
 endif()
 
 # Unit tests (Google Test)
@@ -294,6 +326,7 @@ elseif(APPLE)
 endif()
 
 include(CPack)
+
 
 # Verbose configuration summary
 if(SNIFFERCOMMIT_VERBOSE_CONFIG)
