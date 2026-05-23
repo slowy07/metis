@@ -105,9 +105,6 @@ bool is_excluded(const std::string& file, const std::vector<std::string>& exclud
     if (file.starts_with(norm_e)) {
       return true;
     }
-    if (!file.empty() && file + "/" == norm_e) {
-      return true;
-    }
   }
   return false;
 }

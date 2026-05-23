@@ -150,7 +150,7 @@ std::vector<std::string> preset_checks(TidyPreset preset) {
           "cppcoreguidelines-*",
           "bugprone-*",
           "clang-analyzer-*",
-          "--cppcoreguidelines-avoid-magic-numbers",
+          "-cppcoreguidelines-avoid-magic-numbers",
           "-cppcoreguidelines-pre-bounds-array-to-pointer-decay",
       };
     case TidyPreset::Standard:

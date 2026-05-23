@@ -378,6 +378,7 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
     std::string std_str = prompt_choice("C++ Standard", "20", preset_standard_cpp);
 
     try {
+      opts.cmake_cpp_standard = parse_cpp_standard(std_str);
     } catch (const std::exception&) {
       std::cout << "    " << yellow << "!" << reset << " Unknown standard, using C++20\n";
       opts.cmake_cpp_standard = sniffercommit::tooling::CppStandard::Cpp20;
