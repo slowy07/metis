@@ -268,7 +268,7 @@ int execute_format(const std::filesystem::path& repo_root, const std::vector<std
       }
     } else {
       ++skipped_count;
-
+      
       if (opts.verbose) {
         std::cout << fmt::format("[sniffercommit] [OK] {} already formatted\n", file_name);
       }
