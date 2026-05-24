@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -148,6 +149,146 @@ std::vector<std::string> collect_files(const std::filesystem::path& root, const 
   auto [unique_first, unique_last] = std::ranges::unique(files);
   files.erase(unique_first, unique_last);
   return files;
+}
+
+static bool is_format_eligible(const std::string& file) {
+  static const std::vector<std::string> k_format_extension = {
+      ".cpp", ".cc", ".cxx", ".c++", ".hpp", ".h", ".hh", ".hxx", ".inc", ".inl",
+  };
+
+  std::filesystem::path pfile(file);
+  std::string ext = pfile.extension().string();
+  std::ranges::transform(ext, ext.begin(), [](unsigned char chr) { return std::tolower(chr); });
+
+  return std::ranges::any_of(k_format_extension,
+                             [&ext](const auto& extdat) { return ext == extdat; });
+}
+
+static std::vector<std::string> filter_format_files(const std::vector<std::string>& files) {
+  std::vector<std::string> result;
+
+  result.reserve(files.size());
+
+  for (const auto& file : files) {
+    if (is_format_eligible(file)) {
+      result.push_back(file);
+    }
+  }
+
+  return result;
+}
+
+int execute_format(const std::filesystem::path& repo_root, const std::vector<std::string>& files,
+                   RunOptions& opts) {
+  const auto original_cwd = std::filesystem::current_path();
+  std::filesystem::current_path(repo_root);
+
+  if (!command_exists("clang-format")) {
+    std::cerr << fmt::format(
+        "[ERROR] `clang-format` not found in PATH, install it or check your configuration\n");
+    std::filesystem::current_path(original_cwd);
+    return 1;
+  }
+
+  // validating .clang-format config are exits
+  bool has_config = std::filesystem::exists(".clang-format") ||
+                    std::filesystem::exists("_clang-format") ||
+                    std::filesystem::exists(".clang-format-ignore");
+
+  if (!has_config) {
+    std::cerr << fmt::format(
+        "[ERROR] no .clang-format config found. Run `sniffercommit init` first\n");
+    std::filesystem::current_path(original_cwd);
+    return 1;
+  }
+
+  // filter to format-eligible file
+  auto format_files = filter_format_files(files);
+
+  if (format_files.empty()) {
+    std::cout << "[sniffercommit] [INFO] No format-eligible files found\n";
+    std::filesystem::current_path(original_cwd);
+    return 0;
+  }
+
+  if (opts.dry_run) {
+    std::cout << "[DRY-RUN] would format " << format_files.size() << " file(s):\n";
+    for (const auto& file_name : format_files) {
+      std::cout << "  " << file_name << "\n";
+    }
+
+    std::filesystem::current_path(original_cwd);
+    return 0;
+  }
+
+  if (opts.verbose) {
+    std::cout << fmt::format("[sniffercommit] [INFO] formatting {} file(s) with clang-format\n", format_files.size());
+  }
+
+  int exit_code = 0;
+  int formatted_count = 0;
+  int skipped_count = 0;
+  int error_count = 0;
+
+  for (const auto& file_name : format_files) {
+    std::string cmd = fmt::format("clang-format -i {}", shell_escape(file_name));
+    
+    if (opts.verbose) {
+      std::cout << fmt::format(" $ {}\n", cmd);
+    }
+
+    int status = std::system(cmd.c_str());
+    int code = 1;
+
+    if (WIFEXITED(status)) {
+      code = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+      int sig = WTERMSIG(status);
+      std::cerr << fmt::format("[ERROR] clang-format killed by signal {} on {}\n", sig, file_name);
+      code = 128 + sig;
+    }
+
+    if (code != 0) {
+      std::cerr << fmt::format("[sniffercommit] [ERROR] clang-format failed on {} (exit {})\n", file_name, code );
+      exit_code = 1;
+      ++error_count;
+      continue;
+    }
+
+    // checking phase for if file was actually modified
+    std::string diff_cmd = fmt::format("git-diff --quiet {}", shell_escape(file_name));
+    int diff_status = std::system(diff_cmd.c_str());
+    bool was_modified = (diff_status != 0);
+    
+    if (was_modified) {
+      ++formatted_count;
+      
+      if (opts.verbose) {
+        std::cout << fmt::format("[sniffercommit] [FORMAT] {}\n", file_name);
+      }
+    } else {
+      ++skipped_count;
+
+      if (opts.verbose) {
+        std::cout << fmt::format("[sniffercommit] [OK] {} already formatted\n", file_name);
+      }
+    }
+  }
+
+  std::filesystem::current_path(original_cwd);
+
+  if (exit_code == 0) {
+    if (formatted_count > 0) {
+      std::cout << fmt::format("[sniffercommit] [INFO] formatted {} file(s), {} already clean\n", formatted_count, skipped_count);
+      std::cout << "[sniffercommit] [INFO] Stage change with: git add -u\n";
+    } else {
+      std::cout << "[sniffercommit] [INFO] all files already formatted\n";
+    }
+  } else {
+    std::cerr << fmt::format("[sniffercommit] [ERROR] Formatting failed on {} file(s)\n", error_count);
+  }
+
+  return exit_code;
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)

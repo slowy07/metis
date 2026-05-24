@@ -732,6 +732,7 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
       bool all_files = false;
       bool verbose = false;
       bool dry_run = false;
+      bool format_mode = false;
       std::vector<std::string> run_files;
 
       for (size_t i = 1; i < argc_sz; ++i) {
@@ -745,6 +746,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
           verbose = true;
         } else if (arg == "--dry-run" || arg == "-n") {
           dry_run = true;
+        } else if (arg == "--format" || arg == "-f") {
+          format_mode = true;
         } else if (!arg.starts_with('-')) {
           run_files.emplace_back(arg);
         }
@@ -753,6 +756,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
       RunOptions opts;
       opts.verbose = verbose;
       opts.dry_run = dry_run;
+      opts.mode = format_mode ? RunMode::FORMAT : RunMode::CHECK;
+
       if (all_files) {
         opts.source = FileSource::ALL_REPO;
       } else if (!run_files.empty()) {
@@ -769,6 +774,10 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
 
       if (verbose) {
         std::cout << fmt::format("[sniffercommit] Check {} file(s)\n", files.size());
+      }
+
+      if (opts.mode == RunMode::FORMAT) {
+        return execute_format(repo_root, files, opts);
       }
 
       return execute_checks(repo_root, cfg, files, opts);

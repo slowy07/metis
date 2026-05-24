@@ -18,6 +18,7 @@ FetchContent_MakeAvailable(googletest)
 # Collect all test source files
 set(TEST_SOURCES
   test_config_manager.cpp
+  test_format_mode.cpp
   test_precommit_domain.cpp
   test_tooling_config.cpp
 )

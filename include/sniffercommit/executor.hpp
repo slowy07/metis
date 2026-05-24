@@ -15,11 +15,17 @@ enum class FileSource : std::uint8_t {
   EXPLICIT,  // user-providing file list
 };
 
+enum class RunMode : std::uint8_t {
+  CHECK,
+  FORMAT,
+};
+
 struct RunOptions {
   FileSource source = FileSource::STAGED;
   std::vector<std::string> explicit_files;
   bool verbose = false;
   bool dry_run = false;
+  RunMode mode = RunMode::CHECK;
 };
 
 std::vector<std::string> collect_files(const std::filesystem::path& repo_root,
@@ -28,6 +34,9 @@ std::vector<std::string> collect_files(const std::filesystem::path& repo_root,
 
 int execute_checks(const std::filesystem::path& repo_root, const project::ProjectConfig& cfg,
                    const std::vector<std::string>& files, const RunOptions& opts);
+
+int execute_format(const std::filesystem::path& repo_root, const std::vector<std::string>& files,
+                   RunOptions& opts);
 
 }  // namespace sniffercommit
 

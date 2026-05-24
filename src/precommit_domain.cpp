@@ -129,10 +129,24 @@ fi
 set -uo pipefail
 
 FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -vE '{}' || true)
+FORMAT_MODE=false
 
 if [[ -z "$FILES" ]]; then
     echo "[sniffercommit] No staged files to check."
     exit 0
+fi
+
+for arg in "$@"; do
+  case "$arg" in
+    --format|-f) FORMAT_MODE=true ;;
+  esac
+done
+
+if [ "$FORMAT_MODE" = true ]; then
+  echo "[sniffercommit] Running format mode"
+  sniffercommit run --format --staged
+else
+  sniffercommit run --staged
 fi
 
 filter_by_patterns() {{

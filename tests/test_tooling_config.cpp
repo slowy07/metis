@@ -126,14 +126,14 @@ TEST(PresetChecksTest, StrictPresetIncludesMostChecks) {
 }
 
 TEST(GenerateClangFormatTest, GeneratesValidYaml) {
-    ClangFormatConfig cfg;
-    cfg.style = FormatterStyle::Google;
-    cfg.indent_width = 2;
-    cfg.column_limit = 100;
-    
-    std::string content = generate_clang_format(cfg);
-    
-    EXPECT_NE(content.find("BasedOnStyle: Google"), std::string::npos);
-    EXPECT_NE(content.find("IndentWidth: 2"), std::string::npos);
-    EXPECT_NE(content.find("ColumnLimit: 100"), std::string::npos);
+  ClangFormatConfig cfg;
+  cfg.style = FormatterStyle::Google;
+  cfg.indent_width = 2;
+  cfg.column_limit = 100;
+
+  std::string content = generate_clang_format(cfg);
+
+  EXPECT_NE(content.find("BasedOnStyle: Google"), std::string::npos);
+  EXPECT_NE(content.find("IndentWidth: 2"), std::string::npos);
+  EXPECT_NE(content.find("ColumnLimit: 100"), std::string::npos);
 }

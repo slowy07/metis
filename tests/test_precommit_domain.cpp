@@ -56,9 +56,9 @@ TEST_F(PrecommitInstallTest, InstallOverwriteExistHook) {
 
 TEST_F(PrecommitInstallTest, IsInstalledDetectExistHook) {
   EXPECT_FALSE(is_installed(test_root));
-  
+
   auto hook_path = git_hooks_dir / "pre-commit";
   std::ofstream(hook_path) << "#!/usr/bin/env bash\nexit 0\n";
-  
+
   EXPECT_TRUE(is_installed(test_root));
 }
