@@ -134,19 +134,23 @@ set(SNIFFERCOMMIT_SOURCES
   src/cicd_domain.cpp
   src/config_manager.cpp
   src/executor.cpp
+  src/logger.cpp
   src/precommit_domain.cpp
   src/project_config.cpp
   src/tooling_config.cpp
+  src/util.cpp
 )
 
 set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/argparse.hpp
   include/sniffercommit/cicd_domain.hpp
   include/sniffercommit/config_manager.hpp
+  include/sniffercommit/error_codes.hpp
   include/sniffercommit/executor.hpp
   include/sniffercommit/precommit_domain.hpp
   include/sniffercommit/project_config.hpp
   include/sniffercommit/tooling_config.hpp
+  include/sniffercommit/util.hpp
 )
 
 add_library(sniffercommit_lib STATIC ${SNIFFERCOMMIT_SOURCES})

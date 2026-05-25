@@ -7,6 +7,8 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <system_error>
+#include <utility>
 
 #include "sniffercommit/project_config.hpp"
 
@@ -14,9 +16,11 @@ namespace sniffercommit::precommit {
 
 static std::string regex_escape(const std::string& str) {
   std::string out;
+  out.reserve(str.size() * 2);
 
   for (char chr : str) {
     switch (chr) {
+      // NOTE: Regex metacharacters
       case '\\':
       case '.':
       case '+':
@@ -31,6 +35,17 @@ static std::string regex_escape(const std::string& str) {
       case '{':
       case '}':
       case '|':
+      // INFO: Bash metacharacters (command injection prevention)
+      case '`':
+      case '"':
+      case '!':
+      case '&':
+      case ';':
+      case '<':
+      case '>':
+      case '#':
+      case '~':
+      case '\n':
         out += '\\';
         break;
       default:
@@ -237,11 +252,30 @@ bool install(const std::filesystem::path& repo_root, const std::string& hook_con
 }
 
 bool validate_syntax(const std::string& hook_content) {
+  // NOTE: RAII guard to make sure temporary file always got deleted
+  struct TempFileGuard {
+    std::filesystem::path path;
+
+    explicit TempFileGuard(std::filesystem::path path_data) : path(std::move(path_data)) {}
+
+    ~TempFileGuard() {
+      std::error_code err_code;
+      std::filesystem::remove(path, err_code);
+    }
+
+    TempFileGuard(const TempFileGuard&) = delete;
+    TempFileGuard& operator=(const TempFileGuard&) = delete;
+    TempFileGuard(TempFileGuard&&) = default;
+    TempFileGuard& operator=(TempFileGuard&&) = default;
+  };
+
   std::random_device random_device;
   std::mt19937 gen(random_device());
   std::uniform_int_distribution<> dis(100000, 999999);
   auto temp_path = std::filesystem::temp_directory_path() /
                    fmt::format("sniffercommit_hook_check_{}.sh", dis(gen));
+
+  TempFileGuard guard{temp_path};
 
   {
     std::ofstream out(temp_path);
@@ -250,13 +284,15 @@ bool validate_syntax(const std::string& hook_content) {
     }
 
     out << hook_content;
+    out.close();
+
+    if (!out.good()) {
+      return false;
+    }
   }
 
   std::string cmd = "bash -n " + temp_path.string() + " 2>/dev/null";
-  bool valid = (std::system(cmd.c_str()) == 0);  // NOLINT(bugprone-command-processor)
-
-  std::filesystem::remove(temp_path);
-  return valid;
+  return std::system(cmd.c_str()) == 0;  // NOLINT(bugprone-command-processor)
 }
 
 bool uninstall(const std::filesystem::path& repo_root) {

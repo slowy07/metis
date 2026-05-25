@@ -4,8 +4,10 @@
 
 #include <array>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -15,17 +17,9 @@
 #include "sniffercommit/precommit_domain.hpp"
 #include "sniffercommit/project_config.hpp"
 #include "sniffercommit/tooling_config.hpp"
+#include "sniffercommit/util.hpp"
 
 namespace sniffercommit {
-
-struct PipeDeleter {
-  void operator()(FILE* file_ptr) const noexcept {
-    if (file_ptr != nullptr) {
-      (void)pclose(file_ptr);
-    }
-  }
-};
-using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
 
 namespace {
 [[nodiscard]] tooling::ClangFormatConfig make_clang_format(const ConfigManager::InitOptions& opts) {
@@ -303,28 +297,18 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 }
 
 std::filesystem::path ConfigManager::find_git_root() {
-  std::array<char, 1024> buffer{};
-  std::string result;
+  try {
+    std::string out = util::exec_cmd("git rev-parse --show-toplevel 2>/devl/null");
 
-  PipePtr pipe(popen("git rev-parse --show-toplevel 2>/dev/null",
-                     "r"));  // NOLINT(bugprone-command-processor)
-
-  if (pipe) {
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-      result += buffer.data();
-    }
-
-    if (!result.empty()) {
-      if (result.back() == '\n') {
-        result.pop_back();
-      }
-
-      std::filesystem::path path(result);
+    if (!out.empty()) {
+      std::filesystem::path path(out);
 
       if (std::filesystem::exists(path)) {
         return path;
       }
     }
+  } catch (std::exception& err_git_rev_parse) {
+    std::cerr << err_git_rev_parse.what() << "\n";
   }
 
   auto dir = std::filesystem::current_path();

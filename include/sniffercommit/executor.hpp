@@ -28,15 +28,14 @@ struct RunOptions {
   RunMode mode = RunMode::CHECK;
 };
 
-std::vector<std::string> collect_files(const std::filesystem::path& repo_root,
-                                       const RunOptions& opts,
+std::vector<std::string> collect_files(const std::filesystem::path& root, const RunOptions& opts,
                                        const std::vector<std::string>& exclude_paths);
 
 int execute_checks(const std::filesystem::path& repo_root, const project::ProjectConfig& cfg,
                    const std::vector<std::string>& files, const RunOptions& opts);
 
 int execute_format(const std::filesystem::path& repo_root, const std::vector<std::string>& files,
-                   RunOptions& opts);
+                   const RunOptions& opts);
 
 }  // namespace sniffercommit
 

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 #include "sniffercommit/project_config.hpp"
 
@@ -23,23 +24,18 @@ std::string generate_github_actions(const project::ProjectConfig& cfg,
   std::string yml;
 
   yml += "name: sniffercommit\n\n";
-
   yml += "on:\n";
   yml += "  push:\n";
   yml += "    branches:\n";
   yml += "      - \"**\"\n\n";
-
   yml += "  pull_request:\n";
   yml += "    branches:\n";
   yml += "      - \"**\"\n\n";
-
   yml += "concurrency:\n";
   yml += "  group: sniffercommit-${{ github.ref }}\n";
   yml += "  cancel-in-progress: true\n\n";
-
   yml += "permissions:\n";
   yml += "  contents: read\n\n";
-
   yml += "jobs:\n";
   yml += "  checks:\n";
   yml += fmt::format("    name: {}\n", wf_cfg.job_name);
@@ -56,28 +52,26 @@ std::string generate_github_actions(const project::ProjectConfig& cfg,
   bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
 
   if (need_clang_format || need_clang_tidy) {
-    yml += "      - name: Install clang-format\n";
+    yml += "      - name: Install LLVM tooling\n";
     yml += "        run: |\n";
-
+    yml += "          sudo apt-get update\n";
     if (need_clang_format) {
-      yml += "           sudo apt-get update\n";
-      yml += "           sudo apt-get install -y clang-format\n";
+      yml += "          sudo apt-get install -y clang-format\n";
     }
-
     if (need_clang_tidy) {
-      yml += "           sudo apt-get install -y clang-tidy\n";
+      yml += "          sudo apt-get install -y clang-tidy\n";
     }
     yml += "\n";
   }
 
   yml += "      - name: Make sniffercommit executable\n";
-  yml += "        run: chmod +x ./sniffercommit\n\n";
+  yml += "        run: chmod +x " + wf_cfg.binary_path + "\n\n";
 
   yml += "      - name: Run sniffercommit\n";
   yml += "        shell: bash\n";
   yml += "        run: |\n";
   yml += "          set -euo pipefail\n";
-  yml += "          ./sniffercommit run --all-files --verbose\n";
+  yml += "          " + wf_cfg.binary_path + " run --all-files --verbose\n";
 
   return yml;
 }
@@ -96,7 +90,11 @@ std::string generate_workflow(const project::ProjectConfig& cfg, const WorkflowC
       return generate_github_actions(cfg, wf_cfg);
   }
 
+#if defined(__GNUC__) || defined(__clang__)
+  __builtin_unreachable();
+#else
   return generate_github_actions(cfg, wf_cfg);
+#endif  // defined(__GNUC__) || defined(__clang__)
 }
 
 bool write_workflow(const std::filesystem::path& repo_root, const std::string& content,
@@ -127,7 +125,12 @@ bool write_workflow(const std::filesystem::path& repo_root, const std::string& c
       break;
   }
 
+  std::error_code err_code;
   std::filesystem::create_directories(dir);
+
+  if (err_code) {
+    return false;
+  }
 
   auto yml_path = dir / filename;
   std::ofstream out(yml_path, std::ios::trunc);

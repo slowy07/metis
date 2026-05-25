@@ -60,8 +60,8 @@ TEST_F(FormatModeTest, DryRunFormat) {
   RunOptions opts;
   opts.source = FileSource::ALL_REPO;
   opts.mode = RunMode::FORMAT;
+
   opts.dry_run = true;
-  
   auto files = collect_files(repo_root_, opts, {});
   int result = execute_format(repo_root_, files, opts);
 

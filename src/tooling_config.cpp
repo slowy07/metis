@@ -222,12 +222,17 @@ std::string generate_clang_tidy(const ClangTidyConfig& cfg) {
 
   switch (cfg.header_filter_level) {
     case 0:
-      header_filter += "\"\"";
+      header_filter = "\"^(?!/usr)(?!/opt)(?!/System).*\"";
       break;
     case 1:
+      // NOTE: project header only: match paths without
+      // ".." (not system include)
+      header_filter = R"("^\\.\\./.*")";
     case 2:
+      // NOTE: all headers
+      header_filter = "\".*\"";
     default:
-      header_filter += "\".*\"";
+      header_filter = "\".*\"";
       break;
   }
 
