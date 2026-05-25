@@ -1,0 +1,20 @@
+---
+name: Feature Request
+about: Suggest a new feature or enhancement
+title: "[FEAT] "
+labels: enhancement
+assignees: ''
+
+---
+
+**Problem Statement**
+<!-- What problem does this solve? Who is affected? -->
+
+**Proposed Solution**
+<!-- Describe the desired behavior clearly. -->
+
+**Alternatives Considered**
+<!-- What other approaches did you consider? Why were they rejected? -->
+
+**Additional Context**
+<!-- Mockups, examples, or references to similar tools. -->
