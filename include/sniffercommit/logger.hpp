@@ -1,7 +1,6 @@
 #ifndef SNIFFERCOMMIT_LOGGER_HPP
 #define SNIFFERCOMMIT_LOGGER_HPP
 
-#include <fmt/base.h>
 #include <fmt/format.h>
 
 #include <cstdint>

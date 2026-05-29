@@ -36,7 +36,7 @@ option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only
 option(SNIFFERCOMMIT_ENABLE_STATIC_LINK "Link statically for portable binary (Unix only)" OFF)
 option(SNIFFERCOMMIT_VERBOSE_CONFIG "Print detailed configuration summary" ON)
 option(SNIFFERCOMMIT_BUILD_TESTS "Build unit tests" ON)
-option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" ON)
+option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" OFF)
 option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" OFF)
 
 # Platform detection
