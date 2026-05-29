@@ -111,7 +111,7 @@ struct Depedency {
 
 struct CMakeConfig {
   std::string project_name = "my-project";
-  std::string version = "0.2.1";
+  std::string version = "0.1.0";
   std::string description;
   std::string homepage_url;
 

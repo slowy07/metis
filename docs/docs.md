@@ -637,7 +637,7 @@ enum class TargetType : std::uint8_t {
 
 struct CMakeConfig {
   std::string project_name = "my-project";
-  std::string version = "0.2.1";
+  std::string version = "0.1.0";
   CppStandard cpp_standard = CppStandard::Cpp20;
   bool cpp_standard_required = true;
   bool enable_extension = false;

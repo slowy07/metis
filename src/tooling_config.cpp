@@ -793,7 +793,7 @@ std::string generate_cmake_lists_default(const std::string& project_name, CppSta
   CMakeConfig cfg;
 
   cfg.project_name = project_name;
-  cfg.version = "0.2.1";
+  cfg.version = "0.1.0";
   cfg.cpp_standard = cpp_std;
   cfg.target_name = project_name;
   cfg.source_files = {"src/main.cpp"};
