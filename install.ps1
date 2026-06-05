@@ -10,206 +10,189 @@ param(
     [switch]$Uninstall
 )
 
-$APP_NAME = "sniffercommit"
-$REPO_OWNER = "slowy07"
-$REPO_NAME = "sniffercommit"
-$REPO_URL = "https://github.com/$REPO_OWNER/$REPO_NAME"
-$RELEASE_API = "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/releases"
+$script:AppName      = "sniffercommit"
+$script:RepoOwner   = "slowy07"
+$script:RepoName    = "sniffercommit"
+$script:RepoUrl     = "https://github.com/$RepoOwner/$RepoName"
+$script:ReleaseApi  = "https://api.github.com/repos/$RepoOwner/$RepoName/releases"
+$script:Branch      = if ($env:SNIFFERCOMMIT_BRANCH) { $env:SNIFFERCOMMIT_BRANCH } else { "develop" }
 
-if (-not $Version) {
-    $Version = if ($env:SNIFFERCOMMIT_VERSION) {
-        $env:SNIFFERCOMMIT_VERSION
-    }
-    else {
-        "latest"
-    }
-}
+$script:TargetVersion = if ($Version) { $Version } else { if ($env:SNIFFERCOMMIT_VERSION) { $env:SNIFFERCOMMIT_VERSION } else { "latest" } }
+$script:TargetDir     = if ($InstallDir) { $InstallDir } else { if ($env:SNIFFERCOMMIT_INSTALL_DIR) { $env:SNIFFERCOMMIT_INSTALL_DIR } else { "" } }
+$script:NoColor       = if ($env:NO_COLOR) { [bool][int]$env:NO_COLOR } else { $false }
+$script:ForceBuild    = if ($env:SNIFFERCOMMIT_FORCE_BUILD) { [bool][int]$env:SNIFFERCOMMIT_FORCE_BUILD } else { $false }
+$script:PreferBuild   = if ($env:SNIFFERCOMMIT_PREFER_BUILD) { [bool][int]$env:SNIFFERCOMMIT_PREFER_BUILD } else { $false }
+$script:ProxyUrl     = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } elseif ($env:HTTP_PROXY) { $env:HTTP_PROXY } else { "" }
 
-if (-not $InstallDir) {
-    $InstallDir = if ($env:SNIFFERCOMMIT_INSTALL_DIR) {
-        $env:SNIFFERCOMMIT_INSTALL_DIR
-    }
-    else {
-        ""
-    }
-}
-
-$NO_COLOR = if ($env:NO_COLOR) {
-    [int]$env:NO_COLOR
-}
-else {
-    0
-}
-
-$FORCE_BUILD = if ($env:SNIFFERCOMMIT_PREFER_BUILD) {
-    [int]$env:SNIFFERCOMMIT_FORCE_BUILD
-}
-else {
-    0
-}
-
-$PROXY = if ($env:HTTPS_PROXY) {
-    $env:HTTPS_PROXY
-}
-elseif ($env:HTTP_PROXY) {
-    $env:HTTP_PROXY
-}
-else {
-    ""
-}
-
-$script:USE_COLOR = (-not $NO_COLOR) -and ($Host -and $Host.UI -and $Host.UI.RawUI)
+$script:UseColor = (-not $script:NoColor) -and ($Host -and $Host.UI -and $Host.UI.RawUI)
 
 function Write-Info($Message) {
-    if ($script:USE_COLOR) { Write-Host "[INFO] $Message" -ForegroundColor Cyan }
+    if ($script:UseColor) { Write-Host "[INFO] $Message" -ForegroundColor Cyan }
     else { Write-Host "[INFO] $Message" }
 }
 
 function Write-Success($Message) {
-    if ($script:USE_COLOR) { Write-Host "[OK] $Message" -ForegroundColor Green }
+    if ($script:UseColor) { Write-Host "[OK] $Message" -ForegroundColor Green }
     else { Write-Host "[OK] $Message" }
 }
 
 function Write-Warn($Message) {
-    if ($script:USE_COLOR) { Write-Warning "[WARN] $Message" }
+    if ($script:UseColor) { Write-Warning "[WARN] $Message" }
     else { Write-Warning "[WARN] $Message" }
 }
 
-function Write-Error($Message) {
-    if ($script:USE_COLOR) { Write-Host "[ERROR] $Message" -ForegroundColor Red }
+function Write-Err($Message) {
+    if ($script:UseColor) { Write-Host "[ERROR] $Message" -ForegroundColor Red }
     else { Write-Host "[ERROR] $Message" }
 }
 
 function Write-Step($Message) {
-    if ($script:USE_COLOR) { Write-Host "==> $Message" -ForegroundColor White }
+    if ($script:UseColor) { Write-Host "==> $Message" -ForegroundColor White }
     else { Write-Host "==> $Message" }
 }
 
-
 if ($Help) {
     Write-Host @"
-Sniffercommit installer for windows
+sniffercommit Installer for Windows
+Fast, C++20-powered pre-commit hook and CI generator.
 
-Fast, C++20-powered pre-commit hook and ci generator
 USAGE:
-irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
+    irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
 
-PARAMETER:
--Version <tag> Install specific version (default: latest)
--InstallDir <path> Installation directory (default: auto-detect)
--NoModifyPath Do not add to PATH
--Force Force reinstall even if already installed
--Uninstall Remove sniffercommit from system
+PARAMETERS:
+    -Version <tag>       Install specific version (default: latest)
+    -InstallDir <path>   Installation directory (default: auto-detect)
+    -NoModifyPath        Do not add to PATH
+    -Force               Force reinstall even if already installed
+    -Uninstall           Remove sniffercommit from system
+
+ENVIRONMENT VARIABLES:
+    SNIFFERCOMMIT_VERSION       Version tag to install (e.g., v1.0.0)
+    SNIFFERCOMMIT_INSTALL_DIR   Custom installation directory
+    SNIFFERCOMMIT_FORCE_BUILD   Force build from source (1=on, 0=off)
+    SNIFFERCOMMIT_PREFER_BUILD  Prefer build from source over release binary
+    SNIFFERCOMMIT_BRANCH        Git branch for source builds (default: develop)
+    HTTPS_PROXY / HTTP_PROXY    Proxy server for downloads
+    NO_COLOR                    Disable colored output (1=on, 0=off)
+
+EXAMPLES:
+    # Install latest
+    irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
+
+    # Install specific version
+    $env:SNIFFERCOMMIT_VERSION="v1.0.0"
+    irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
+
+    # Install to custom directory
+    irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex -InstallDir "C:\Tools"
+
+    # Uninstall
+    irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex -Uninstall
 "@
     exit 0
 }
 
-$script:TEMP_DIR = $null
+$script:TempDir = $null
 
-function Cleanup {
-    if ($script:TEMP_DIR -and (Test-Path $script:TEMP_DIR)) {
-        Remove-Item -Recurse -Force $script:TEMP_DIR -ErrorAction SilentlyContinue
+function Remove-TempDir {
+    if ($script:TempDir -and (Test-Path $script:TempDir)) {
+        Remove-Item -Recurse -Force $script:TempDir -ErrorAction SilentlyContinue
     }
 }
 
-function Die($Message) {
-    Write-Erorr $Message
-    Cleanup
+function Exit-WithError($Message) {
+    Write-Err $Message
+    Remove-TempDir
     exit 1
 }
 
 trap {
-    Write-Error "installation Failed: $_"
-    Write-Info "For Information: $REPO_URL/issues"
-    Write-Info "For inspect script: irm $REPO_URL/raw/main/install.ps1 | Out-String"
-    Cleanup
+    Write-Err "Installation failed: $_"
+    Write-Info "For help: $script:RepoUrl/issues"
+    Write-Info "To inspect the script: irm $script:RepoUrl/raw/$script:Branch/install.ps1 | Out-String"
+    Remove-TempDir
     exit 1
 }
 
-function Get-Platform {
-    $script:PLATFORM = "windows"
-    $script:ARCH = "x86_64"
+function Get-PlatformInfo {
+    $script:Platform = "windows"
+    $script:Arch = "x86_64"
 
-    if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
-        $script:ARCH = "arm64"
-    }
-    elseif ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") {
-        $script:ARCH = "x86_64"
-    }
-    elseif ($env:PROCESSOR_ARCHITECTURE -eq "x86") {
-        $script:ARCH = "i686"
+    switch ($env:PROCESSOR_ARCHITECTURE) {
+        "ARM64"  { $script:Arch = "arm64" }
+        "AMD64"  { $script:Arch = "x86_64" }
+        "x86"    { $script:Arch = "i686" }
+        "ARM"    { $script:Arch = "arm" }
     }
 
-    Write-Info "Platform: $script:PLATFORM ($script:ARCH)"
+    if ($env:PROCESSOR_ARCHITEW6432 -eq "AMD64") {
+        $script:Arch = "x86_64"
+    }
+
+    Write-Info "Platform: $script:Platform ($script:Arch)"
 }
 
-function Has-Command($Command) {
-    return [bool](Get-Command $command -ErrorAction SilentlyContinue)
+function Test-Command($Name) {
+    return [bool](Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
-function Get-InstallDir {
-    if ($InstallDir) {
-        return $InstallDir
-    }
+function Get-DefaultInstallDir {
+    if ($script:TargetDir) { return $script:TargetDir }
 
     $candidates = @(
-        "$env:LOCALAPPDATA\Programs\$APP_NAME",
-        "$env:USERPROFILE\.local\bin",
-        "$env:USERPROFILE\bin",
-        "$env:APPDATA\$APP_NAME"
+        "$env:LOCALAPPDATA\Programs\$script:AppName"
+        "$env:USERPROFILE\.local\bin"
+        "$env:APPDATA\$script:AppName"
     )
 
     foreach ($dir in $candidates) {
-        $parent = Split-Path $dir-parent
-        if (Test-Path $parent) {
-            try {
-                $testFile = Join-Path $dir ".write_test"
-                New-Item -ItemType Directory -Force -Path $dir | Out-Null
-                [System.IO.File]::WriteAllText($testFile, "test")
-                Remove-Item $testFile -ErrorAction SilentlyContinue
-                return $dir
-            }
-            catch {
-                continue
-            }
+        $parent = Split-Path $dir -Parent
+        if (-not (Test-Path $parent)) { continue }
+
+        try {
+            New-Item -ItemType Directory -Force -Path $dir | Out-Null
+            $testFile = Join-Path $dir ".write_test"
+            [System.IO.File]::WriteAllText($testFile, "test")
+            Remove-Item $testFile -ErrorAction SilentlyContinue
+            return $dir
+        } catch {
+            continue
         }
     }
 
-    return "$PWD\$APP_NAME"
+    $fallback = "$PWD\$script:AppName"
+    New-Item -ItemType Directory -Force -Path $fallback | Out-Null
+    return $fallback
 }
 
-function Add-ToPath($Dir) {
-    if ($NoModifyPath) {
-        return
-    }
+function Add-ToUserPath($Dir) {
+    if ($NoModifyPath) { return }
 
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $paths = $currentPath -split ";"
 
     if ($paths -contains $Dir) {
-        Write-Info "Already in Path: $Dir"
+        Write-Info "Already in PATH: $Dir"
+        return
     }
 
     Write-Step "Adding to PATH"
-
     try {
-        [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$Dir", "User")
+        [Environment]::SetEnvironmentVariable("Path", "$currentPath;$Dir", "User")
         Write-Success "Added to user PATH"
-        Write-Info "Restart your terminal or run: \$env:Path += `";Dir`""
-    }
-    catch {
-        Write-Warn "Could not add to PATH automatically, add manually: $Dir"
+        Write-Info "Restart your terminal or run: `$env:Path += `";$Dir`""
+    } catch {
+        Write-Warn "Could not add to PATH automatically. Add manually: $Dir"
     }
 }
 
-
-function Remove-FromPath($Dir) {
+function Remove-FromUserPath($Dir) {
     $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $paths = $currentPath -split ";" | Where-Object { $_ -ne $Dir }
     [Environment]::SetEnvironmentVariable("Path", ($paths -join ";"), "User")
 }
 
-function Invoke-Download($Url, $OutFile) {
+function Invoke-FileDownload($Url, $OutFile) {
     $params = @{
         Uri             = $Url
         OutFile         = $OutFile
@@ -217,241 +200,413 @@ function Invoke-Download($Url, $OutFile) {
         ErrorAction     = "Stop"
     }
 
-    if ($PROXY) {
-        $params['Proxy'] = $PROXY
+    if ($script:ProxyUrl) {
+        $params['Proxy'] = $script:ProxyUrl
     }
 
     try {
         Invoke-WebRequest @params
-    }
-    catch {
-        if (Has-Command "Start-BitsTransfer") {
-            Start-BitsTransfer -Source $Url -Destination $OutFile -ErrorAction Stop
-        }
-        else {
+    } catch {
+        # Fallback to BITS for large files or restricted environments
+        if (Test-Command "Start-BitsTransfer") {
+            $bitsParams = @{
+                Source      = $Url
+                Destination = $OutFile
+                ErrorAction = "Stop"
+            }
+            if ($script:ProxyUrl) { $bitsParams['Proxy'] = $script:ProxyUrl }
+            Start-BitsTransfer @bitsParams
+        } else {
             throw
         }
     }
 }
 
-function Get-LatestVersion {
+function Get-LatestReleaseTag {
     Write-Step "Fetching latest release info"
 
     try {
-        $headers = @{"User-Agent" = "sniffercommit-installer" }
-        if ($PROXY) {
-            $release = Invoke-RestMethod -Uri "$RELEASE_API/latest" -Headers $headers -Proxy $Proxy
+        $headers = @{ "User-Agent" = "sniffercommit-installer" }
+        $irmParams = @{
+            Uri         = "$script:ReleaseApi/latest"
+            Headers     = $headers
+            ErrorAction = "Stop"
         }
-        else {
-            $release = Invoke-RestMethod -Uri "$RELEASE_API/latest" -Headers $headers
-        }
+        if ($script:ProxyUrl) { $irmParams['Proxy'] = $script:ProxyUrl }
 
+        $release = Invoke-RestMethod @irmParams
         return $release.tag_name
-    }
-    catch {
-        Write-Warn "Cannot fetch latest version from GITHUB api"
-
+    } catch {
+        Write-Warn "Could not fetch latest version from GitHub API: $_"
         return $null
     }
 }
 
 function Get-ReleaseAsset($Version) {
-    $tag = if ($Version -eq "latest" ) { Get-LatestVersion } else { $Version }
+    $tag = if ($Version -eq "latest") { Get-LatestReleaseTag } else { $Version }
     if (-not $tag) { return $null }
 
     Write-Info "Resolving version: $tag"
 
     try {
         $headers = @{ "User-Agent" = "sniffercommit-installer" }
-        $url = "$RELEASE_API/tags/$tag"
-
-        if ($PROXY) {
-            $release = Invoke-RestMethod -Uri $url -Headers $headers -Proxy $PROXY
+        $irmParams = @{
+            Uri         = "$script:ReleaseApi/tags/$tag"
+            Headers     = $headers
+            ErrorAction = "Stop"
         }
-        else {
-            $release = Invoke-RestMethod -Uri $url -Headers $headers
-        }
+        if ($script:ProxyUrl) { $irmParams['Proxy'] = $script:ProxyUrl }
 
-        $assetPattern = "$APP_NAME-.*-$script:PLATFORM-$script:ARCH\.(zip|exe|tar\.gz)$"
-        $asset = $release.assets | Where-Object { $_.name -match $assetPattern } | Select-Object -First 1
+        $release = Invoke-RestMethod @irmParams
+
+        $exactPattern = "$script:AppName-.*-$script:Platform-$script:Arch\.(zip|exe|tar\.gz)$"
+        $asset = $release.assets | Where-Object { $_.name -match $exactPattern } | Select-Object -First 1
+
+        if (-not $asset) {
+            $fallbackPattern = "windows.*($script:Arch|x64|amd64|win64)"
+            $asset = $release.assets | Where-Object {
+                $_.name -match $fallbackPattern -and $_.name -match "\.(zip|exe|tar\.gz)$"
+            } | Select-Object -First 1
+        }
 
         if (-not $asset) {
             $asset = $release.assets | Where-Object {
-                $_.name -match "windows" -and ($_.name -match $script:ARCH -or $_.name -match "x64|amd64")
+                $_.name -match "windows" -and $_.name -match "\.(zip|exe|tar\.gz)$"
             } | Select-Object -First 1
         }
 
         if ($asset) {
             return @{
-                Url = $asset.browser_download_url
+                Url  = $asset.browser_download_url
                 Name = $asset.name
                 Size = $asset.size
-                Tag = $tag
+                Tag  = $tag
             }
         }
-        
     } catch {
-        Write-Warn "Could not fetching release assets: $_"
+        Write-Warn "Could not fetch release assets: $_"
     }
 
     return $null
 }
 
 function Install-FromRelease($Asset) {
-    Write-Step "Download $APP_NAME $($Asset.Tag)"
+    Write-Step "Downloading $script:AppName $($Asset.Tag)"
 
-    $script:TEMP_DIR = Join-Path $env:TEMP "$APP_NAME-install-$(Get-Random)"
-    New-Item -ItemType Directory -Force -Path $script:TEMP_DIR | Out-Null
-    
-    $downloadPath = Join-Path $script:TEMP_DIR $Asset.Name
+    $script:TempDir = Join-Path $env:TEMP "$script:AppName-install-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $script:TempDir | Out-Null
 
-    Write-Info "Download from github release"
-    Invoke-Download -Url $Asset.Url -OutFile $downloadPath
+    $downloadPath = Join-Path $script:TempDir $Asset.Name
+
+    Write-Info "Downloading from GitHub releases..."
+    Invoke-FileDownload -Url $Asset.Url -OutFile $downloadPath
 
     $size = (Get-Item $downloadPath).Length
-    if ($Asset.Size -gt 0 -and $size -and $size -ne $Asset.Size) {
-        Write-Warn "Download size mismatch: expected $(Asset.Size), got $size"
+    if ($Asset.Size -gt 0 -and $size -ne $Asset.Size) {
+        Write-Warn "Download size mismatch: expected $($Asset.Size), got $size"
     }
 
-    Write-Success "Download $([math]::Round($size / 1MB, 2)) MB"
+    Write-Success "Downloaded $([math]::Round($size / 1MB, 2)) MB"
 
-    $InstallDir = Get-InstallDir
-    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+    $installDir = Get-DefaultInstallDir
+    New-Item -ItemType Directory -Force -Path $installDir | Out-Null
 
     if ($Asset.Name -match "\.zip$") {
-        Write-Info "Extract archive"
-        Expand-Archive -Path $downloadPath -DestinationPath $script:TEMP_DIR -Force
+        Write-Info "Extracting archive..."
+        Expand-Archive -Path $downloadPath -DestinationPath $script:TempDir -Force
 
-        $exe = Get-ChildItem -Path $script:TEMP_DIR -Recurse -Filter "*.exe" | Select-Object -First 1
-        
+        $exe = Get-ChildItem -Path $script:TempDir -Recurse -Filter "*.exe" | Select-Object -First 1
         if ($exe) {
-            Copy-Item $exe.FullName -Destination (Join-Path $InstallDir "$APP_NAME.exe") -Force
+            Copy-Item $exe.FullName -Destination (Join-Path $installDir "$script:AppName.exe") -Force
         } else {
-            Get-ChildItem -Path $script:TEMP_DIR -Exclude $Asset.Name | Copy-Item -Destination $InstallDir -Recurse -Force
+            Get-ChildItem -Path $script:TempDir -Exclude $Asset.Name | Copy-Item -Destination $installDir -Recurse -Force
         }
     } elseif ($Asset.Name -match "\.tar\.gz$|\.tgz$") {
-        if (-not (Has-Command "tar")) {
-            Die "tar is required to extract .tar.gz file but not found"
+        if (-not (Test-Command "tar")) {
+            Exit-WithError "tar is required to extract .tar.gz files but was not found"
         }
-
-        tar -xzf $downloadPath -C $script:TEMP_DIR
-        $exe = Get-ChildItem -Path $script:TEMP_DIR -Recurse -Filter "*.exe" | Select-Object -First 1
-
+        tar -xzf $downloadPath -C $script:TempDir
+        $exe = Get-ChildItem -Path $script:TempDir -Recurse -Filter "*.exe" | Select-Object -First 1
         if ($exe) {
-            Copy-Item $exe.FullName -Destination (Join-Path $installDir)
+            Copy-Item $exe.FullName -Destination (Join-Path $installDir "$script:AppName.exe") -Force
         }
     } else {
-        Copy-Item $downloadPath -Destination (Join-Path $InstallDir "$APP_NAME.exe") -Force
+        Copy-Item $downloadPath -Destination (Join-Path $installDir "$script:AppName.exe") -Force
     }
 
-    $installedExe = Join-Path $installDir "$APP_NAME.exe"
-    if (-not (Test-Path $installedExe )) {
-        Die "Installation failed: executable not found at $installedExe"
+    $installedExe = Join-Path $installDir "$script:AppName.exe"
+    if (-not (Test-Path $installedExe)) {
+        Exit-WithError "Installation failed: executable not found at $installedExe"
     }
 
     try {
-        $versionOutput = & $installedExe --verion 2>$null
-        Write-Success "installed at $APP_NAME $versionOutput"   
-    }
-    catch {
-        Write-Warn "could not verify installation, but files are in place"
+        $versionOutput = & $installedExe --version 2>$null
+        Write-Success "Installed $script:AppName $versionOutput"
+    } catch {
+        Write-Warn "Could not verify installation, but files are in place"
     }
 
+    Add-ToUserPath $installDir
+    Remove-TempDir
+
     Write-Host ""
-    Write-Success "$APP_NAME installed succesfully"
+    Write-Success "$script:AppName installed successfully!"
     Write-Info "Location: $installDir"
-    Write-Info "Run: $APP_NAME --help"
+    Write-Info "Run: $script:AppName --help"
+}
+
+function Get-CompilerInfo {
+    $info = @{
+        HasMSVC  = $false
+        HasGCC   = Test-Command "gcc"
+        HasClang = Test-Command "clang"
+        HasNinja = Test-Command "ninja"
+        VSPath   = $null
+    }
+
+    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $vsPath = & $vswhere -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath 2>$null
+        if ($vsPath) {
+            $info.HasMSVC = $true
+            $info.VSPath = $vsPath
+        }
+    }
+
+    return $info
+}
+
+function Select-CMakeGenerator($CompilerInfo) {
+    if ($CompilerInfo.HasNinja -and $CompilerInfo.HasMSVC) {
+        return "Ninja", $null
+    }
+    if ($CompilerInfo.HasNinja -and $CompilerInfo.HasGCC) {
+        return "Ninja", $null
+    }
+    if ($CompilerInfo.HasMSVC) {
+        return "Visual Studio 17 2022", "x64"
+    }
+    if ($CompilerInfo.HasGCC) {
+        return "MinGW Makefiles", $null
+    }
+    if ($CompilerInfo.HasClang) {
+        return "MinGW Makefiles", $null
+    }
+
+    return $null, $null
 }
 
 function Install-FromSource {
     Write-Step "Building from source"
-    
-    if (-not (Has-Command "cmake")) {
-        Die "cmake is required to build from source but was not found. `nInstall from: https://cmake.org/download"
+
+    if (-not (Test-Command "cmake")) {
+        Exit-WithError "CMake is required to build from source but was not found.`nInstall from: https://cmake.org/download/"
+    }
+    if (-not (Test-Command "git")) {
+        Exit-WithError "Git is required to build from source but was not found.`nInstall from: https://git-scm.com/download/win"
     }
 
-    $cmakeVersion = & cmake --version | Select-Object -First 1
+    $cmakeVersion = (& cmake --version | Select-Object -First 1)
     Write-Info "Found: $cmakeVersion"
 
-    $hasMSVC = $false
-    $hasGCC = Has-Command "gcc"
-    $hasClang = Has-Command "clang"
+    $compiler = Get-CompilerInfo
+    $generator, $arch = Select-CMakeGenerator $compiler
 
-    $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-
-    if (Test-Path $vswhere) {
-        $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
-        if ($vsPath) {
-            $hasMSVC = $true
-            Write-Info "found MSVC at: $vsPath"
-        }
+    if (-not $generator) {
+        Exit-WithError "No C++ compiler found. Install Visual Studio Build Tools or MinGW.`nSee: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022"
     }
 
-    if (-not ($hasMSVC -or $hasGCC -or $hasClang)) {
-        Die "no C++ compile found, install visual studio build tools first"
-    }
+    if ($compiler.HasMSVC) { Write-Info "Found MSVC at: $($compiler.VSPath)" }
+    if ($compiler.HasGCC) { Write-Info "Found MinGW GCC" }
+    if ($compiler.HasClang) { Write-Info "Found Clang" }
+    Write-Info "Using generator: $generator"
 
-    $script:TEMP_DIR = Join-Path $env:TEMP "$APP_NAME-build-$(Get-Random)"
-    New-Item -ItemType Directory -Force -Path $script:TEMP_DIR | Out-Null
+    $script:TempDir = Join-Path $env:TEMP "$script:AppName-build-$(Get-Random)"
+    New-Item -ItemType Directory -Force -Path $script:TempDir | Out-Null
 
-    $branch = if ($env:SNIFFERCOMMIT_BRANCH) { $env:SNIFFERCOMMIT_BRANCH } else { "develop" }
-    $sourceDir = Join-Path $script:TEMP_DIR $REPO_NAME
+    $sourceDir = Join-Path $script:TempDir $script:RepoName
 
-    Write-Info "cloning repository (branch: $branch)"
-    & git clone --depth 1 --branch $branch "$REPO_URL.git" $sourceDir
+    Write-Info "Cloning repository (branch: $script:Branch)..."
+    & git clone --depth 1 --branch $script:Branch "$script:RepoUrl.git" $sourceDir
     if ($LASTEXITCODE -ne 0) {
-        Die "failed to clone repository"
+        Exit-WithError "Failed to clone repository"
     }
 
-    Write-Info "configure with cmake"
+    Write-Info "Configuring with CMake..."
     $buildDir = Join-Path $sourceDir "build"
     New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
 
-    $builtExe = Join-Path $buildDir "Release\$APP_NAME.exe"
-    
+    $cmakeArgs = @("-S", $sourceDir, "-B", $buildDir, "-G", $generator)
+
+    if ($arch) {
+        $cmakeArgs += "-A", $arch
+    }
+
+    if ($generator -notmatch "Visual Studio") {
+        $cmakeArgs += "-DCMAKE_BUILD_TYPE=Release"
+    }
+
+    $cmakeArgs += "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
+    if ($generator -eq "MinGW Makefiles" -and $compiler.HasGCC) {
+        $mingwMake = Get-Command "mingw32-make" -ErrorAction SilentlyContinue
+        if (-not $mingwMake) {
+            $mingwMake = Get-Command "make" -ErrorAction SilentlyContinue
+        }
+        if ($mingwMake) {
+            $cmakeArgs += "-DCMAKE_MAKE_PROGRAM=$($mingwMake.Source)"
+        }
+    }
+
+    $cacheFile = Join-Path $buildDir "CMakeCache.txt"
+    if (Test-Path $cacheFile) {
+        $cachedGen = Select-String -Path $cacheFile -Pattern "CMAKE_GENERATOR:INTERNAL=(.+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+        if ($cachedGen -and $cachedGen -ne $generator) {
+            Write-Warn "Stale CMake cache detected (generator: $cachedGen). Cleaning..."
+            Remove-Item -Recurse -Force $buildDir
+            New-Item -ItemType Directory -Force -Path $buildDir | Out-Null
+        }
+    }
+
+    & cmake @cmakeArgs
+    if ($LASTEXITCODE -ne 0) {
+        Exit-WithError "CMake configuration failed. If you see 'generator mismatch', run with a clean build directory."
+    }
+
+    Write-Info "Building..."
+    $buildArgs = @("--build", $buildDir, "--parallel")
+    if ($generator -match "Visual Studio") {
+        $buildArgs += "--config", "Release"
+    }
+
+    & cmake @buildArgs
+    if ($LASTEXITCODE -ne 0) {
+        Exit-WithError "Build failed"
+    }
+
+    $installDir = Get-DefaultInstallDir
+    New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+
+    $builtExe = Join-Path $buildDir "Release\$script:AppName.exe"
     if (-not (Test-Path $builtExe)) {
-        $builtExe = Join-Path $buildDir "$APP_NAME.exe"
+        $builtExe = Join-Path $buildDir "$script:AppName.exe"
     }
 
     if (Test-Path $builtExe) {
-        Copy-Item $builtExe -Destination (Join-Path $installDir "$APP_NAME.exe") -Force
+        Copy-Item $builtExe -Destination (Join-Path $installDir "$script:AppName.exe") -Force
     } else {
-        Die "could not find built executable"
+        Exit-WithError "Could not find built executable"
     }
 
-    Add-ToPath $installDir
-    Cleanup
+    $compileDb = Join-Path $buildDir "compile_commands.json"
+    $rootDb = Join-Path $sourceDir "compile_commands.json"
+    if ((Test-Path $compileDb) -and -not (Test-Path $rootDb)) {
+        try {
+            New-Item -ItemType SymbolicLink -Path $rootDb -Target $compileDb -ErrorAction SilentlyContinue | Out-Null
+        } catch {
+            Copy-Item $compileDb -Destination $rootDb -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Add-ToUserPath $installDir
+    Remove-TempDir
 
     Write-Host ""
-    Write-Success "$APP_NAME built and installed success"
-    Write-Info "location: $installDir"
+    Write-Success "$script:AppName built and installed successfully!"
+    Write-Info "Location: $installDir"
 }
 
-Get-Platform
+function Uninstall-App {
+    Write-Step "Uninstalling $script:AppName"
 
-$existing = Get-Command $APP_NAME -ErrorAction SilentlyContinue
+    $installDir = $null
+    $candidates = @(
+        "$env:LOCALAPPDATA\Programs\$script:AppName"
+        "$env:USERPROFILE\.local\bin"
+        "$env:APPDATA\$script:AppName"
+        "$PWD\$script:AppName"
+    )
+
+    foreach ($dir in $candidates) {
+        if (Test-Path (Join-Path $dir "$script:AppName.exe")) {
+            $installDir = $dir
+            break
+        }
+    }
+
+    if (-not $installDir) {
+        $pathDirs = $env:Path -split ";"
+        foreach ($dir in $pathDirs) {
+            if ($dir -and (Test-Path (Join-Path $dir "$script:AppName.exe"))) {
+                $installDir = $dir
+                break
+            }
+        }
+    }
+
+    if (-not $installDir) {
+        Exit-WithError "$script:AppName not found. Is it installed?"
+    }
+
+    Write-Info "Found installation at: $installDir"
+
+    $exePath = Join-Path $installDir "$script:AppName.exe"
+    if (Test-Path $exePath) {
+        Remove-Item $exePath -Force
+        Write-Success "Removed: $exePath"
+    }
+
+    Remove-FromUserPath $installDir
+    Write-Success "Removed from PATH"
+
+    $remaining = Get-ChildItem $installDir -ErrorAction SilentlyContinue
+    if (-not $remaining) {
+        Remove-Item $installDir -Force
+        Write-Success "Removed empty directory: $installDir"
+    }
+
+    Write-Host ""
+    Write-Success "$script:AppName uninstalled successfully"
+}
+
+Write-Host @"
+sniffercommit
+"@ -ForegroundColor Cyan
+
+Write-Host "Installer for $script:RepoUrl" -ForegroundColor Gray
+Write-Host ""
+
+if ($Uninstall) {
+    Uninstall-App
+    exit 0
+}
+
+Get-PlatformInfo
+
+$existing = Get-Command $script:AppName -ErrorAction SilentlyContinue
 if ($existing -and -not $Force) {
-    $version = & $APP_NAME --version 2>$null
-    Write-Warn "$APP_NAME is already installed ($version)"
-    Write-Info "use -Force to reinstall"
+    $version = & $script:AppName --version 2>$null
+    Write-Warn "$script:AppName is already installed ($version)"
+    Write-Info "Use -Force to reinstall or -Uninstall to remove"
     exit 0
 }
 
 $asset = $null
-if (-not $FORCE_BUILD -and -not $PREFER_BUILD) {
-    $asset = Get-ReleaseAsset $Version
+if (-not $script:ForceBuild -and -not $script:PreferBuild) {
+    $asset = Get-ReleaseAsset $script:TargetVersion
 }
 
-if ($asset -and -not $PREFER_BUILD) {
+if ($asset -and -not $script:PreferBuild) {
     Install-FromRelease $asset
 } else {
-    if ($PREFER_BUILD) {
-        Write-Info "preferring build from source (SNIFFERCOMMIT_PREFER_BUILD=1)"
-    } elseif ($FORCE_BUILD) {
-        Write-Info "forced build from source (SNIFFERCOMMIT_FORCE_BUILD=1)"
+    if ($script:PreferBuild) {
+        Write-Info "Preferring build from source (SNIFFERCOMMIT_PREFER_BUILD=1)"
+    } elseif ($script:ForceBuild) {
+        Write-Info "Forced build from source (SNIFFERCOMMIT_FORCE_BUILD=1)"
     } else {
-        Write-Info "no prebuilt binary found for $script:PLATFORM-$script:ARCH"
+        Write-Info "No prebuilt binary found for $script:Platform-$script:Arch"
     }
-
     Install-FromSource
 }
