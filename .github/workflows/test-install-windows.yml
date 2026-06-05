@@ -75,7 +75,7 @@ jobs:
           }
           $found = $false
           foreach ($pattern in $typos.Keys) {
-            if ($content -match $pattern) {
+            if ($content -cmatch $pattern) {
               Write-Error "$($typos[$pattern]) (found: '$pattern')"
               $found = $true
             }
