@@ -4,8 +4,8 @@
 #include <cstdio>
 #include <filesystem>
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace sniffercommit::util {
 struct PipeDeleter {
@@ -49,11 +49,12 @@ class CwdGuard {
 };
 
 // NOTE: check if a file path matches any of the given glob-like patterns
-[[nodiscard]] bool matches_pattern(const std::string& file, const std::vector<std::string>& patterns);
+[[nodiscard]] bool matches_pattern(const std::string& file,
+                                   const std::vector<std::string>& patterns);
 
 // NOTE:check if a file path matches any exclusion rule
 [[nodiscard]] bool is_excluded(const std::string& file, const std::vector<std::string>& excludes);
 
-}  // namespace sniffercommit::init
+}  // namespace sniffercommit::util
 
 #endif  // !SNIFFERCOMMIT_UTIL_HPP

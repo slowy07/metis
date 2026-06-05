@@ -179,6 +179,7 @@ function Add-ToUserPath($Dir) {
     Write-Step "Adding to PATH"
     try {
         [Environment]::SetEnvironmentVariable("Path", "$currentPath;$Dir", "User")
+        $env:Path += ";$Dir"
         Write-Success "Added to user PATH"
         Write-Info "Restart your terminal or run: `$env:Path += `";$Dir`""
     } catch {

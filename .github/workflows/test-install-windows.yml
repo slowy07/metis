@@ -183,6 +183,8 @@ jobs:
               $version = & $exe --version
               Write-Host "Version: $version"
               $found = $true
+              # Make available in PATH for subsequent steps
+              echo "$dir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
               break
             }
           }
@@ -194,7 +196,6 @@ jobs:
       - name: Test installed binary
         shell: pwsh
         run: |
-          # Test basic commands
           sniffercommit --version
           sniffercommit --help
 
@@ -280,6 +281,31 @@ jobs:
           }
 
       - name: Verify installation
+        shell: pwsh
+        run: |
+          $installDirs = @(
+            "$env:LOCALAPPDATA\Programs\sniffercommit"
+            "$env:USERPROFILE\.local\bin"
+            "$env:APPDATA\sniffercommit"
+          )
+          $found = $false
+          foreach ($dir in $installDirs) {
+            $exe = Join-Path $dir "sniffercommit.exe"
+            if (Test-Path $exe) {
+              Write-Host "Found: $exe"
+              $version = & $exe --version
+              Write-Host "Version: $version"
+              $found = $true
+              echo "$dir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+              break
+            }
+          }
+          if (-not $found) {
+            Write-Error "sniffercommit.exe not found in expected locations"
+            exit 1
+          }
+
+      - name: Test installed binary
         shell: pwsh
         run: |
           sniffercommit --version
