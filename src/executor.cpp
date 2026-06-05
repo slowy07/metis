@@ -7,6 +7,10 @@
 #include <filesystem>
 #include <iostream>
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
 #include "sniffercommit/error_codes.hpp"
 #include "sniffercommit/project_config.hpp"
 #include "sniffercommit/util.hpp"
@@ -134,11 +138,15 @@ int execute_format(const std::filesystem::path& repo_root, const std::vector<std
 
     int status = std::system(cmd.c_str());  // NOLINT(bugprone-command-processor)
     int code = 1;
+#ifdef _WIN32
+    code = status;
+#else
     if (WIFEXITED(status)) {
       code = WEXITSTATUS(status);
     } else if (WIFSIGNALED(status)) {
       code = 128 + WTERMSIG(status);
     }
+#endif
 
     if (code != 0) {
       std::cerr << fmt::format(
@@ -241,6 +249,9 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
       int status = std::system(full.c_str());  // NOLINT(bugprone-command-processor)
       int code = 1;
 
+#ifdef _WIN32
+      code = status;
+#else
       if (WIFEXITED(status)) {
         code = WEXITSTATUS(status);
       } else if (WIFSIGNALED(status)) {
@@ -249,6 +260,7 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
                                  file_name);
         code = 128 + sig;
       }
+#endif
 
       auto cmd_basename = std::filesystem::path(check.command).filename().string();
       if ((cmd_basename == "grep" || cmd_basename == "egrep" || cmd_basename == "rg") &&
