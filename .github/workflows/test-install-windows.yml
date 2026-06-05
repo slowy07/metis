@@ -1,18 +1,18 @@
- name: Test Windows Installer
+name: Test Windows Installer
 
 on:
   push:
     branches: [develop, main]
     paths:
       - 'install.ps1'
-      - '.github/workflows/test-installer.yml'
+      - '.github/workflows/test-install-windows.yml'
       - 'CMakeLists.txt'
       - 'src/**'
   pull_request:
     branches: [develop, main]
     paths:
       - 'install.ps1'
-      - '.github/workflows/test-installer.yml'
+      - '.github/workflows/test-install-windows.yml'
   workflow_dispatch:
     inputs:
       test_source_build:
@@ -133,7 +133,7 @@ jobs:
 
       - name: Add MinGW to PATH
         run: |
-          echo "C:\msys64\mingw64in" >> $env:GITHUB_PATH
+          echo "C:\msys64\mingw64\bin" >> $env:GITHUB_PATH
 
       - name: Verify toolchain
         shell: pwsh
@@ -226,7 +226,7 @@ jobs:
           # Verify removal
           $installDirs = @(
             "$env:LOCALAPPDATA\Programs\sniffercommit"
-            "$env:USERPROFILE\.localin"
+            "$env:USERPROFILE\.local\bin"
             "$env:APPDATA\sniffercommit"
           )
           foreach ($dir in $installDirs) {
@@ -319,4 +319,4 @@ jobs:
               exit 1
             }
           }
-          Write-Host "All expected parameters found: $($params -join ', ')" 
+          Write-Host "All expected parameters found: $($params -join ', ')"

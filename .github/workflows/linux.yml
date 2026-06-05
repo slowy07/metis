@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v5
 
@@ -29,9 +29,8 @@ jobs:
         run: |
           ./docker/scripts/extract-all.sh
 
-      - name: test-up-data
+      - name: upload-artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-package
           path: artifacts/*
-          
