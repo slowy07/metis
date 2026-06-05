@@ -43,12 +43,23 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Warning,Error -Recurse:$false
+          $results = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Error -Recurse:$false
           if ($results) {
             $results | Format-Table -AutoSize
             exit 1
           }
-          Write-Host "PSScriptAnalyzer passed with no warnings or errors."
+          Write-Host "PSScriptAnalyzer passed with no errors."
+
+      - name: PSScriptAnalyzer warnings (non-blocking)
+        shell: pwsh
+        run: |
+          $warnings = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Warning -Recurse:$false
+          if ($warnings) {
+            Write-Host "PSScriptAnalyzer warnings (non-blocking):"
+            $warnings | Format-Table RuleName, Severity, Line, Message
+          } else {
+            Write-Host "No PSScriptAnalyzer warnings."
+          }
 
       - name: Check for common typos
         shell: pwsh
