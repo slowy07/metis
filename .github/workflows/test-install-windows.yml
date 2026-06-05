@@ -66,12 +66,12 @@ jobs:
         run: |
           $content = Get-Content ./install.ps1 -Raw
           $typos = @{
-            "Write-Erorr" = "Typo: Write-Erorr should be Write-Error"
-            "--verion"    = "Typo: --verion should be --version"
-            "succesfully" = "Typo: succesfully should be successfully"
-            "\$dir-parent" = "Typo: \$dir-parent should be Split-Path syntax"
-            "\$CurrentPath" = "Inconsistency: \$CurrentPath vs \$currentPath"
-            "no .* compile found" = "Typo: 'compile' should be 'compiler'"
+            'Write-Erorr'       = 'Typo: Write-Erorr should be Write-Error'
+            '--verion'          = 'Typo: --verion should be --version'
+            'succesfully'       = 'Typo: succesfully should be successfully'
+            '\$dir-parent'      = 'Typo: $dir-parent should be Split-Path syntax'
+            '\$CurrentPath'     = 'Inconsistency: \$CurrentPath vs \$currentPath'
+            'no .* compile found'  = "Typo: 'compile' should be 'compiler'"
           }
           $found = $false
           foreach ($pattern in $typos.Keys) {
