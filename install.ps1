@@ -493,8 +493,15 @@ function Install-FromSource {
     if (-not (Test-Path $builtExe)) {
         $builtExe = Join-Path $buildDir "$script:AppName.exe"
     }
+    if (-not (Test-Path $builtExe)) {
+        $builtExe = Join-Path $buildDir "bin\$script:AppName.exe"
+    }
+    if (-not (Test-Path $builtExe)) {
+        $builtExe = Get-ChildItem -Path $buildDir -Recurse -Filter "$script:AppName.exe" |
+            Select-Object -First 1
+    }
 
-    if (Test-Path $builtExe) {
+    if ($builtExe -and (Test-Path $builtExe)) {
         Copy-Item $builtExe -Destination (Join-Path $installDir "$script:AppName.exe") -Force
     } else {
         Exit-WithError "Could not find built executable"
