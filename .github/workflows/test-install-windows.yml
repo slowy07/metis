@@ -108,8 +108,7 @@ jobs:
           # without syntax errors and reaches the "no binary found" fallback
           $output = & .\install.ps1 2>&1 | Out-String
           Write-Host $output
-          # Should either install or gracefully fall back to source build
-          if ($output -match "ERROR" -and $output -notmatch "no prebuilt binary") {
+          if ($LASTEXITCODE -ne 0) {
             Write-Error "Unexpected error during install"
             exit 1
           }
