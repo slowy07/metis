@@ -11,7 +11,11 @@ namespace sniffercommit::util {
 struct PipeDeleter {
   void operator()(FILE* file_ptr) const noexcept {
     if (file_ptr != nullptr) {
+#ifdef _WIN32
+      (void)_pclose(file_ptr);
+#else
       (void)pclose(file_ptr);
+#endif
     }
   }
 };

@@ -233,7 +233,7 @@ function(apply_warnings_and_hardening TARGET)
     endif()
 
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    target_compile_options(${TARGET} PRIVATE /W4 /permissive- /sdl)
+    target_compile_options(${TARGET} PRIVATE /W4 /permissive- /sdl /D_CRT_SECURE_NO_WARNINGS)
     target_link_options(${TARGET} PRIVATE /DYNAMICBASE /NXCOMPAT)
   endif()
 endfunction()

@@ -16,7 +16,11 @@ std::string exec_cmd(const std::string& cmd) {
   std::string result;
   result.reserve(4096);
 
+#ifdef _WIN32
+  PipePtr pipe(_popen(cmd.c_str(), "r"));
+#else
   PipePtr pipe(popen(cmd.c_str(), "r"));
+#endif
 
   if (!pipe) {
     throw std::runtime_error("popen() failed " + cmd);
