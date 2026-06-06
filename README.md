@@ -1,4 +1,3 @@
-[![AUR Version](https://img.shields.io/aur/version/sniffercommit?style=flat-square)](https://aur.archlinux.org/packages/sniffercommit)
 [![GitHub Release](https://img.shields.io/github/v/release/slowy07/sniffercommit?display_name=tag&style=flat-square)](https://github.com/slowy07/sniffercommit/releases)
 
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/sniffercommit/test_sniffercommit.yml?branch=develop&style=flat-square&label=GoogleTest)
@@ -17,6 +16,20 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 - **CMake scaffolding** : generate `CMakeLists.txt` with compiler warnings, sanitizers, clang-tidy/clang-format integration, and testing
 - **Hook syntax validation** : generated bash hooks are validated with `bash -n` before install
 - **Git worktree support** : works in worktrees, submodules, and detached checkouts
+
+## Install
+
+```bash
+# POSIX (Linux, macOS)
+curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
+```
+
+The script detects your platform, downloads the latest release binary, and adds it to your `PATH`.
 
 ## Quick Start
 
@@ -63,14 +76,8 @@ Both are fetched automatically at configure time via CMake's `FetchContent`. No 
 Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
 
 ```bash
-# Ubuntu / Debian
-sudo apt-get install libfmt-dev
-
 # macOS (Homebrew)
 brew install fmt
-
-# Arch
-sudo pacman -S fmt
 ```
 
 ## Build
@@ -103,18 +110,10 @@ cmake --build build --parallel
 - `Clang >= 14`
 - `MSVC >= 2022 17.0`
 
-**Install**
+**Install (from build)**
 
 ```bash
-# System-wide install
 sudo cmake --install build
-
-# Or create Debian package
-cd build && cpack -G DEB
-sudo dpkg -i sniffercommit_*.deb
-
-# Install via pacman (AUR)
-yay -S sniffercommit
 ```
 
 ## Usage
