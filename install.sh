@@ -1,5 +1,5 @@
 #!/bin/sh
-# shellcheck shell=sh
+# shellcheck shell=sh disable=SC3043
 # curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.sh | sh
 
 set -u
