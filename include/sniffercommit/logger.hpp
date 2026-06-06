@@ -24,28 +24,28 @@ class Logger {
     return logger;
   }
 
-  void set_level(LogLevel level) { level_ = level; }
-  void set_output(std::ostream& out) { out_ = &out; }
-  void set_error_output(std::ostream& err) { err_ = &err; }
+  void set_level(LogLevel lvl) { level = lvl; }
+  void set_output(std::ostream& output_stream) { out = &output_stream; }
+  void set_error_output(std::ostream& error_stream) { err = &error_stream; }
 
-  void debug(std::string_view msg) { log(LogLevel::DEBUG, "[DEBUG]", msg); }
-  void info(std::string_view msg) { log(LogLevel::INFO, "[INFO]", msg); }
-  void warn(std::string_view msg) { log(LogLevel::WARN, "[WARN]", msg); }
-  void error(std::string_view msg) { log(LogLevel::ERROR, "[ERROR]", msg); }
+  void debug(std::string_view msg) { log(LogLevel::DEBUG, msg); }
+  void info(std::string_view msg) { log(LogLevel::INFO, msg); }
+  void warn(std::string_view msg) { log(LogLevel::WARN, msg); }
+  void error(std::string_view msg) { log(LogLevel::ERROR, msg); }
 
   template <typename... Args>
   void info_fmt(std::string_view fmt_str, Args&&... args) {
-    info(fmt_str);
+    info(fmt::vformat(fmt_str, fmt::make_format_args(args...)));
   }
 
  private:
   Logger() = default;
 
-  void log(LogLevel leve, std::string_view prefix, std::string_view msg);
+  void log(LogLevel lvl, std::string_view msg);
 
-  LogLevel level_ = LogLevel::INFO;
-  std::ostream* out_ = &std::cout;
-  std::ostream* err_ = &std::cerr;
+  LogLevel level = LogLevel::INFO;
+  std::ostream* out = &std::cout;
+  std::ostream* err = &std::cerr;
 };
 
 inline void log_debug(std::string_view msg) { Logger::instance().debug(msg); }

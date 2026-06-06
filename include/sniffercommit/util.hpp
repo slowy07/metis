@@ -45,7 +45,7 @@ class CwdGuard {
   CwdGuard& operator=(CwdGuard&&) = delete;
 
  private:
-  std::filesystem::path original_cwd_;
+  std::filesystem::path original_cwd;
 };
 
 // NOTE: check if a file path matches any of the given glob-like patterns

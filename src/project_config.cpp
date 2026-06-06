@@ -87,10 +87,58 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
   return false;
 }
 
+static void load_checks(toml::table& tbl, ProjectConfig& cfg) {
+  if (auto* checks_arr = tbl["checks"].as_array()) {
+    for (auto& item : *checks_arr) {
+      if (auto* check_tbl = item.as_table()) {
+        Check check;
+        check.name = (*check_tbl)["name"].value_or("unnamed");
+        check.command = (*check_tbl)["command"].value_or("");
+
+        if (auto* args = (*check_tbl)["args"].as_array()) {
+          for (auto& arg : *args) {
+            check.args.emplace_back(arg.value_or(""));
+          }
+        }
+
+        if (auto* pats = (*check_tbl)["patterns"].as_array()) {
+          for (auto& pat : *pats) {
+            check.patterns.emplace_back(pat.value_or(""));
+          }
+        }
+
+        cfg.checks.emplace_back(std::move(check));
+      }
+    }
+  }
+}
+
+static void load_exclude(toml::table& tbl, ProjectConfig& cfg) {
+  if (auto* exclude_tbl = tbl["exclude"].as_table()) {
+    if (auto* paths = (*exclude_tbl)["paths"].as_array()) {
+      for (auto& path_item : *paths) {
+        cfg.exclude_paths.emplace_back(path_item.value_or(""));
+      }
+    }
+  }
+}
+
+static void load_output_execution(toml::table& tbl, ProjectConfig& cfg) {
+  if (auto* output = tbl["output"].as_table()) {
+    cfg.generate_local_hook = (*output)["local_hook"].value_or(true);
+    cfg.generate_gha = (*output)["github_actions"].value_or(false);
+  }
+
+  if (auto* exec = tbl["execution"].as_table()) {
+    cfg.parallel = (*exec)["parallel"].value_or(true);
+  } else {
+    cfg.parallel = true;
+  }
+}
+
 // INFO: load from TOML files
 // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-ProjectConfig load(
-    const std::filesystem::path& path) {  // NOLINT(readability-function-cognitive-complexity)
+ProjectConfig load(const std::filesystem::path& path) {
   if (!std::filesystem::exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
   }
@@ -109,55 +157,10 @@ ProjectConfig load(
     cfg.project_name = (*project)["name"].value_or("unnamed");
   }
 
-  if (auto* checks_arr = tbl["checks"].as_array()) {
-    for (auto& item : *checks_arr) {
-      if (auto* check_tbl = item.as_table()) {
-        Check check;
-        check.name = (*check_tbl)["name"].value_or("unnamed");
-        check.command = (*check_tbl)["command"].value_or("");
+  load_checks(tbl, cfg);
+  load_exclude(tbl, cfg);
+  load_output_execution(tbl, cfg);
 
-        // args arrays
-        if (auto* args = (*check_tbl)["args"].as_array()) {
-          for (auto& arg : *args) {
-            check.args.emplace_back(arg.value_or(""));
-          }
-        }
-
-        // patterns array
-        if (auto* pats = (*check_tbl)["patterns"].as_array()) {
-          for (auto& pat : *pats) {
-            check.patterns.emplace_back(pat.value_or(""));
-          }
-        }
-
-        cfg.checks.emplace_back(std::move(check));
-      }
-    }
-  }
-
-  // [exclude]
-  if (auto* exclude_tbl = tbl["exclude"].as_table()) {
-    if (auto* paths = (*exclude_tbl)["paths"].as_array()) {
-      for (auto& path_item : *paths) {
-        cfg.exclude_paths.emplace_back(path_item.value_or(""));
-      }
-    }
-  }
-
-  // [output]
-  if (auto* output = tbl["output"].as_table()) {
-    cfg.generate_local_hook = (*output)["local_hook"].value_or(true);
-    cfg.generate_gha = (*output)["github_actions"].value_or(false);
-  }
-
-  // [execution]
-  if (auto* exec = tbl["execution"].as_table()) {
-    cfg.parallel = (*exec)["parallel"].value_or(true);
-  } else {
-    cfg.parallel = true;
-  }
-
-  // NOTE: validate after loading
   if (auto err = cfg.validate(); !err.empty()) {
     throw std::runtime_error("Config validation failed: " + err);
   }
