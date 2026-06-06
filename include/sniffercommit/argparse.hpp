@@ -88,8 +88,7 @@ class ArgParser {
     args = std::span(argv, argc_sz);
 
     for (size_t i = 1; i < argc_sz; ++i) {
-      std::string_view arg =
-          args[i];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view arg = args.data()[i];
       if (arg == "--help" || arg == "-h") {
         show_help();
         return false;
@@ -101,8 +100,7 @@ class ArgParser {
     }
 
     if (!subcommands.empty()) {
-      std::string_view first_arg =
-          args[1];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view first_arg = args.data()[1];
       if (!first_arg.starts_with("-")) {
         auto found = std::ranges::find_if(
             subcommands, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
@@ -118,8 +116,7 @@ class ArgParser {
     }
 
     for (size_t i = 0; i < args.size(); ++i) {
-      std::string_view arg =
-          args[i];  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+      std::string_view arg = args.data()[i];
       if (!arg.starts_with('-')) {
         continue;
       }
@@ -142,21 +139,16 @@ class ArgParser {
           std::cerr << "[ERROR] Option " << arg << " requires value\n";
           return false;
         }
-        std::string value = std::string(
-            args[++i]);  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        std::string value = std::string(args.data()[++i]);
         auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
         if (opt_idx < option_stores.size()) {
-          option_stores[opt_idx](
-              value);  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          option_stores.at(opt_idx)(value);
         }
       } else {
         auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
         if (opt_idx < flag_stores.size() &&
-            flag_stores[opt_idx] !=
-                nullptr) {  // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-          // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-          *flag_stores[opt_idx] = true;
-          // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+            flag_stores.at(opt_idx) != nullptr) {
+          *flag_stores.at(opt_idx) = true;
         }
       }
     }

@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <string_view>
+#include <utility>
 
 namespace sniffercommit {
 
@@ -35,7 +36,7 @@ class Logger {
 
   template <typename... Args>
   void info_fmt(std::string_view fmt_str, Args&&... args) {
-    info(fmt::vformat(fmt_str, fmt::make_format_args(args...)));
+    info(fmt::vformat(fmt_str, fmt::make_format_args(std::forward<Args>(args)...)));
   }
 
  private:

@@ -8,10 +8,14 @@ namespace sniffercommit {
 
 static std::string_view prefix_for_level(LogLevel lvl) {
   switch (lvl) {
-    case LogLevel::DEBUG: return "[DEBUG]";
-    case LogLevel::INFO: return "[INFO]";
-    case LogLevel::WARN: return "[WARN]";
-    case LogLevel::ERROR: return "[ERROR]";
+    case LogLevel::DEBUG:
+      return "[DEBUG]";
+    case LogLevel::INFO:
+      return "[INFO]";
+    case LogLevel::WARN:
+      return "[WARN]";
+    case LogLevel::ERROR:
+      return "[ERROR]";
   }
   return "[UNKNOWN]";
 }

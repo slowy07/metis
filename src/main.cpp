@@ -23,18 +23,29 @@
 
 namespace {
 
-std::string preparse_config_path(std::span<char*> args) {
+struct SafeArgs {
+  std::span<char*> inner;
+
+  char*& at(size_t i) {
+    if (i >= inner.size()) {
+      throw std::runtime_error("BUG: args index out of range");
+    }
+    return inner.data()[i];
+  }
+
+  size_t size() const { return inner.size(); }
+};
+
+std::string preparse_config_path(SafeArgs& args) {
   std::string config_path = ".sniffercommit.toml";
 
-  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   for (size_t i = 1; i + 1 < args.size(); ++i) {
-    std::string_view arg = args[i];
+    std::string_view arg = args.at(i);
     if ((arg == "-c" || arg == "--config") && i + 1 < args.size()) {
-      config_path = args[i + 1];
+      config_path = args.at(i + 1);
       break;
     }
   }
-  // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   return config_path;
 }
 
@@ -231,7 +242,8 @@ bool prompt_bool(std::string_view label, bool default_val) {
 }
 
 template <typename T>
-T prompt_int(std::string_view label, T min_val, T default_val, T max_val) {
+T prompt_int(std::string_view label, T default_val, std::pair<T, T> range) {
+  auto [min_val, max_val] = range;
   while (true) {
     std::cout << "  " << bold << label << reset << "  " << dim << "[" << default_val << "]" << reset
               << ": ";
@@ -332,9 +344,10 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
   opts.project_name = prompt_string("project name", opts.project_name);
 
   // INFO: style
-  static constexpr std::array format_style = {std::string_view{"google"}, std::string_view{"llvm"},
-      std::string_view{"chromium"}, std::string_view{"mozilla"},
-      std::string_view{"webkit"}, std::string_view{"microsoft"}, std::string_view{"gnu"}};
+  static constexpr std::array format_style = {
+      std::string_view{"google"},  std::string_view{"llvm"},   std::string_view{"chromium"},
+      std::string_view{"mozilla"}, std::string_view{"webkit"}, std::string_view{"microsoft"},
+      std::string_view{"gnu"}};
 
   std::string style_str = prompt_choice("formatter style", "google", format_style);
   std::ranges::transform(style_str, style_str.begin(),
@@ -347,15 +360,15 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
     opts.style = sniffercommit::tooling::FormatterStyle::Google;
   }
 
-  opts.indent_width = prompt_int("indent width", 1, opts.indent_width, 16);
-  opts.column_limit = prompt_int("column limit", 20, opts.column_limit, 500);
+  opts.indent_width = prompt_int("indent width", opts.indent_width, std::pair{1, 16});
+  opts.column_limit = prompt_int("column limit", opts.column_limit, std::pair{20, 500});
 
   // INFO: clang tidy
   opts.enable_clang_tidy = prompt_bool("enable clang-tidy", opts.enable_clang_tidy);
 
   if (opts.enable_clang_tidy) {
-    static constexpr auto clang_tidy_preset = std::to_array<std::string_view>(
-        {"minimal", "standard", "strict", "custom"});
+    static constexpr auto clang_tidy_preset =
+        std::to_array<std::string_view>({"minimal", "standard", "strict", "custom"});
 
     std::string preset_str = prompt_choice("tidy preset", "standard", clang_tidy_preset);
 
@@ -366,8 +379,8 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
       opts.tidy_preset = sniffercommit::tooling::TidyPreset::Standard;
     }
 
-    static constexpr auto preset_severity = std::to_array<std::string_view>(
-        {"note", "warning", "error"});
+    static constexpr auto preset_severity =
+        std::to_array<std::string_view>({"note", "warning", "error"});
     std::string sev_str = prompt_choice("tidy severity", "error", preset_severity);
 
     try {
@@ -383,8 +396,7 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
   if (opts.enable_cmake) {
     opts.generate_source = true;
 
-    static constexpr auto preset_standard_cpp = std::to_array<std::string_view>(
-        {"17", "20", "23"});
+    static constexpr auto preset_standard_cpp = std::to_array<std::string_view>({"17", "20", "23"});
     std::string std_str = prompt_choice("C++ Standard", "20", preset_standard_cpp);
 
     try {
@@ -394,8 +406,8 @@ void run_interactive_init(sniffercommit::ConfigManager::InitOptions& opts) {
       opts.cmake_cpp_standard = sniffercommit::tooling::CppStandard::Cpp20;
     }
 
-    static constexpr auto preset_target = std::to_array<std::string_view>(
-        {"executable", "static", "shared", "header-only"});
+    static constexpr auto preset_target =
+        std::to_array<std::string_view>({"executable", "static", "shared", "header-only"});
     std::string type_str = prompt_choice("target type", "executable", preset_target);
 
     try {
@@ -447,16 +459,15 @@ bool parse_depedency_flag(const std::string& value, sniffercommit::ConfigManager
   return true;
 }
 
-bool handle_flag_style(size_t& pos, size_t argc_sz, std::span<char*> args,
-                               sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+bool handle_flag_style(size_t& pos, SafeArgs& args,
+                       sniffercommit::ConfigManager::InitOptions& opts) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --style requires value\n";
     return false;
   }
   ++pos;
-  std::string value = args[pos];
-  std::ranges::transform(value, value.begin(),
-                         [](unsigned char chr) { return std::tolower(chr); });
+  std::string value = args.at(pos);
+  std::ranges::transform(value, value.begin(), [](unsigned char chr) { return std::tolower(chr); });
   try {
     opts.style = sniffercommit::tooling::parse_style(value);
   } catch (const std::exception& error_style_config) {
@@ -466,40 +477,40 @@ bool handle_flag_style(size_t& pos, size_t argc_sz, std::span<char*> args,
   return true;
 }
 
-bool handle_flag_int(const std::string& flag_name, size_t& pos, size_t argc_sz,
-                     std::span<char*> args, int& out) {
-  if (pos + 1 >= argc_sz) {
+bool handle_flag_int(const std::string& flag_name, size_t& pos, SafeArgs& args,
+                     int& out) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] " << flag_name << " requires integer value\n";
     return false;
   }
   ++pos;
-  if (!safe_stoi(args[pos], out)) {
+  if (!safe_stoi(args.at(pos), out)) {
     std::cerr << "[ERROR] " << flag_name << " requires integer value\n";
     return false;
   }
   return true;
 }
 
-bool handle_flag_string(const std::string& flag_name, size_t& pos, size_t argc_sz,
-                        std::span<char*> args, std::string& out) {
-  if (pos + 1 >= argc_sz) {
+bool handle_flag_string(const std::string& flag_name, size_t& pos, SafeArgs& args,
+                        std::string& out) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] " << flag_name << " requires value\n";
     return false;
   }
   ++pos;
-  out = args[pos];
+  out = args.at(pos);
   return true;
 }
 
-bool handle_flag_tidy_preset(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_tidy_preset(size_t& pos, SafeArgs& args,
                              sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --tidy-preset requires value (minimal|standard|strict|custom)\n";
     return false;
   }
   try {
     ++pos;
-    opts.tidy_preset = parse_tidy_preset(args[pos]);
+    opts.tidy_preset = parse_tidy_preset(args.at(pos));
   } catch (const std::exception& error_tidy_preset) {
     std::cerr << "[ERROR] " << error_tidy_preset.what() << "\n";
     return false;
@@ -507,15 +518,15 @@ bool handle_flag_tidy_preset(size_t& pos, size_t argc_sz, std::span<char*> args,
   return true;
 }
 
-bool handle_flag_tidy_severity(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_tidy_severity(size_t& pos, SafeArgs& args,
                                sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --tidy-severity requires value (note|warning|error)\n";
     return false;
   }
   try {
     ++pos;
-    opts.tidy_severity = parse_tidy_severity(args[pos]);
+    opts.tidy_severity = parse_tidy_severity(args.at(pos));
   } catch (const std::exception& error_tidy_severity) {
     std::cerr << "[ERROR] " << error_tidy_severity.what() << "\n";
     return false;
@@ -523,14 +534,14 @@ bool handle_flag_tidy_severity(size_t& pos, size_t argc_sz, std::span<char*> arg
   return true;
 }
 
-bool handle_flag_tidy_header_filter(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_tidy_header_filter(size_t& pos, SafeArgs& args,
                                     sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --tidy-header-filter requires integer (0|1|2)\n";
     return false;
   }
   ++pos;
-  if (!safe_stoi(args[pos], opts.tidy_header_filter)) {
+  if (!safe_stoi(args.at(pos), opts.tidy_header_filter)) {
     std::cerr << "[ERROR] --tidy-header-filter requires integer (0|1|2)\n";
     return false;
   }
@@ -541,15 +552,15 @@ bool handle_flag_tidy_header_filter(size_t& pos, size_t argc_sz, std::span<char*
   return true;
 }
 
-bool handle_flag_cmake_standard(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_cmake_standard(size_t& pos, SafeArgs& args,
                                 sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --cmake-cpp-standard requires value (17|20|23)\n";
     return false;
   }
   try {
     ++pos;
-    opts.cmake_cpp_standard = parse_cpp_standard(args[pos]);
+    opts.cmake_cpp_standard = parse_cpp_standard(args.at(pos));
   } catch (const std::exception& error_parse_cpp_standard) {
     std::cerr << "[ERROR] " << error_parse_cpp_standard.what() << "\n";
     return false;
@@ -557,16 +568,16 @@ bool handle_flag_cmake_standard(size_t& pos, size_t argc_sz, std::span<char*> ar
   return true;
 }
 
-bool handle_flag_cmake_target(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_cmake_target(size_t& pos, SafeArgs& args,
                               sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --cmake-target-type requires value "
                  "(executable|static|shared|header-only)\n";
     return false;
   }
   try {
     ++pos;
-    opts.cmake_target_type = parse_target_type(args[pos]);
+    opts.cmake_target_type = parse_target_type(args.at(pos));
   } catch (const std::exception& error_parse_target_type) {
     std::cerr << "[ERROR] " << error_parse_target_type.what() << "\n";
     return false;
@@ -574,15 +585,15 @@ bool handle_flag_cmake_target(size_t& pos, size_t argc_sz, std::span<char*> args
   return true;
 }
 
-bool handle_flag_add_dep(size_t& pos, size_t argc_sz, std::span<char*> args,
+bool handle_flag_add_dep(size_t& pos, SafeArgs& args,
                          sniffercommit::ConfigManager::InitOptions& opts) {
-  if (pos + 1 >= argc_sz) {
+  if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] --add-dep requires value (name:url:tag)\n";
     return false;
   }
   ++pos;
   std::string dep_error;
-  if (!parse_depedency_flag(args[pos], opts, dep_error)) {
+  if (!parse_depedency_flag(args.at(pos), opts, dep_error)) {
     std::cerr << "[ERROR] " << dep_error << "\n";
     return false;
   }
@@ -590,48 +601,47 @@ bool handle_flag_add_dep(size_t& pos, size_t argc_sz, std::span<char*> args,
 }
 
 // NOTE: CLI flag information parsing
-bool parse_cli_flags(std::span<char*> args, size_t argc_sz,
-                     sniffercommit::ConfigManager::InitOptions& opts) {
-  for (size_t i = 1; i < argc_sz; ++i) {
-    std::string arg = args[i];
+bool parse_single_flag(const std::string& arg, size_t& i, SafeArgs& args,
+                       sniffercommit::ConfigManager::InitOptions& opts) {
+  if (arg == "--style") { return handle_flag_style(i, args, opts); }
+  if (arg == "--indent-width") { return handle_flag_int("--indent-width", i, args, opts.indent_width); }
+  if (arg == "--column-limit") { return handle_flag_int("--column-limit", i, args, opts.column_limit); }
+  if (arg == "--pointer-alignment") { return handle_flag_string("--pointer-alignment", i, args, opts.pointer_alignment); }
+  if (arg == "--brace-style") { return handle_flag_string("--brace-style", i, args, opts.brace_style); }
+  if (arg == "--name") { return handle_flag_string("--name", i, args, opts.project_name); }
+  if (arg == "--enable-clang-tidy" || arg == "--tidy") {
+    opts.enable_clang_tidy = true;
+    return true;
+  }
+  if (arg == "--tidy-preset") { return handle_flag_tidy_preset(i, args, opts); }
+  if (arg == "--tidy-severity") { return handle_flag_tidy_severity(i, args, opts); }
+  if (arg == "--tidy-header-filter") { return handle_flag_tidy_header_filter(i, args, opts); }
+  if (arg == "--enable-cmake" || arg == "--cmake") {
+    opts.enable_cmake = true;
+    opts.generate_source = true;
+    return true;
+  }
+  if (arg == "--cmake-cpp-standard") { return handle_flag_cmake_standard(i, args, opts); }
+  if (arg == "--cmake-target-type") { return handle_flag_cmake_target(i, args, opts); }
+  if (arg == "--cmake-enable-testing") {
+    opts.cmake_enable_testing = true;
+    return true;
+  }
+  if (arg == "--cmake-enable-sanitizers") {
+    opts.cmake_enable_sanitizers = true;
+    return true;
+  }
+  if (arg == "--add-dep") { return handle_flag_add_dep(i, args, opts); }
+  // --interactive and -i are handled before this function
+  return true;
+}
 
-    if (arg == "--style") {
-      if (!handle_flag_style(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--indent-width") {
-      if (!handle_flag_int("--indent-width", i, argc_sz, args, opts.indent_width)) { return false; }
-    } else if (arg == "--column-limit") {
-      if (!handle_flag_int("--column-limit", i, argc_sz, args, opts.column_limit)) { return false; }
-    } else if (arg == "--pointer-alignment") {
-      if (!handle_flag_string("--pointer-alignment", i, argc_sz, args, opts.pointer_alignment)) {
-        return false;
-      }
-    } else if (arg == "--brace-style") {
-      if (!handle_flag_string("--brace-style", i, argc_sz, args, opts.brace_style)) { return false; }
-    } else if (arg == "--name") {
-      if (!handle_flag_string("--name", i, argc_sz, args, opts.project_name)) { return false; }
-    } else if (arg == "--enable-clang-tidy" || arg == "--tidy") {
-      opts.enable_clang_tidy = true;
-    } else if (arg == "--tidy-preset") {
-      if (!handle_flag_tidy_preset(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--tidy-severity") {
-      if (!handle_flag_tidy_severity(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--tidy-header-filter") {
-      if (!handle_flag_tidy_header_filter(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--enable-cmake" || arg == "--cmake") {
-      opts.enable_cmake = true;
-      opts.generate_source = true;
-    } else if (arg == "--cmake-cpp-standard") {
-      if (!handle_flag_cmake_standard(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--cmake-target-type") {
-      if (!handle_flag_cmake_target(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--cmake-enable-testing") {
-      opts.cmake_enable_testing = true;
-    } else if (arg == "--cmake-enable-sanitizers") {
-      opts.cmake_enable_sanitizers = true;
-    } else if (arg == "--add-dep") {
-      if (!handle_flag_add_dep(i, argc_sz, args, opts)) { return false; }
-    } else if (arg == "--interactive" || arg == "-i") {
-      // TODO: handled before this function
+bool parse_cli_flags(SafeArgs& args,
+                     sniffercommit::ConfigManager::InitOptions& opts) {
+  for (size_t i = 1; i < args.size(); ++i) {
+    std::string arg = args.at(i);
+    if (!parse_single_flag(arg, i, args, opts)) {
+      return false;
     }
   }
   return true;
@@ -643,7 +653,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
   using namespace sniffercommit;
 
   auto argc_sz = static_cast<size_t>(argc);
-  std::span args(argv, argc_sz);
+  std::span raw_args(argv, argc_sz);
+  SafeArgs args{raw_args};
   std::string config_path = preparse_config_path(args);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
@@ -658,7 +669,6 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
     return 0;
   }
 
-  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   try {
     auto subcmd = app.get_subcommand();
 
@@ -669,8 +679,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
 
       // Check for --interactive or if no extra flags beyond "init"
       bool interactive = false;
-      for (size_t i = 1; i < argc_sz; ++i) {
-        std::string_view arg = args[i];
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args.at(i);
         if (arg == "--interactive" || arg == "-i") {
           interactive = true;
           break;
@@ -679,8 +689,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
 
       // If only "init" with no flags, default to interactive mode
       bool has_flags = false;
-      for (size_t i = 1; i < argc_sz; ++i) {
-        std::string_view arg = args[i];
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args.at(i);
         if (arg.starts_with("--") || arg.starts_with('-')) {
           has_flags = true;
           break;
@@ -690,7 +700,7 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
       if (interactive || !has_flags) {
         run_interactive_init(opts);
       } else {
-        if (!parse_cli_flags(args, argc_sz, opts)) {
+        if (!parse_cli_flags(args, opts)) {
           return 1;
         }
       }
@@ -750,8 +760,8 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
       bool format_mode = false;
       std::vector<std::string> run_files;
 
-      for (size_t i = 1; i < argc_sz; ++i) {
-        std::string_view arg = args[i];
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args.at(i);
         if (arg == "run") {
           continue;
         }
@@ -808,5 +818,4 @@ int main(int argc, char** argv) {  // NOLINT(readability-function-cognitive-comp
     std::cerr << "[ERROR] Unknown fatal error occurred\n";
     return 1;
   }
-  // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 }

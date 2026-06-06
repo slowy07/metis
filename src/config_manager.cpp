@@ -298,7 +298,7 @@ project::ProjectConfig ConfigManager::load_project(const std::filesystem::path& 
 
 std::filesystem::path ConfigManager::find_git_root() {
   try {
-    std::string out = util::exec_cmd("git rev-parse --show-toplevel 2>/devl/null");
+    std::string out = util::exec_cmd("git rev-parse --show-toplevel 2>/dev/null");
 
     if (!out.empty()) {
       std::filesystem::path path(out);

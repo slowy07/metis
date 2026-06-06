@@ -13,6 +13,7 @@
 #ifdef _WIN32
 #include <io.h>
 #else
+#include <sys/wait.h>
 #include <unistd.h>
 #endif
 
@@ -24,10 +25,6 @@ std::string exec_cmd(const std::string& cmd) {
 
 #ifdef _WIN32
   PipePtr pipe(_popen(cmd.c_str(), "r"));
-#else
-  PipePtr pipe(popen(cmd.c_str(), "r"));
-#endif
-
   if (!pipe) {
     throw std::runtime_error("popen() failed " + cmd);
   }
@@ -36,6 +33,40 @@ std::string exec_cmd(const std::string& cmd) {
   while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
     result += buffer.data();
   }
+#else
+  int fds[2];
+  if (::pipe(fds) == -1) {
+    throw std::runtime_error("pipe() failed");
+  }
+
+  pid_t pid = ::fork();
+  if (pid == -1) {
+    ::close(fds[0]);
+    ::close(fds[1]);
+    throw std::runtime_error("fork() failed");
+  }
+
+  if (pid == 0) {
+    ::close(fds[0]);
+    ::dup2(fds[1], STDOUT_FILENO);
+    ::close(fds[1]);
+    ::execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
+    ::_exit(127);
+  }
+
+  ::close(fds[1]);
+
+  std::array<char, 4096> buffer{};
+  ssize_t n;
+  while ((n = ::read(fds[0], buffer.data(), buffer.size() - 1)) > 0) {
+    buffer[static_cast<size_t>(n)] = '\0';
+    result += buffer.data();
+  }
+  ::close(fds[0]);
+
+  int status;
+  ::waitpid(pid, &status, 0);
+#endif
 
   if (!result.empty() && result.back() == '\n') {
     result.pop_back();
@@ -49,22 +80,32 @@ bool command_exists(const std::string& cmd) {
   std::string test = "where " + shell_escape(cmd) + " >nul 2>&1";
   return std::system(test.c_str()) == 0;
 #else
-  if (cmd.empty()) { return false; }
+  if (cmd.empty()) {
+    return false;
+  }
   if (cmd.find('/') != std::string::npos) {
     return ::access(cmd.c_str(), X_OK) == 0;
   }
   const char* path_env = std::getenv("PATH");
-  if (path_env == nullptr) { return false; }
+  if (path_env == nullptr) {
+    return false;
+  }
   std::string path_copy = path_env;
   size_t start = 0;
   while (start < path_copy.size()) {
     size_t end = path_copy.find(':', start);
     std::string dir = path_copy.substr(start, end - start);
     if (!dir.empty()) {
-      std::string full = dir + "/" + cmd;
-      if (::access(full.c_str(), X_OK) == 0) { return true; }
+      std::string full = dir;
+      full += '/';
+      full += cmd;
+      if (::access(full.c_str(), X_OK) == 0) {
+        return true;
+      }
     }
-    if (end == std::string::npos) { break; }
+    if (end == std::string::npos) {
+      break;
+    }
     start = end + 1;
   }
   return false;

@@ -22,8 +22,7 @@ namespace {
 bool check_command_exists(const project::Check& check) {
   if (!util::command_exists(check.command)) {
     std::cerr << fmt::format(
-        "[ERROR] '{}' not found in PATH. Install it or check your configuration.\n",
-        check.command);
+        "[ERROR] '{}' not found in PATH. Install it or check your configuration.\n", check.command);
     return false;
   }
   return true;
@@ -49,7 +48,8 @@ int run_single_check(const std::string& cmd_line, std::string_view check_name,
     code = WEXITSTATUS(status);
   } else if (WIFSIGNALED(status)) {
     int sig = WTERMSIG(status);
-    std::cerr << fmt::format("[ERROR] {} killed by signal {} on {}\n", check_name, sig, target_file);
+    std::cerr << fmt::format("[ERROR] {} killed by signal {} on {}\n", check_name, sig,
+                             target_file);
     code = 128 + sig;
   }
 #endif
@@ -64,16 +64,16 @@ struct FormatResult {
   int error_count = 0;
 };
 
-int run_format_batch(const std::vector<std::string>& format_files, size_t start,
-                     size_t end, const RunOptions& opts) {
+int run_format_batch(const std::vector<std::string>& format_files, size_t start, size_t end,
+                     const RunOptions& opts) {
   std::string cmd = "clang-format -i";
   for (size_t j = start; j < end; ++j) {
     cmd += " " + util::shell_escape(format_files.at(j));
   }
 
   if (opts.verbose) {
-    std::cout << "[sniffercommit] [INFO] Batch " << ((start / 20) + 1) << ": "
-              << (end - start) << " file(s)\n";
+    std::cout << "[sniffercommit] [INFO] Batch " << ((start / 20) + 1) << ": " << (end - start)
+              << " file(s)\n";
   }
 
   int status = std::system(cmd.c_str());  // NOLINT(bugprone-command-processor)
@@ -89,17 +89,16 @@ int run_format_batch(const std::vector<std::string>& format_files, size_t start,
 #endif
 
   if (code != 0) {
-    std::cerr << fmt::format(
-        "[sniffercommit] [ERROR] clang-format failed on batch {} (exit {})\n",
-        ((start / 20) + 1), code);
+    std::cerr << fmt::format("[sniffercommit] [ERROR] clang-format failed on batch {} (exit {})\n",
+                             ((start / 20) + 1), code);
     return code;
   }
 
   return 0;
 }
 
-void report_format_results(const std::vector<std::string>& format_files, size_t start,
-                           size_t end, const RunOptions& opts, FormatResult& result) {
+void report_format_results(const std::vector<std::string>& format_files, size_t start, size_t end,
+                           const RunOptions& opts, FormatResult& result) {
   for (size_t j = start; j < end; ++j) {
     std::string diff_cmd =
         fmt::format("git diff --quiet {}", util::shell_escape(format_files.at(j)));
@@ -253,7 +252,7 @@ int execute_format(const std::filesystem::path& repo_root, const std::vector<std
 }
 
 static std::vector<std::string> match_check_files(const std::vector<std::string>& files,
-                                                    const project::Check& check) {
+                                                  const project::Check& check) {
   std::vector<std::string> matched;
   for (const auto& file_name : files) {
     if (util::matches_pattern(file_name, check.patterns)) {
