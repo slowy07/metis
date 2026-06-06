@@ -61,24 +61,33 @@ jobs:
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
-      - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: '"$HOME/.local/bin/sniffercommit" --version'
+      - name: Find install dir
+        run: |
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: '"${SNIFFER_INSTALL_DIR}/sniffercommit" --version'
       - run: |
           mkdir -p /tmp/test-project && cd /tmp/test-project
           git init
-          "$HOME/.local/bin/sniffercommit" init --style google --enable-clang-tidy
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" init --style google --enable-clang-tidy
           test -f .sniffercommit.toml
           test -f .clang-format
           test -f .clang-tidy
       - run: |
           cd /tmp/test-project
-          "$HOME/.local/bin/sniffercommit" run --dry-run --all-files
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" run --dry-run --all-files
       - run: sh install.sh --force-build --verbose
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - run: sh install.sh --uninstall
-      - run: test ! -f "$HOME/.local/bin/sniffercommit"
+      - run: test ! -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
   test-macos-source:
     name: macOS Source Build
@@ -91,15 +100,24 @@ jobs:
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
-      - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: '"$HOME/.local/bin/sniffercommit" --version'
+      - name: Find install dir
+        run: |
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: '"${SNIFFER_INSTALL_DIR}/sniffercommit" --version'
       - run: |
           mkdir -p /tmp/test-project && cd /tmp/test-project
           git init
-          "$HOME/.local/bin/sniffercommit" init --style llvm --enable-clang-tidy
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" init --style llvm --enable-clang-tidy
           test -f .sniffercommit.toml
       - run: sh install.sh --uninstall
-      - run: test ! -f "$HOME/.local/bin/sniffercommit"
+      - run: test ! -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
   test-shells:
     name: Test with Different Shells
@@ -118,8 +136,17 @@ jobs:
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
-      - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: rm -f "$HOME/.local/bin/sniffercommit"
+      - name: Find install dir
+        run: |
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: rm -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
   test-no-modify-path:
     name: Test --no-modify-path
@@ -136,8 +163,17 @@ jobs:
           if grep -q "sniffercommit" "$HOME/.bashrc" 2>/dev/null; then
             echo "PATH was modified despite --no-modify-path" && exit 1
           fi
-      - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: rm -f "$HOME/.local/bin/sniffercommit"
+      - name: Find install dir
+        run: |
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: rm -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
   test-release-download:
     name: Test Release Binary Download
@@ -147,9 +183,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: 'sh install.sh --verbose; code=$?; echo "exit code: $code"'
+      - name: Find install dir
+        run: |
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
       - run: |
-          if [ -f "$HOME/.local/bin/sniffercommit" ]; then
-            "$HOME/.local/bin/sniffercommit" --version
+          if [ -f "${SNIFFER_INSTALL_DIR}/sniffercommit" ]; then
+            "${SNIFFER_INSTALL_DIR}/sniffercommit" --version
           else
             echo "No release binary (expected if none published)"
           fi

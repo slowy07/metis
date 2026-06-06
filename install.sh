@@ -296,10 +296,10 @@ install_from_source() {
         set -- "$@" -DSNIFFERCOMMIT_GENERATE_SRC=ON
     fi
 
-    cmake "$@"
+    cmake "$@" || err "CMake configuration failed"
 
     say "Building..."
-    cmake --build "$_build_dir" --parallel
+    cmake --build "$_build_dir" --parallel || err "Build failed"
 
     local _built_binary="${_build_dir}/bin/${APP_NAME}"
     if [ ! -f "$_built_binary" ]; then
@@ -323,7 +323,11 @@ install_from_source() {
 
     rm -rf "$_tmp_dir"
 
-    say "${APP_NAME} built and installed successfully!"
+    if [ -f "${_install_dir}/${APP_NAME}" ]; then
+        say "${APP_NAME} has been installed at: ${_install_dir}/${APP_NAME}"
+    else
+        err "Installation failed: binary not found at ${_install_dir}/${APP_NAME}"
+    fi
 }
 
 get_install_dir() {
