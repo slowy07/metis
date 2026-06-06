@@ -62,7 +62,7 @@ jobs:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: "$HOME/.local/bin/sniffercommit" --version
+      - run: '"$HOME/.local/bin/sniffercommit" --version'
       - run: |
           mkdir -p /tmp/test-project && cd /tmp/test-project
           git init
@@ -92,7 +92,7 @@ jobs:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - run: test -f "$HOME/.local/bin/sniffercommit"
-      - run: "$HOME/.local/bin/sniffercommit" --version
+      - run: '"$HOME/.local/bin/sniffercommit" --version'
       - run: |
           mkdir -p /tmp/test-project && cd /tmp/test-project
           git init
@@ -146,7 +146,7 @@ jobs:
     if: ${{ github.event.inputs.test_release_download == 'true' }}
     steps:
       - uses: actions/checkout@v4
-      - run: sh install.sh --verbose; code=$?; echo "exit code: $code"
+      - run: 'sh install.sh --verbose; code=$?; echo "exit code: $code"'
       - run: |
           if [ -f "$HOME/.local/bin/sniffercommit" ]; then
             "$HOME/.local/bin/sniffercommit" --version
@@ -167,5 +167,5 @@ jobs:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - run: test -f "/tmp/cargo-test/bin/sniffercommit"
-      - run: "/tmp/cargo-test/bin/sniffercommit" --version
+      - run: '"/tmp/cargo-test/bin/sniffercommit" --version'
       - run: rm -rf /tmp/cargo-test
