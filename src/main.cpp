@@ -477,8 +477,7 @@ bool handle_flag_style(size_t& pos, SafeArgs& args,
   return true;
 }
 
-bool handle_flag_int(const std::string& flag_name, size_t& pos, SafeArgs& args,
-                     int& out) {
+bool handle_flag_int(const std::string& flag_name, size_t& pos, SafeArgs& args, int& out) {
   if (pos + 1 >= args.size()) {
     std::cerr << "[ERROR] " << flag_name << " requires integer value\n";
     return false;
@@ -603,26 +602,48 @@ bool handle_flag_add_dep(size_t& pos, SafeArgs& args,
 // NOTE: CLI flag information parsing
 bool parse_single_flag(const std::string& arg, size_t& i, SafeArgs& args,
                        sniffercommit::ConfigManager::InitOptions& opts) {
-  if (arg == "--style") { return handle_flag_style(i, args, opts); }
-  if (arg == "--indent-width") { return handle_flag_int("--indent-width", i, args, opts.indent_width); }
-  if (arg == "--column-limit") { return handle_flag_int("--column-limit", i, args, opts.column_limit); }
-  if (arg == "--pointer-alignment") { return handle_flag_string("--pointer-alignment", i, args, opts.pointer_alignment); }
-  if (arg == "--brace-style") { return handle_flag_string("--brace-style", i, args, opts.brace_style); }
-  if (arg == "--name") { return handle_flag_string("--name", i, args, opts.project_name); }
+  if (arg == "--style") {
+    return handle_flag_style(i, args, opts);
+  }
+  if (arg == "--indent-width") {
+    return handle_flag_int("--indent-width", i, args, opts.indent_width);
+  }
+  if (arg == "--column-limit") {
+    return handle_flag_int("--column-limit", i, args, opts.column_limit);
+  }
+  if (arg == "--pointer-alignment") {
+    return handle_flag_string("--pointer-alignment", i, args, opts.pointer_alignment);
+  }
+  if (arg == "--brace-style") {
+    return handle_flag_string("--brace-style", i, args, opts.brace_style);
+  }
+  if (arg == "--name") {
+    return handle_flag_string("--name", i, args, opts.project_name);
+  }
   if (arg == "--enable-clang-tidy" || arg == "--tidy") {
     opts.enable_clang_tidy = true;
     return true;
   }
-  if (arg == "--tidy-preset") { return handle_flag_tidy_preset(i, args, opts); }
-  if (arg == "--tidy-severity") { return handle_flag_tidy_severity(i, args, opts); }
-  if (arg == "--tidy-header-filter") { return handle_flag_tidy_header_filter(i, args, opts); }
+  if (arg == "--tidy-preset") {
+    return handle_flag_tidy_preset(i, args, opts);
+  }
+  if (arg == "--tidy-severity") {
+    return handle_flag_tidy_severity(i, args, opts);
+  }
+  if (arg == "--tidy-header-filter") {
+    return handle_flag_tidy_header_filter(i, args, opts);
+  }
   if (arg == "--enable-cmake" || arg == "--cmake") {
     opts.enable_cmake = true;
     opts.generate_source = true;
     return true;
   }
-  if (arg == "--cmake-cpp-standard") { return handle_flag_cmake_standard(i, args, opts); }
-  if (arg == "--cmake-target-type") { return handle_flag_cmake_target(i, args, opts); }
+  if (arg == "--cmake-cpp-standard") {
+    return handle_flag_cmake_standard(i, args, opts);
+  }
+  if (arg == "--cmake-target-type") {
+    return handle_flag_cmake_target(i, args, opts);
+  }
   if (arg == "--cmake-enable-testing") {
     opts.cmake_enable_testing = true;
     return true;
@@ -631,13 +652,14 @@ bool parse_single_flag(const std::string& arg, size_t& i, SafeArgs& args,
     opts.cmake_enable_sanitizers = true;
     return true;
   }
-  if (arg == "--add-dep") { return handle_flag_add_dep(i, args, opts); }
+  if (arg == "--add-dep") {
+    return handle_flag_add_dep(i, args, opts);
+  }
   // --interactive and -i are handled before this function
   return true;
 }
 
-bool parse_cli_flags(SafeArgs& args,
-                     sniffercommit::ConfigManager::InitOptions& opts) {
+bool parse_cli_flags(SafeArgs& args, sniffercommit::ConfigManager::InitOptions& opts) {
   for (size_t i = 1; i < args.size(); ++i) {
     std::string arg = args.at(i);
     if (!parse_single_flag(arg, i, args, opts)) {

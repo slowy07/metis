@@ -22,10 +22,19 @@ struct PipeDeleter {
 
 using PipePtr = std::unique_ptr<FILE, PipeDeleter>;
 
-// NOTE: execute shell command and caputre its stdout
+// NOTE: execute shell command and capture its stdout
 // using dynamic buffer path
 // @throws std::runtime_error if popen() failed
 [[nodiscard]] std::string exec_cmd(const std::string& cmd);
+
+// NOTE: execute command and capture stdout+stderr, returns exit code + output
+// Unlike exec_cmd, does NOT throw — errors returned via CapturedResult
+struct CapturedResult {
+  int exit_code;
+  std::string output;
+};
+
+[[nodiscard]] CapturedResult exec_captured(const std::string& cmd);
 
 // NOTE: check if command exists in PATH
 [[nodiscard]] bool command_exists(const std::string& cmd);

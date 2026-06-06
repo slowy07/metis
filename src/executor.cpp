@@ -3,13 +3,9 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <cstdlib>
 #include <filesystem>
 #include <iostream>
-
-#ifndef _WIN32
-#include <sys/wait.h>
-#endif
+#include <string>
 
 #include "sniffercommit/error_codes.hpp"
 #include "sniffercommit/project_config.hpp"
@@ -32,89 +28,80 @@ bool is_grep_like(const std::string& cmd_basename) {
   return cmd_basename == "grep" || cmd_basename == "egrep" || cmd_basename == "rg";
 }
 
+constexpr size_t k_result_col = 68;
+
+static void print_check_result(const std::string& name, std::string_view result,
+                                int exit_code = 0, std::string_view tool_output = {},
+                                bool verbose = false) {
+  size_t dot_count = (name.length() < k_result_col) ? k_result_col - name.length() : 1;
+  std::cout << name << std::string(dot_count, '.') << result << "\n";
+
+  if (!tool_output.empty() && (exit_code != 0 || verbose)) {
+    if (exit_code != 0) {
+      std::cout << "  - hook id: " << name << "\n";
+      std::cout << "  - exit code: " << exit_code << "\n";
+      std::cout << "\n";
+    }
+    size_t line_start = 0;
+    while (line_start < tool_output.size()) {
+      size_t line_end = tool_output.find('\n', line_start);
+      std::string_view line =
+          (line_end == std::string::npos) ? tool_output.substr(line_start) : tool_output.substr(line_start, line_end - line_start);
+      if (!line.empty() && line.find_first_not_of(" \t\r") != std::string::npos) {
+        std::cout << "  " << line << "\n";
+      }
+      if (line_end == std::string::npos) break;
+      line_start = line_end + 1;
+    }
+    std::cout << "\n";
+  }
+}
+
+static void print_file_result(const std::string& file_name, std::string_view status,
+                               size_t indent_col = 2) {
+  std::string label = std::string(indent_col, ' ') + file_name;
+  size_t effective_col = k_result_col - indent_col;
+  if (effective_col > label.length()) {
+    std::cout << label << std::string(effective_col - label.length(), '.') << status << "\n";
+  } else {
+    std::cout << label << " " << status << "\n";
+  }
+}
+
 int run_single_check(const std::string& cmd_line, std::string_view check_name,
                      std::string_view target_file, const RunOptions& opts) {
+  (void)target_file;
+
   if (opts.verbose) {
     std::cout << fmt::format(" $ {}\n", cmd_line);
   }
 
-  int status = std::system(cmd_line.c_str());  // NOLINT(bugprone-command-processor)
-  int code = 1;
+  auto result = util::exec_captured(cmd_line);
+  int code = result.exit_code;
 
-#ifdef _WIN32
-  code = status;
-#else
-  if (WIFEXITED(status)) {
-    code = WEXITSTATUS(status);
-  } else if (WIFSIGNALED(status)) {
-    int sig = WTERMSIG(status);
-    std::cerr << fmt::format("[ERROR] {} killed by signal {} on {}\n", check_name, sig,
-                             target_file);
-    code = 128 + sig;
+  if (code == 0) {
+    print_check_result(std::string(check_name), "Passed");
+  } else {
+    print_check_result(std::string(check_name), "Failed", code, result.output);
   }
-#endif
 
   return code;
 }
 
-struct FormatResult {
-  int exit_code = 0;
-  int formatted_count = 0;
-  int skipped_count = 0;
-  int error_count = 0;
-};
-
-int run_format_batch(const std::vector<std::string>& format_files, size_t start, size_t end,
-                     const RunOptions& opts) {
-  std::string cmd = "clang-format -i";
-  for (size_t j = start; j < end; ++j) {
-    cmd += " " + util::shell_escape(format_files.at(j));
-  }
-
+int format_single_file(const std::string& file, const RunOptions& opts) {
+  std::string cmd = "clang-format -i " + util::shell_escape(file);
   if (opts.verbose) {
-    std::cout << "[sniffercommit] [INFO] Batch " << ((start / 20) + 1) << ": " << (end - start)
-              << " file(s)\n";
+    std::cout << " $ " << cmd << "\n";
   }
-
-  int status = std::system(cmd.c_str());  // NOLINT(bugprone-command-processor)
-  int code = 1;
-#ifdef _WIN32
-  code = status;
-#else
-  if (WIFEXITED(status)) {
-    code = WEXITSTATUS(status);
-  } else if (WIFSIGNALED(status)) {
-    code = 128 + WTERMSIG(status);
-  }
-#endif
-
-  if (code != 0) {
-    std::cerr << fmt::format("[sniffercommit] [ERROR] clang-format failed on batch {} (exit {})\n",
-                             ((start / 20) + 1), code);
-    return code;
-  }
-
-  return 0;
-}
-
-void report_format_results(const std::vector<std::string>& format_files, size_t start, size_t end,
-                           const RunOptions& opts, FormatResult& result) {
-  for (size_t j = start; j < end; ++j) {
-    std::string diff_cmd =
-        fmt::format("git diff --quiet {}", util::shell_escape(format_files.at(j)));
-    bool was_modified = (std::system(diff_cmd.c_str()) != 0);  // NOLINT
-    if (was_modified) {
-      ++result.formatted_count;
-      if (opts.verbose) {
-        std::cout << "[sniffercommit] [FORMAT] " << format_files.at(j) << "\n";
-      }
-    } else {
-      ++result.skipped_count;
-      if (opts.verbose) {
-        std::cout << "[sniffercommit] [OK] " << format_files.at(j) << " (already formatted)\n";
-      }
+  auto result = util::exec_captured(cmd);
+  if (result.exit_code != 0) {
+    print_file_result(file, "Failed");
+    if (!result.output.empty()) {
+      std::cout << "  " << result.output << "\n";
     }
+    return result.exit_code;
   }
+  return 0;
 }
 
 }  // namespace
@@ -219,36 +206,39 @@ int execute_format(const std::filesystem::path& repo_root, const std::vector<std
     std::cout << fmt::format("[sniffercommit] [INFO] Formatting {} file(s)\n", format_files.size());
   }
 
-  constexpr size_t k_batch_size = 20;
-  FormatResult result;
+  int exit_code = 0;
+  int formatted_count = 0;
+  int clean_count = 0;
 
-  for (size_t i = 0; i < format_files.size(); i += k_batch_size) {
-    size_t end = std::min(i + k_batch_size, format_files.size());
-
-    int batch_code = run_format_batch(format_files, i, end, opts);
-    if (batch_code != 0) {
-      result.exit_code = 1;
-      result.error_count += static_cast<int>(end - i);
+  for (const auto& file : format_files) {
+    int code = format_single_file(file, opts);
+    if (code != 0) {
+      exit_code = 1;
       continue;
     }
-
-    report_format_results(format_files, i, end, opts, result);
+    auto diff_result = util::exec_captured("git diff --quiet " + util::shell_escape(file));
+    if (diff_result.exit_code != 0) {
+      ++formatted_count;
+      print_file_result(file, "Formatted");
+    } else {
+      ++clean_count;
+      if (opts.verbose) {
+        print_file_result(file, "Clean");
+      }
+    }
   }
 
-  if (result.exit_code == 0) {
-    if (result.formatted_count > 0) {
+  if (exit_code == 0) {
+    if (formatted_count > 0) {
       std::cout << fmt::format("[sniffercommit] [INFO] Formatted {} file(s), {} already clean.\n",
-                               result.formatted_count, result.skipped_count);
+                               formatted_count, clean_count);
       std::cout << "[sniffercommit] [INFO] Stage changes with: git add -u\n";
-    } else {
-      std::cout << "[sniffercommit] [INFO] All files already formatted.\n";
     }
   } else {
-    std::cerr << fmt::format("[sniffercommit] [ERROR] Formatting failed on {} file(s).\n",
-                             result.error_count);
+    std::cerr << fmt::format("[sniffercommit] [ERROR] Formatting failed on some files.\n");
   }
 
-  return result.exit_code;
+  return exit_code;
 }
 
 static std::vector<std::string> match_check_files(const std::vector<std::string>& files,
@@ -300,11 +290,6 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
       continue;
     }
 
-    if (opts.verbose) {
-      std::cout << fmt::format("[sniffercommit] [INFO] Running: {} on {} file(s)\n", check.name,
-                               matched.size());
-    }
-
     std::string cmd = build_check_cmd(check);
 
     for (const auto& file_name : matched) {
@@ -318,17 +303,13 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
       }
 
       if (code != 0) {
-        std::cerr << fmt::format("[sniffercommit] [ERROR] {} failed on {} (exit {})\n", check.name,
-                                 file_name, code);
         exit_code = 1;
       }
     }
   }
 
-  if (exit_code == 0) {
-    std::cout << "[sniffercommit] [INFO] All checks passed.\n";
-  } else {
-    std::cerr << "[sniffercommit] [ERROR] One or more checks failed.\n";
+  if (exit_code != 0) {
+    std::cerr << "One or more checks failed.\n";
   }
   return exit_code;
 }

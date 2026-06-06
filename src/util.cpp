@@ -75,6 +75,63 @@ std::string exec_cmd(const std::string& cmd) {
   return result;
 }
 
+CapturedResult exec_captured(const std::string& cmd) {
+  std::string output;
+#ifdef _WIN32
+  PipePtr pipe(_popen((cmd + " 2>&1").c_str(), "r"));
+  if (!pipe) {
+    return {1, "popen() failed: " + cmd};
+  }
+  std::array<char, 4096> buffer{};
+  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe.get()) != nullptr) {
+    output += buffer.data();
+  }
+  return {0, output};
+#else
+  int fds[2];
+  if (::pipe(fds) == -1) {
+    return {1, "pipe() failed"};
+  }
+
+  pid_t pid = ::fork();
+  if (pid == -1) {
+    ::close(fds[0]);
+    ::close(fds[1]);
+    return {1, "fork() failed"};
+  }
+
+  if (pid == 0) {
+    ::close(fds[0]);
+    ::dup2(fds[1], STDOUT_FILENO);
+    ::dup2(fds[1], STDERR_FILENO);
+    ::close(fds[1]);
+    ::execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
+    ::_exit(127);
+  }
+
+  ::close(fds[1]);
+
+  std::array<char, 4096> buffer{};
+  ssize_t n;
+  while ((n = ::read(fds[0], buffer.data(), buffer.size() - 1)) > 0) {
+    buffer[static_cast<size_t>(n)] = '\0';
+    output += buffer.data();
+  }
+  ::close(fds[0]);
+
+  int status = 0;
+  ::waitpid(pid, &status, 0);
+  int code = 1;
+  if (WIFEXITED(status)) {
+    code = WEXITSTATUS(status);
+  } else if (WIFSIGNALED(status)) {
+    code = 128 + WTERMSIG(status);
+  }
+
+  return {code, output};
+#endif
+}
+
 bool command_exists(const std::string& cmd) {
 #ifdef _WIN32
   std::string test = "where " + shell_escape(cmd) + " >nul 2>&1";

@@ -146,8 +146,7 @@ class ArgParser {
         }
       } else {
         auto opt_idx = static_cast<size_t>(std::distance(options.begin(), opt_it));
-        if (opt_idx < flag_stores.size() &&
-            flag_stores.at(opt_idx) != nullptr) {
+        if (opt_idx < flag_stores.size() && flag_stores.at(opt_idx) != nullptr) {
           *flag_stores.at(opt_idx) = true;
         }
       }
