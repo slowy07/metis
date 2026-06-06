@@ -256,11 +256,11 @@ install_from_source() {
     say "Found: $_cmake_version"
 
     local _generator
-    if check_cmd ninja; then
-        _generator="ninja"
-    elif check_cmd gmake || check_cmd make; then
-        _generator="unix Makefiles"
-    fi
+  if check_cmd ninja; then
+    _generator="Ninja"
+  elif check_cmd gmake || check_cmd make; then
+    _generator="Unix Makefiles"
+  fi
 
     if [ -z "$_generator" ]; then
         err "No suitable build tool found (need ninja or make)"
