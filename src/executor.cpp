@@ -30,9 +30,8 @@ bool is_grep_like(const std::string& cmd_basename) {
 
 constexpr size_t k_result_col = 68;
 
-static void print_check_result(const std::string& name, std::string_view result,
-                                int exit_code = 0, std::string_view tool_output = {},
-                                bool verbose = false) {
+static void print_check_result(const std::string& name, std::string_view result, int exit_code = 0,
+                               std::string_view tool_output = {}, bool verbose = false) {
   size_t dot_count = (name.length() < k_result_col) ? k_result_col - name.length() : 1;
   std::cout << name << std::string(dot_count, '.') << result << "\n";
 
@@ -45,8 +44,9 @@ static void print_check_result(const std::string& name, std::string_view result,
     size_t line_start = 0;
     while (line_start < tool_output.size()) {
       size_t line_end = tool_output.find('\n', line_start);
-      std::string_view line =
-          (line_end == std::string::npos) ? tool_output.substr(line_start) : tool_output.substr(line_start, line_end - line_start);
+      std::string_view line = (line_end == std::string::npos)
+                                  ? tool_output.substr(line_start)
+                                  : tool_output.substr(line_start, line_end - line_start);
       if (!line.empty() && line.find_first_not_of(" \t\r") != std::string::npos) {
         std::cout << "  " << line << "\n";
       }
@@ -58,7 +58,7 @@ static void print_check_result(const std::string& name, std::string_view result,
 }
 
 static void print_file_result(const std::string& file_name, std::string_view status,
-                               size_t indent_col = 2) {
+                              size_t indent_col = 2) {
   std::string label = std::string(indent_col, ' ') + file_name;
   size_t effective_col = k_result_col - indent_col;
   if (effective_col > label.length()) {
