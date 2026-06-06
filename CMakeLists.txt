@@ -224,7 +224,7 @@ function(apply_warnings_and_hardening TARGET)
 
     if(NOT WIN32)
       target_link_options(${TARGET} PRIVATE
-        -Wl,-z,relro,-z,now
+        $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,-z,relro,-z,now>
         $<$<NOT:$<PLATFORM_ID:Darwin>>:-Wl,-z,noexecstack>
       )
       if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
