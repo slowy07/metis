@@ -78,7 +78,13 @@ if ($Force -or $env:SNIFFERCOMMIT_FORCE_BUILD) {
     $ZipPath = Join-Path $TempDir "sniffercommit.zip"
     New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
     try {
-        Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing
+        try {
+            Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing -ErrorAction Stop
+        } catch {
+            Write-Warning "No release found at $DownloadUrl"
+            Write-Warning "Install a specific version or use -Force to build from source."
+            exit 0
+        }
         Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
         New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
         Move-Item -Path (Join-Path $TempDir "sniffercommit.exe") -Destination (Join-Path $InstallDir "sniffercommit.exe") -Force
