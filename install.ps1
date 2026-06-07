@@ -1,17 +1,21 @@
 # sniffercommit install script for Windows
 # Usage: powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
 
-param(
-    [string]$Version = "latest",
-    [switch]$Help
-)
+$Version = "latest"
+$ShowHelp = $false
+foreach ($arg in $args) {
+    if ($arg -eq "-Help" -or $arg -eq "-h" -or $arg -eq "--help") {
+        $ShowHelp = $true
+    } elseif (-not $arg.StartsWith("-")) {
+        $Version = $arg
+    }
+}
 
-if ($Help) {
+if ($ShowHelp) {
     Write-Output "sniffercommit Windows install script"
     Write-Output ""
     Write-Output "Usage:"
     Write-Output "  irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
-    Write-Output "  irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex -Version v0.3.3"
     exit 0
 }
 
