@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DSNIFFERCOMMIT_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+            cmake_args: -DSNIFFERCOMMIT_PORTABLE_RELEASE=ON -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            artifact_ext: tar.gz
+            pack_cmd: tar czf ../sniffercommit-linux-x86_64.tar.gz sniffercommit
+          - os: macos-latest
+            target: macos-x86_64
+            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            artifact_ext: tar.gz
+            pack_cmd: tar czf ../sniffercommit-macos-x86_64.tar.gz sniffercommit
+          - os: windows-latest
+            target: windows-x86_64
+            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            artifact_ext: zip
+            pack_cmd: Compress-Archive -Path sniffercommit.exe -DestinationPath ../sniffercommit-windows-x86_64.zip
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure CMake
+        run: cmake -B build ${{ matrix.cmake_args }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Smoke test
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            build/bin/Release/sniffercommit.exe --version
+          else
+            ./build/bin/sniffercommit --version
+          fi
+
+      - name: Package
+        shell: bash
+        working-directory: build/bin
+        run: ${{ matrix.pack_cmd }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sniffercommit-${{ matrix.target }}
+          path: build/bin/sniffercommit-${{ matrix.target }}.${{ matrix.artifact_ext }}
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ci, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            sniffercommit-linux-x86_64/sniffercommit-linux-x86_64.tar.gz
+            sniffercommit-macos-x86_64/sniffercommit-macos-x86_64.tar.gz
+            sniffercommit-windows-x86_64/sniffercommit-windows-x86_64.zip
+          generate_release_notes: true
