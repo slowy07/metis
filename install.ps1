@@ -50,28 +50,18 @@ if ($Force -or $env:SNIFFERCOMMIT_FORCE_BUILD) {
             Write-Error "CMake configuration failed"
             exit 1
         }
-        cmake --build build --parallel
+        cmake --build build --config Release --parallel
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Build failed"
             exit 1
         }
         New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-        $binaryPaths = @(
-            Join-Path $SourceDir "build\bin\Release\sniffercommit.exe"
-            Join-Path $SourceDir "build\bin\sniffercommit.exe"
-        )
-        $copied = $false
-        foreach ($src in $binaryPaths) {
-            if (Test-Path $src) {
-                Copy-Item $src (Join-Path $InstallDir "sniffercommit.exe") -Force
-                $copied = $true
-                break
-            }
-        }
-        if (-not $copied) {
+        $exe = Get-ChildItem -Path (Join-Path $SourceDir "build\bin") -Recurse -Filter "sniffercommit.exe" | Select-Object -First 1
+        if (-not $exe) {
             Write-Error "Build succeeded but binary not found"
             exit 1
         }
+        Copy-Item $exe.FullName (Join-Path $InstallDir "sniffercommit.exe") -Force
         Pop-Location
     }
     finally {
