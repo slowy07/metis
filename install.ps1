@@ -1,17 +1,16 @@
 # sniffercommit install script for Windows
 # Usage: powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
 
-$Version = "latest"
-$ShowHelp = $false
-foreach ($arg in $args) {
-    if ($arg -eq "-Help" -or $arg -eq "-h" -or $arg -eq "--help") {
-        $ShowHelp = $true
-    } elseif (-not $arg.StartsWith("-")) {
-        $Version = $arg
-    }
-}
+param(
+    [string]$Version = "latest",
+    [string]$InstallDir = "",
+    [switch]$NoModifyPath,
+    [switch]$Force,
+    [switch]$Help,
+    [switch]$Uninstall
+)
 
-if ($ShowHelp) {
+if ($Help) {
     Write-Output "sniffercommit Windows install script"
     Write-Output ""
     Write-Output "Usage:"
@@ -19,8 +18,16 @@ if ($ShowHelp) {
     exit 0
 }
 
+if ($Uninstall) {
+    Write-Output "Uninstall not yet implemented"
+    exit 0
+}
+
+if (-not $InstallDir) {
+    $InstallDir = Join-Path $HOME ".local\bin"
+}
+
 $Repo = "slowy07/sniffercommit"
-$InstallDir = Join-Path $HOME ".local\bin"
 
 $Arch = $env:PROCESSOR_ARCHITECTURE
 if ($Arch -ne "AMD64") {
