@@ -11,10 +11,7 @@ param(
 )
 
 if ($Help) {
-    Write-Output "sniffercommit Windows install script"
-    Write-Output ""
-    Write-Output "Usage:"
-    Write-Output "  irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
+    Write-Output "sniffercommit Windows install script`n`nUsage:`n  irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
     exit 0
 }
 
