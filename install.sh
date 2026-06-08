@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sniffercommit install script
-# Usage: curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/scripts/install.sh | sh
-#        curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/scripts/install.sh | sh -s -- v0.3.3
+# Usage: curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
+#        curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.9
 
 set -eu
 
