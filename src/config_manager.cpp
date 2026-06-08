@@ -2,13 +2,10 @@
 
 #include <fmt/format.h>
 
-#include <array>
-#include <cstdio>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
