@@ -42,16 +42,24 @@ echo "Downloading sniffercommit for ${PLATFORM}..."
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TEMP_DIR}"' EXIT
 
+DOWNLOAD_FILE="${TEMP_DIR}/sniffercommit.tar.gz"
+
 if command -v curl >/dev/null 2>&1; then
-    curl -LsSf "${DOWNLOAD_URL}" -o "${TEMP_DIR}/sniffercommit.tar.gz"
+    curl -LsSf "${DOWNLOAD_URL}" -o "${DOWNLOAD_FILE}" || download_failed=1
 elif command -v wget >/dev/null 2>&1; then
-    wget -q "${DOWNLOAD_URL}" -O "${TEMP_DIR}/sniffercommit.tar.gz"
+    wget -q "${DOWNLOAD_URL}" -O "${DOWNLOAD_FILE}" || download_failed=1
 else
     echo "Error: need curl or wget"
     exit 1
 fi
 
-tar xzf "${TEMP_DIR}/sniffercommit.tar.gz" -C "${TEMP_DIR}"
+if [ "${download_failed:-0}" -ne 0 ]; then
+    echo "Warning: Failed to download sniffercommit from ${DOWNLOAD_URL}" >&2
+    echo "Warning: No release found. Push a version tag or specify a version." >&2
+    exit 0
+fi
+
+tar xzf "${DOWNLOAD_FILE}" -C "${TEMP_DIR}"
 
 mkdir -p "${INSTALL_DIR}"
 cp "${TEMP_DIR}/sniffercommit" "${INSTALL_DIR}/sniffercommit"
