@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # sniffercommit install script
 # Usage: curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
 #        curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.9
