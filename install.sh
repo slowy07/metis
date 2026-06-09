@@ -6,7 +6,7 @@
 set -eu
 
 REPO="slowy07/sniffercommit"
-INSTALL_DIR="${HOME}/.local/bin"
+INSTALL_DIR="${SNIFFERCOMMIT_INSTALL_DIR:-${SNIFFER_INSTALL_DIR:-${HOME}/.local/bin}}"
 VERSION="${1:-latest}"
 
 OS="$(uname -s)"
