@@ -44,11 +44,16 @@ jobs:
             cmake_args: -DSNIFFERCOMMIT_PORTABLE_RELEASE=ON -DSNIFFERCOMMIT_BUILD_TESTS=OFF
             artifact_ext: tar.gz
             pack_cmd: tar czf ../sniffercommit-linux-x86_64.tar.gz sniffercommit
-          - os: macos-latest
+          - os: macos-13
             target: macos-x86_64
             cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
             artifact_ext: tar.gz
             pack_cmd: tar czf ../sniffercommit-macos-x86_64.tar.gz sniffercommit
+          - os: macos-latest
+            target: macos-arm64
+            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            artifact_ext: tar.gz
+            pack_cmd: tar czf ../sniffercommit-macos-arm64.tar.gz sniffercommit
           - os: windows-latest
             target: windows-x86_64
             cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
@@ -105,5 +110,6 @@ jobs:
           files: |
             sniffercommit-linux-x86_64/sniffercommit-linux-x86_64.tar.gz
             sniffercommit-macos-x86_64/sniffercommit-macos-x86_64.tar.gz
+            sniffercommit-macos-arm64/sniffercommit-macos-arm64.tar.gz
             sniffercommit-windows-x86_64/sniffercommit-windows-x86_64.zip
           generate_release_notes: true

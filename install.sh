@@ -65,18 +65,28 @@ OS="$(uname -s)"
 ARCH="$(uname -m)"
 
 case "${OS}" in
-    Linux) PLATFORM="linux-x86_64" ;;
-    Darwin) PLATFORM="macos-x86_64" ;;
+    Linux)
+        case "${ARCH}" in
+            x86_64 | amd64) PLATFORM="linux-x86_64" ;;
+            aarch64 | arm64) PLATFORM="linux-arm64" ;;
+            *)
+                echo "Unsupported architecture: ${ARCH}"
+                exit 1
+                ;;
+        esac
+        ;;
+    Darwin)
+        case "${ARCH}" in
+            x86_64 | amd64) PLATFORM="macos-x86_64" ;;
+            aarch64 | arm64) PLATFORM="macos-arm64" ;;
+            *)
+                echo "Unsupported architecture: ${ARCH}"
+                exit 1
+                ;;
+        esac
+        ;;
     *)
         echo "Unsupported OS: ${OS}"
-        exit 1
-        ;;
-esac
-
-case "${ARCH}" in
-    x86_64 | amd64) ;;
-    *)
-        echo "Unsupported architecture: ${ARCH}"
         exit 1
         ;;
 esac
