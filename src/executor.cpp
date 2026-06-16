@@ -127,7 +127,10 @@ CheckResult run_check_for_files(const project::Check& check,
         fmt::format("'{}' not found in PATH. Install it or check your configuration.",
                     check.command),
         opts.verbose);
-    return {.check_name = check.name, .exit_code = static_cast<int>(ExitCode::MISSING_DEPENDENCY), .output = {}, .verbose = false};
+    return {.check_name = check.name,
+            .exit_code = static_cast<int>(ExitCode::MISSING_DEPENDENCY),
+            .output = {},
+            .verbose = false};
   }
 
   std::string cmd_base = util::shell_escape(check.command);
