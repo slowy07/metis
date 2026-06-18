@@ -1,18 +1,76 @@
 #include "sniffercommit/spinner.hpp"
 
-#include <iostream>
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <iostream>
 #include <mutex>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#include <io.h>
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif  // _WIN32
+
 namespace sniffercommit {
 
-Spinner::Spinner(std::string_view message, Mode mode, std::vector<std::string_view> frames,
+#ifdef _WIN32
+static bool enable_windows_ansi() noexcept {
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+
+  if (hOut == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  DWORD mode = 0;
+  if (!GetConsoleMode(hOut, &mode)) {
+    return false;
+  }
+
+  if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
+    return true;
+  }
+
+  if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)) {
+    return true;
+  }
+
+  return false;
+}
+
+static void set_utf8_console() noexcept { SetConsoleOutputCP(CP_UTF8); }
+#endif
+
+std::vector<std::string> Spinner::default_frames() {
+#ifdef _WIN32
+  return {"|", "/", "-", "\\"};
+#endif  // _WIN32
+  return {"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"};
+}
+
+bool Spinner::is_stdout_tty() noexcept {
+#ifdef _WIN32
+  return _isatty(_fileno(stdout)) != 0;
+#else
+  return isatty(STDOUT_FILENO) != 0;
+#endif  // _WIN32
+}
+
+Spinner::Spinner(std::string_view message, Mode mode, std::vector<std::string> frames,
                  std::chrono::milliseconds interval_ms)
-    : message_(message), frames_(std::move(frames)), interval_ms_(interval_ms) {
+    : message_(message),
+      frames_(frames.empty() ? default_frames() : std::move(frames)),
+      interval_ms_(interval_ms) {
+#ifdef _WIN32
+  static bool ansi_enabled = enable_windows_ansi();
+  (void)ansi_enabled;
+  set_utf8_console();
+#endif  // _WIN32
+
   if (mode == Mode::Auto) {
     start();
   }
@@ -53,7 +111,7 @@ void Spinner::stop(std::string_view final_message) {
   cv_.notify_all();
 
   if (thread_.joinable()) {
-  thread_.join();
+    thread_.join();
   }
 
   running_.store(false, std::memory_order_relaxed);
@@ -67,17 +125,11 @@ void Spinner::stop(std::string_view final_message) {
   }
 }
 
-bool Spinner::is_running() const noexcept {
-  return running_.load(std::memory_order_relaxed);
-}
+bool Spinner::is_running() const noexcept { return running_.load(std::memory_order_relaxed); }
 
-void Spinner::set_silent(bool silent) noexcept {
-  silent_.store(silent, std::memory_order_relaxed);
-}
+void Spinner::set_silent(bool silent) noexcept { silent_.store(silent, std::memory_order_relaxed); }
 
-bool Spinner::is_silent() noexcept {
-  return silent_.load(std::memory_order_relaxed);
-}
+bool Spinner::is_silent() noexcept { return silent_.load(std::memory_order_relaxed); }
 
 void Spinner::run_loop() {
   size_t frame_idx = 0;
@@ -88,9 +140,8 @@ void Spinner::run_loop() {
     frame_idx = (frame_idx + 1) % frames_.size();
 
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait_for(lock, interval_ms_, [this] {
-      return stop_requested_.load(std::memory_order_relaxed);
-    });
+    cv_.wait_for(lock, interval_ms_,
+                 [this] { return stop_requested_.load(std::memory_order_relaxed); });
   }
 }
 

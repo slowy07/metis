@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -13,7 +14,7 @@ class Spinner {
   enum class Mode { Auto, Manual };
 
   explicit Spinner(std::string_view message, Mode mode = Mode::Auto,
-                   std::vector<std::string_view> frames = k_default_frames,
+                   std::vector<std::string> frames = {},
                    std::chrono::milliseconds interval_ms = k_default_interval);
 
   ~Spinner();
@@ -32,16 +33,17 @@ class Spinner {
   static void set_silent(bool silent) noexcept;
   [[nodiscard]] static bool is_silent() noexcept;
 
+  [[nodiscard]] static bool is_stdout_tty() noexcept;
+
  private:
   void run_loop();
   void clear_line() const;
+  static std::vector<std::string> default_frames();
 
   static constexpr std::chrono::milliseconds k_default_interval{80};
-  static inline const std::vector<std::string_view> k_default_frames = {"⠋", "⠙", "⠹", "⠸", "⠼",
-                                                                        "⠴", "⠦", "⠧", "⠇", "⠏"};
 
   std::string message_;
-  std::vector<std::string_view> frames_;
+  std::vector<std::string> frames_;
   std::chrono::milliseconds interval_ms_;
 
   std::atomic<bool> running_{false};
