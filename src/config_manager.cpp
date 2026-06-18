@@ -6,7 +6,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -36,11 +35,21 @@ namespace {
   auto config_path = cwd / ".sniffercommit.toml";
   std::string config_content;
 
+  std::filesystem::path repo_root = cwd;
+  try {
+    repo_root = ConfigManager::find_git_root();
+  } catch (const std::exception) {
+    // INFO: not in git repo make sure use cwd as a fallback
+    std::cerr << "use cwd as fallback\n";
+  }
+
   if (opts.enable_clang_tidy) {
-    config_content = project::generate_default_with_tidy(
-        project_name, tooling::style_name(opts.style), tooling::preset_name(opts.tidy_preset));
+    config_content =
+        project::generate_default_with_tidy(project_name, tooling::style_name(opts.style),
+                                            tooling::preset_name(opts.tidy_preset), repo_root);
   } else {
-    config_content = project::generate_default(project_name, tooling::style_name(opts.style));
+    config_content =
+        project::generate_default(project_name, tooling::style_name(opts.style), repo_root);
   }
 
   if (!ConfigManager::write_file(config_path, config_content)) {

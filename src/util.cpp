@@ -90,14 +90,14 @@ CapturedResult exec_captured(const std::string& cmd) {
 #else
   int fds[2];
   if (::pipe(fds) == -1) {
-    return {.exit_code=1, .output="pipe() failed"};
+    return {.exit_code = 1, .output = "pipe() failed"};
   }
 
   pid_t pid = ::fork();
   if (pid == -1) {
     ::close(fds[0]);
     ::close(fds[1]);
-    return {.exit_code=1, .output="fork() failed"};
+    return {.exit_code = 1, .output = "fork() failed"};
   }
 
   if (pid == 0) {
@@ -128,7 +128,7 @@ CapturedResult exec_captured(const std::string& cmd) {
     code = 128 + WTERMSIG(status);
   }
 
-  return {.exit_code=code, .output=output};
+  return {.exit_code = code, .output = output};
 #endif
 }
 

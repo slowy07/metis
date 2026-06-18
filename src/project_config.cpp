@@ -228,7 +228,15 @@ bool save(const std::filesystem::path& path, const ProjectConfig& cfg) {
   return out.good();
 }
 
-std::string generate_default(const std::string& project_name, const std::string& fallback_style) {
+static std::string make_config_file_arg(const std::filesystem::path& repo_root,
+                                        const std::string& filename) {
+  auto abs_path = std::filesystem::absolute(repo_root / filename);
+  return "--config-file" + abs_path.string();
+}
+
+std::string generate_default(const std::string& project_name, const std::string& fallback_style,
+                             const std::filesystem::path& repo_root) {
+  (void)repo_root;  // INFO: clang-format using -style=file, no explicit config path
   return fmt::format(
       R"([project]
 name = "{}"
@@ -265,7 +273,8 @@ parallel = true
 std::string generate_default_with_tidy(
     const std::string& project_name,
     const std::string& fallback_style,  // NOLINT(bugprone-easily-swappable-parameters)
-    [[maybe_unused]] const std::string& tidy_preset) {
+    [[maybe_unused]] const std::string& tidy_preset, const std::filesystem::path& repo_root) {
+  std::string tidy_config_arg = make_config_file_arg(repo_root, ".clang-tidy");
   return fmt::format(
       R"([project]
 name = "{}"
@@ -279,7 +288,11 @@ patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 [[checks]]
 name = "clang-tidy"
 command = "clang-tidy"
-args = ["--config-file=.clang-tidy", "--quiet"]
+args = [
+  "{}",
+  "--quiet"
+]
+
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]
@@ -298,7 +311,7 @@ github_actions = false
 [execution]
 parallel = true
 )",
-      project_name, fallback_style);
+      project_name, fallback_style, tidy_config_arg);
 }
 
 std::string generate_default_with_cmake(const std::string& project_name,

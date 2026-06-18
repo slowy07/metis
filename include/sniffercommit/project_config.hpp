@@ -36,18 +36,21 @@ struct ProjectConfig {
 [[nodiscard]] ProjectConfig load(const std::filesystem::path& path);
 bool save(const std::filesystem::path& path, const ProjectConfig& cfg);
 [[nodiscard]] std::string generate_default(const std::string& project_name,
-                                           const std::string& fallback_style = "Google");
+                                           const std::string& fallback_style = "Google",
+                                           const std::filesystem::path& repo_root = ".");
 
 // NOTE: clang-tidy aware default function generation
 // create config with both clang-format and clang-tidy checking
 [[nodiscard]] std::string generate_default_with_tidy(const std::string& project_name,
                                                      const std::string& fallback_style = "Google",
-                                                     const std::string& tidy_preset = "standard");
+                                                     const std::string& tidy_preset = "standard",
+                                                     const std::filesystem::path& repo_root = ".");
 
 // NOTE: CMake-aware default
 // generate config with CMakeLists.txt scaffolding checks
 [[nodiscard]] std::string generate_default_with_cmake(const std::string& project_name,
-                                                      const std::string& fallback_style = "Google");
+                                                      const std::string& fallback_style = "Google",
+                                                      const std::filesystem::path& repo_root = ".");
 
 }  // namespace sniffercommit::project
 

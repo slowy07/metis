@@ -7,6 +7,7 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -110,6 +111,66 @@ class SyncPrinter {
  private:
   std::mutex mutex_;
 };
+
+struct ConfigRequirement {
+  std::string tool_name;
+  std::string config_arg;
+  std::string default_file;
+};
+
+std::optional<std::string> extract_config_path(std::string_view arg, std::string_view prefix) {
+  if (arg.starts_with(prefix)) {
+    return std::string(arg.substr(prefix.length()));
+  }
+
+  return std::nullopt;
+}
+
+std::string validate_tool_config(const project::Check& check,
+                                 const std::filesystem::path& repo_root) {
+  static const std::vector<ConfigRequirement> k_config_tools = {
+      {.tool_name = "clang-tidy", .config_arg = "--config-file=", .default_file = ".clang-tidy"},
+      {.tool_name = "clang-format", .config_arg = "-style=file", .default_file = ".clang-format"},
+  };
+
+  for (const auto& req : k_config_tools) {
+    if (check.command != req.tool_name) {
+      continue;
+    }
+
+    bool has_explicit_config = false;
+    for (const auto& arg : check.args) {
+      if (auto path = extract_config_path(arg, req.config_arg)) {
+        has_explicit_config = true;
+        std::filesystem::path config_path(*path);
+        if (config_path.is_relative()) {
+          config_path = repo_root / config_path;
+        }
+
+        if (!std::filesystem::exists(config_path)) {
+          return fmt::format(
+              "Config file not found for `{}`: {}\n"
+              " Run `snifferommit init --enable-clang-tidy` to generate it.\n"
+              " or ensure the file exists at the expected location",
+              check.name, config_path.string());
+        }
+      }
+    }
+
+    if (!has_explicit_config && !req.default_file.empty()) {
+      auto default_path = repo_root / req.default_file;
+      if (!std::filesystem::exists(default_path)) {
+        return fmt::format(
+            "Default config file not found for `{}`: {}\n"
+            " Run `sniffercommit init` to generate it\n"
+            " or create {} manually in the repository root",
+            check.name, default_path.string(), req.default_file);
+      }
+    }
+  }
+
+  return "";
+}
 
 struct CheckResult {
   std::string check_name;
@@ -363,6 +424,7 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
   struct WorkItem {
     const project::Check* check;
     std::vector<std::string> matched_files;
+    std::string config_error;
   };
 
   std::vector<WorkItem> work_items;
@@ -376,7 +438,12 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
       }
       continue;
     }
-    work_items.push_back({.check = &check, .matched_files = std::move(matched)});
+
+    std::string config_err = validate_tool_config(check, repo_root);
+
+    work_items.push_back({.check = &check,
+                          .matched_files = std::move(matched),
+                          .config_error = std::move(config_err)});
   }
 
   if (work_items.empty()) {
