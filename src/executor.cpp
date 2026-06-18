@@ -14,6 +14,7 @@
 
 #include "sniffercommit/error_codes.hpp"
 #include "sniffercommit/project_config.hpp"
+#include "sniffercommit/spinner.hpp"
 #include "sniffercommit/util.hpp"
 
 namespace sniffercommit {
@@ -361,6 +362,11 @@ int execute_format(const std::filesystem::path& repo_root, const std::vector<std
         fmt::format("[sniffercommit] [INFO] Formatting {} file(s)\n", format_files.size()));
   }
 
+  Spinner spinner("Formatting files...", Spinner::Mode::Manual);
+  if (!opts.verbose) {
+    spinner.start();
+  }
+
   int exit_code = 0;
   int formatted_count = 0;
   int clean_count = 0;
@@ -450,6 +456,24 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
     return static_cast<int>(ExitCode::SUCCESS);
   }
 
+  bool has_config_errors = false;
+
+  for (const auto& item : work_items) {
+    if (!item.config_error.empty()) {
+      printer.print_error(fmt::format("[ERROR] {}\n", item.config_error));
+      has_config_errors = true;
+    }
+  }
+
+  if (has_config_errors) {
+    return static_cast<int>(ExitCode::CONFIG_ERROR);
+  }
+
+  Spinner spinner("Running checks", Spinner::Mode::Manual);
+  if (!opts.verbose) {
+    spinner.start();
+  }
+
   if (!cfg.parallel || work_items.size() == 1) {
     int exit_code = static_cast<int>(ExitCode::SUCCESS);
     for (const auto& item : work_items) {
@@ -458,6 +482,9 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
         exit_code = result.exit_code;
       }
     }
+
+    spinner.stop();
+
     if (exit_code != 0) {
       printer.print_error("One or more checks failed.\n");
     }
@@ -481,6 +508,7 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
     }
   }
 
+  spinner.stop();
   if (exit_code != 0) {
     printer.print_error("One or more checks failed.\n");
   }

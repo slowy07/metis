@@ -137,6 +137,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/logger.cpp
   src/precommit_domain.cpp
   src/project_config.cpp
+  src/spinner.cpp
   src/tooling_config.cpp
   src/util.cpp
 )
