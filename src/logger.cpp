@@ -4,7 +4,20 @@
 #include <iomanip>
 #include <string_view>
 
+#include "sniffercommit/spinner.hpp"
+
 namespace sniffercommit {
+
+namespace {
+struct ConsoleInit {
+  ConsoleInit() {
+#ifdef _WIN32
+    enable_windows_ansi();
+#endif
+  }
+};
+const ConsoleInit g_console_init;
+}  // namespace
 
 static std::string_view prefix_for_level(LogLevel lvl) {
   switch (lvl) {

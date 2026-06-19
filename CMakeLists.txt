@@ -87,8 +87,13 @@ configure_file(
 )
 
 # Detect libc implement
+if(WIN32)
+  set(SNIFFERCOMMIT_NULL_DEVICE "NUL")
+else()
+  set(SNIFFERCOMMIT_NULL_DEVICE "/dev/null")
+endif()
 execute_process(
-  COMMAND ${CMAKE_CXX_COMPILER} -dM -E -x c++ /dev/null
+  COMMAND ${CMAKE_CXX_COMPILER} -dM -E -x c++ ${SNIFFERCOMMIT_NULL_DEVICE}
   OUTPUT_VARIABLE SNIFFERCOMMIT_PREDEFINED_MACROS
 )
 
@@ -131,27 +136,49 @@ endif()
 
 # Library target (core logic)
 set(SNIFFERCOMMIT_SOURCES
-  src/cicd_domain.cpp
-  src/config_manager.cpp
-  src/executor.cpp
+  src/domain/config.cpp
+  src/domain/workflow.cpp
+  src/application/init_use_case.cpp
+  src/application/install_use_case.cpp
+  src/application/run_checks_use_case.cpp
+  src/application/generate_workflow_use_case.cpp
+  src/infrastructure/toml_config_repository.cpp
+  src/infrastructure/process_shell_executor.cpp
+  src/infrastructure/os_file_system.cpp
+  src/infrastructure/cli_git_repository.cpp
+  src/generators/clang_format_generator.cpp
+  src/generators/clang_tidy_generator.cpp
+  src/generators/cmake_generator.cpp
+  src/presentation/interactive_init.cpp
   src/logger.cpp
-  src/precommit_domain.cpp
-  src/project_config.cpp
   src/spinner.cpp
-  src/tooling_config.cpp
   src/util.cpp
 )
 
 set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/argparse.hpp
-  include/sniffercommit/cicd_domain.hpp
-  include/sniffercommit/config_manager.hpp
-  include/sniffercommit/error_codes.hpp
-  include/sniffercommit/executor.hpp
-  include/sniffercommit/precommit_domain.hpp
-  include/sniffercommit/project_config.hpp
+  include/sniffercommit/domain/config.hpp
+  include/sniffercommit/domain/workflow.hpp
+  include/sniffercommit/domain/error_codes.hpp
+  include/sniffercommit/domain/ports/config_repository.hpp
+  include/sniffercommit/domain/ports/shell_executor.hpp
+  include/sniffercommit/domain/ports/file_system.hpp
+  include/sniffercommit/domain/ports/git_repository.hpp
+  include/sniffercommit/domain/ports/logger_port.hpp
+  include/sniffercommit/application/init_use_case.hpp
+  include/sniffercommit/application/install_use_case.hpp
+  include/sniffercommit/application/run_checks_use_case.hpp
+  include/sniffercommit/application/generate_workflow_use_case.hpp
+  include/sniffercommit/infrastructure/toml_config_repository.hpp
+  include/sniffercommit/infrastructure/process_shell_executor.hpp
+  include/sniffercommit/infrastructure/os_file_system.hpp
+  include/sniffercommit/infrastructure/cli_git_repository.hpp
+  include/sniffercommit/generators/clang_format_generator.hpp
+  include/sniffercommit/generators/clang_tidy_generator.hpp
+  include/sniffercommit/generators/cmake_generator.hpp
+  include/sniffercommit/presentation/interactive_init.hpp
+  include/sniffercommit/logger.hpp
   include/sniffercommit/spinner.hpp
-  include/sniffercommit/tooling_config.hpp
   include/sniffercommit/util.hpp
 )
 

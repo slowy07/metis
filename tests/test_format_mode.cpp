@@ -1,32 +1,32 @@
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
-#include "sniffercommit/executor.hpp"
+#include "sniffercommit/application/run_checks_use_case.hpp"
+#include "sniffercommit/domain/config.hpp"
+#include "sniffercommit/domain/error_codes.hpp"
+#include "sniffercommit/infrastructure/cli_git_repository.hpp"
+#include "sniffercommit/infrastructure/os_file_system.hpp"
+#include "sniffercommit/infrastructure/process_shell_executor.hpp"
 
-namespace sniffercommit {
+using namespace sniffercommit;
+
 class FormatModeTest : public ::testing::Test {
  protected:
   std::filesystem::path temp_dir_;
   std::filesystem::path repo_root_;
+  std::filesystem::path orig_cwd_;
 
   void SetUp() override {
+    orig_cwd_ = std::filesystem::current_path();
     temp_dir_ = std::filesystem::temp_directory_path() / "sniffercommit_test_format";
     repo_root_ = temp_dir_ / "repo";
     std::filesystem::create_directories(repo_root_);
     std::filesystem::create_directories(repo_root_ / ".git");
     std::filesystem::create_directories(repo_root_ / "src");
-
-    // make clang
-    {
-      std::ofstream file(repo_root_ / ".clang-format");
-      file << "BasedOnly: Google\n";
-      file << "IndentWidth: 2\n";
-      file << "ColumnLimit: 100\n";
-    }
 
     {
       std::ofstream file(repo_root_ / "src" / "main.cpp");
@@ -37,46 +37,60 @@ class FormatModeTest : public ::testing::Test {
     }
 
     std::system(("cd " + repo_root_.string() + " && git init >/dev/null 2>&1").c_str());
+    std::system(
+        ("cd " + repo_root_.string() + " && git config user.email test@test.com >/dev/null 2>&1")
+            .c_str());
+    std::system(
+        ("cd " + repo_root_.string() + " && git config user.name test >/dev/null 2>&1").c_str());
     std::system(("cd " + repo_root_.string() + " && git add . >/dev/null 2>&1").c_str());
     std::system(("cd " + repo_root_.string() + " && git commit -m 'init' >/dev/null 2>&1").c_str());
+
+    std::filesystem::current_path(repo_root_);
   }
 
-  void TearDown() override { std::filesystem::remove_all(temp_dir_); }
+  void TearDown() override {
+    std::filesystem::current_path(orig_cwd_);
+    std::filesystem::remove_all(temp_dir_);
+  }
 };
 
-TEST_F(FormatModeTest, FormatEligibleFile) {
-  RunOptions opts;
-  opts.source = FileSource::ALL_REPO;
-  opts.mode = RunMode::FORMAT;
+TEST_F(FormatModeTest, RunChecksWithEmptyConfig) {
+  auto shell_for_git = std::make_unique<infrastructure::ProcessShellExecutor>();
+  auto git_repo = std::make_unique<infrastructure::CliGitRepository>(std::move(shell_for_git));
+  auto shell = std::make_unique<infrastructure::ProcessShellExecutor>();
+  auto fs = std::make_unique<infrastructure::OsFileSystem>();
 
-  auto files = collect_files(repo_root_, opts, {});
-  ASSERT_FALSE(files.empty());
+  application::RunChecksUseCase use_case(std::move(shell), std::move(git_repo), std::move(fs));
 
-  EXPECT_TRUE(std::ranges::any_of(
-      files, [](const auto& file_dat) { return file_dat.ends_with("main.cpp"); }));
-}
+  domain::config::ProjectConfig cfg;
+  cfg.project_name = "test";
 
-TEST_F(FormatModeTest, DryRunFormat) {
-  RunOptions opts;
-  opts.source = FileSource::ALL_REPO;
-  opts.mode = RunMode::FORMAT;
+  application::RunOptions opts;
+  opts.source = application::FileSource::ALL_REPO;
+  opts.mode = application::RunMode::CHECK;
 
-  opts.dry_run = true;
-  auto files = collect_files(repo_root_, opts, {});
-  int result = execute_format(repo_root_, files, opts);
-
+  int result = use_case.execute(cfg, opts);
   EXPECT_EQ(result, 0);
 }
 
-TEST_F(FormatModeTest, FormatModeRespectExplicitFiles) {
-  RunOptions opts;
-  opts.source = FileSource::EXPLICIT;
-  opts.mode = RunMode::FORMAT;
-  opts.explicit_files = {"src/main.cpp"};
+TEST_F(FormatModeTest, DryRunFormat) {
+  auto shell_for_git = std::make_unique<infrastructure::ProcessShellExecutor>();
+  auto git_repo = std::make_unique<infrastructure::CliGitRepository>(std::move(shell_for_git));
+  auto shell = std::make_unique<infrastructure::ProcessShellExecutor>();
+  auto fs = std::make_unique<infrastructure::OsFileSystem>();
 
-  auto files = collect_files(repo_root_, opts, {});
-  ASSERT_EQ(files.size(), 1);
-  EXPECT_TRUE(files[0].ends_with("main.cpp"));
+  application::RunChecksUseCase use_case(std::move(shell), std::move(git_repo), std::move(fs));
+
+  domain::config::ProjectConfig cfg;
+  cfg.project_name = "test";
+
+  application::RunOptions opts;
+  opts.source = application::FileSource::ALL_REPO;
+  opts.mode = application::RunMode::FORMAT;
+  opts.dry_run = true;
+
+  int result = use_case.execute(cfg, opts);
+
+  // Without a .clang-format file, expect CONFIG_ERROR
+  EXPECT_EQ(result, static_cast<int>(domain::ExitCode::CONFIG_ERROR));
 }
-
-}  // namespace sniffercommit

@@ -55,6 +55,10 @@ class Spinner {
 
   static inline std::atomic<bool> silent_{false};
 };
+#ifdef _WIN32
+void enable_windows_ansi();
+#endif
+
 }  // namespace sniffercommit
 
 #endif  // !SNIFFERCOMMIT_SPINNER_HPP

@@ -19,27 +19,19 @@
 namespace sniffercommit {
 
 #ifdef _WIN32
-static bool enable_windows_ansi() noexcept {
+void enable_windows_ansi() noexcept {
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (hOut == INVALID_HANDLE_VALUE) {
-    return false;
+    return;
   }
 
   DWORD mode = 0;
   if (!GetConsoleMode(hOut, &mode)) {
-    return false;
+    return;
   }
 
-  if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING)) {
-    return true;
-  }
-
-  if (SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT)) {
-    return true;
-  }
-
-  return false;
+  SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 }
 
 static void set_utf8_console() noexcept { SetConsoleOutputCP(CP_UTF8); }
@@ -66,8 +58,7 @@ Spinner::Spinner(std::string_view message, Mode mode, std::vector<std::string> f
       frames_(frames.empty() ? default_frames() : std::move(frames)),
       interval_ms_(interval_ms) {
 #ifdef _WIN32
-  static bool ansi_enabled = enable_windows_ansi();
-  (void)ansi_enabled;
+  enable_windows_ansi();
   set_utf8_console();
 #endif  // _WIN32
 
