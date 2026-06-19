@@ -1,107 +1,47 @@
 #include <gtest/gtest.h>
 
-#include "../include/sniffercommit/tooling_config.hpp"
+#include <string>
+#include <vector>
 
-using namespace sniffercommit::tooling;
+#include "sniffercommit/generators/clang_format_generator.hpp"
+#include "sniffercommit/generators/clang_tidy_generator.hpp"
+#include "sniffercommit/generators/cmake_generator.hpp"
 
-TEST(ClangFormatConfigTest, DefaultConfigIsValid) {
-  ClangFormatConfig cfg;
-  EXPECT_TRUE(cfg.validate().empty());
+using namespace sniffercommit::generators;
+
+TEST(ClangFormatStyleTest, StyleNameReturnsCorrectStrings) {
+  EXPECT_EQ(generate_clang_format_style("google"), "Google");
+  EXPECT_EQ(generate_clang_format_style("GOOGLE"), "Google");
+  EXPECT_EQ(generate_clang_format_style("llvm"), "LLVM");
+  EXPECT_EQ(generate_clang_format_style("chromium"), "Chromium");
+  EXPECT_EQ(generate_clang_format_style("mozilla"), "Mozilla");
+  EXPECT_EQ(generate_clang_format_style("webkit"), "WebKit");
+  EXPECT_EQ(generate_clang_format_style("microsoft"), "Microsoft");
+  EXPECT_EQ(generate_clang_format_style("gnu"), "GNU");
 }
 
-TEST(ClangFormatConfigTest, ValidRejectsOnvalidIndentWidth) {
-  ClangFormatConfig cfg;
-  cfg.indent_width = 0;
-
-  EXPECT_FALSE(cfg.validate().empty());
-
-  cfg.indent_width = 17;
-  EXPECT_FALSE(cfg.validate().empty());
+TEST(ClangFormatStyleTest, InvalidStyleThrows) {
+  EXPECT_THROW((void)generate_clang_format_style("invalid"), std::runtime_error);
 }
 
-TEST(ClangFormatConfigTest, ValidateRejectsInvalidColumnLimit) {
-  ClangFormatConfig cfg;
-  cfg.column_limit = 15;
-  EXPECT_FALSE(cfg.validate().empty());
-
-  cfg.column_limit = 600;
-  EXPECT_FALSE(cfg.validate().empty());
+TEST(ClangFormatTest, GeneratesValidYaml) {
+  std::string content = generate_clang_format("google", 2, 100, "Left", "Attach");
+  EXPECT_NE(content.find("BasedOnStyle: Google"), std::string::npos);
+  EXPECT_NE(content.find("IndentWidth: 2"), std::string::npos);
+  EXPECT_NE(content.find("ColumnLimit: 100"), std::string::npos);
 }
 
-TEST(ClangFormatConfigTest, ValidConfigValues) {
-  ClangFormatConfig cfg;
-  cfg.indent_width = 4;
-  cfg.column_limit = 120;
-  EXPECT_TRUE(cfg.validate().empty());
+TEST(ClangFormatTest, InvalidConfigThrows) {
+  EXPECT_THROW((void)generate_clang_format("google", 0, 100, "Left", "Attach"), std::runtime_error);
+  EXPECT_THROW((void)generate_clang_format("google", 2, 10, "Left", "Attach"), std::runtime_error);
+  EXPECT_THROW((void)generate_clang_format("google", 17, 100, "Left", "Attach"),
+               std::runtime_error);
 }
 
-TEST(FormatterStyleTest, StyleNameReturnsCorrectStrings) {
-  EXPECT_EQ(style_name(FormatterStyle::Google), "Google");
-  EXPECT_EQ(style_name(FormatterStyle::LLVM), "LLVM");
-  EXPECT_EQ(style_name(FormatterStyle::Chromium), "Chromium");
-  EXPECT_EQ(style_name(FormatterStyle::Mozilla), "Mozilla");
-  EXPECT_EQ(style_name(FormatterStyle::WebKit), "WebKit");
-  EXPECT_EQ(style_name(FormatterStyle::Microsoft), "Microsoft");
-  EXPECT_EQ(style_name(FormatterStyle::GNU), "GNU");
-}
-
-TEST(FormatterStyleTest, ParseStyleCaseInsensitive) {
-  EXPECT_EQ(parse_style("google"), FormatterStyle::Google);
-  EXPECT_EQ(parse_style("GOOGLE"), FormatterStyle::Google);
-  EXPECT_EQ(parse_style("llvm"), FormatterStyle::LLVM);
-  EXPECT_EQ(parse_style("Chromium"), FormatterStyle::Chromium);
-}
-
-TEST(ClangTidyConfigTest, DefaultConfigIsValid) {
-  ClangTidyConfig cfg;
-  EXPECT_TRUE(cfg.validate().empty());
-}
-
-TEST(ClangTidyConfigTest, ValidateHeaderFilterRange) {
-  ClangTidyConfig cfg;
-  cfg.header_filter_level = -1;
-  EXPECT_FALSE(cfg.validate().empty());
-
-  cfg.header_filter_level = 3;
-  EXPECT_FALSE(cfg.validate().empty());
-
-  cfg.header_filter_level = 0;
-  EXPECT_TRUE(cfg.validate().empty());
-
-  cfg.header_filter_level = 1;
-  EXPECT_TRUE(cfg.validate().empty());
-
-  cfg.header_filter_level = 2;
-  EXPECT_TRUE(cfg.validate().empty());
-}
-
-TEST(ClangTidyConfigTest, ValidateCustomPresetRequiresChecks) {
-  ClangTidyConfig cfg;
-  cfg.preset = TidyPreset::Custom;
-  EXPECT_FALSE(cfg.validate().empty());
-
-  cfg.checks = {"bugprone-*", "modernize-*"};
-  EXPECT_TRUE(cfg.validate().empty());
-}
-
-TEST(ClangTidyConfigTest, PresetNameReturnsCorrectStrings) {
-  EXPECT_EQ(preset_name(TidyPreset::Minimal), "minimal");
-  EXPECT_EQ(preset_name(TidyPreset::Standard), "standard");
-  EXPECT_EQ(preset_name(TidyPreset::Strict), "strict");
-  EXPECT_EQ(preset_name(TidyPreset::Custom), "custom");
-}
-
-TEST(ClangTidyConfigTest, SeverityNameReturnsCorrectStrings) {
-  EXPECT_EQ(severity_name(TidySeverity::Note), "note");
-  EXPECT_EQ(severity_name(TidySeverity::Warning), "warning");
-  EXPECT_EQ(severity_name(TidySeverity::Error), "error");
-}
-
-TEST(PresetChecksTest, MinimalPresetIncludesCoreGuidelines) {
-  auto checks = preset_checks(TidyPreset::Minimal);
+TEST(ClangTidyTest, MinimalPresetIncludesCoreGuidelines) {
+  auto checks = get_preset_checks("minimal");
   EXPECT_FALSE(checks.empty());
 
-  // NOTE: verify key bug-prone checks are included
   bool found_cppcore = false;
   for (const auto& check : checks) {
     if (check.find("cppcoreguidelines-") != std::string::npos) {
@@ -111,29 +51,45 @@ TEST(PresetChecksTest, MinimalPresetIncludesCoreGuidelines) {
   EXPECT_TRUE(found_cppcore);
 }
 
-TEST(PresetChecksTest, StandardPresetIncludesMoreChecks) {
-  auto minimal = preset_checks(TidyPreset::Minimal);
-  auto standard = preset_checks(TidyPreset::Standard);
-
+TEST(ClangTidyTest, StandardPresetIncludesMoreChecks) {
+  auto minimal = get_preset_checks("minimal");
+  auto standard = get_preset_checks("standard");
   EXPECT_GT(standard.size(), minimal.size());
 }
 
-TEST(PresetChecksTest, StrictPresetIncludesMostChecks) {
-  auto standard = preset_checks(TidyPreset::Standard);
-  auto strict = preset_checks(TidyPreset::Strict);
-
+TEST(ClangTidyTest, StrictPresetIncludesMostChecks) {
+  auto standard = get_preset_checks("standard");
+  auto strict = get_preset_checks("strict");
   EXPECT_GT(strict.size(), standard.size());
 }
 
-TEST(GenerateClangFormatTest, GeneratesValidYaml) {
-  ClangFormatConfig cfg;
-  cfg.style = FormatterStyle::Google;
-  cfg.indent_width = 2;
-  cfg.column_limit = 100;
+TEST(ClangTidyTest, CustomPresetIsEmpty) {
+  auto checks = get_preset_checks("custom");
+  EXPECT_TRUE(checks.empty());
+}
 
-  std::string content = generate_clang_format(cfg);
+TEST(ClangTidyTest, InvalidPresetThrows) {
+  EXPECT_THROW((void)get_preset_checks("invalid"), std::runtime_error);
+}
 
-  EXPECT_NE(content.find("BasedOnStyle: Google"), std::string::npos);
-  EXPECT_NE(content.find("IndentWidth: 2"), std::string::npos);
-  EXPECT_NE(content.find("ColumnLimit: 100"), std::string::npos);
+TEST(ClangTidyTest, GenerateClangTidy) {
+  std::string content = generate_clang_tidy("standard", "error", 1);
+  EXPECT_NE(content.find("Checks:"), std::string::npos);
+  EXPECT_NE(content.find("WarningsAsErrors:"), std::string::npos);
+}
+
+TEST(CMakeTest, GenerateCMakeLists) {
+  std::string content =
+      generate_cmake_lists("test-project", "20", "executable", false, false, true, false, {});
+  EXPECT_NE(content.find("cmake_minimum_required(VERSION 3.20)"), std::string::npos);
+  EXPECT_NE(content.find("project(test-project"), std::string::npos);
+  EXPECT_NE(content.find("CMAKE_CXX_STANDARD 20"), std::string::npos);
+  EXPECT_NE(content.find("add_executable(test-project"), std::string::npos);
+}
+
+TEST(CMakeTest, GenerateCMakeListsWithTesting) {
+  std::string content = generate_cmake_lists("test", "17", "static", true, false, true, false, {});
+  EXPECT_NE(content.find("enable_testing()"), std::string::npos);
+  EXPECT_NE(content.find("add_library(test STATIC"), std::string::npos);
+  EXPECT_NE(content.find("CMAKE_CXX_STANDARD 17"), std::string::npos);
 }

@@ -1,0 +1,61 @@
+#ifndef SNIFFERCOMMIT_APPLICATION_RUN_CHECKS_USE_CASE_HPP
+#define SNIFFERCOMMIT_APPLICATION_RUN_CHECKS_USE_CASE_HPP
+
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "sniffercommit/domain/config.hpp"
+#include "sniffercommit/domain/ports/file_system.hpp"
+#include "sniffercommit/domain/ports/git_repository.hpp"
+#include "sniffercommit/domain/ports/shell_executor.hpp"
+
+namespace sniffercommit::application {
+
+enum class FileSource : std::uint8_t {
+  STAGED,
+  ALL_REPO,
+  EXPLICIT,
+};
+
+enum class RunMode : std::uint8_t {
+  CHECK,
+  FORMAT,
+};
+
+struct RunOptions {
+  FileSource source = FileSource::STAGED;
+  std::vector<std::string> explicit_files;
+  bool verbose = false;
+  bool dry_run = false;
+  RunMode mode = RunMode::CHECK;
+};
+
+class RunChecksUseCase {
+ public:
+  RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
+                   std::unique_ptr<domain::ports::IGitRepository> git_repo,
+                   std::unique_ptr<domain::ports::IFileSystem> fs);
+
+  [[nodiscard]] int execute(const domain::config::ProjectConfig& cfg, const RunOptions& opts);
+
+ private:
+  std::vector<std::string> collect_files(const std::filesystem::path& repo_root,
+                                         const RunOptions& opts,
+                                         const std::vector<std::string>& exclude_paths);
+  int execute_checks(const std::filesystem::path& repo_root,
+                     const domain::config::ProjectConfig& cfg,
+                     const std::vector<std::string>& files, const RunOptions& opts);
+  int execute_format(const std::filesystem::path& repo_root, const std::vector<std::string>& files,
+                     const RunOptions& opts);
+
+  std::unique_ptr<domain::ports::IShellExecutor> shell_;
+  std::unique_ptr<domain::ports::IGitRepository> git_repo_;
+  std::unique_ptr<domain::ports::IFileSystem> fs_;
+};
+
+}  // namespace sniffercommit::application
+
+#endif
