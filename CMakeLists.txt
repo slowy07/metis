@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(sniffercommit
   LANGUAGES CXX
-  VERSION 0.3.9
+  VERSION 0.3.15
   DESCRIPTION "Fast, C++ pre-commit hook and CI generator"
   HOMEPAGE_URL "https://github.com/slowy07/sniffercommit"
 )

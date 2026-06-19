@@ -1,7 +1,7 @@
 #!/bin/sh
 # sniffercommit install script
 # Usage: curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
-#        curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.9
+#        curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.15
 
 set -eu
 
@@ -21,11 +21,11 @@ for arg in "$@"; do
             echo "Usage:"
             echo "  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh"
             echo "  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- --force"
-            echo "  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.9"
+            echo "  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.15"
             exit 0
             ;;
         --version)
-            echo "sniffercommit 0.4.0"
+            echo "sniffercommit 0.3.15"
             exit 0
             ;;
         --verbose) VERBOSE=true ;;
