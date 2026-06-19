@@ -150,6 +150,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/executor.hpp
   include/sniffercommit/precommit_domain.hpp
   include/sniffercommit/project_config.hpp
+  include/sniffercommit/spinner.hpp
   include/sniffercommit/tooling_config.hpp
   include/sniffercommit/util.hpp
 )
