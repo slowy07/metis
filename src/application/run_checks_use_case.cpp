@@ -6,9 +6,12 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstring>
+#include <exception>
 #include <filesystem>
 #include <future>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -33,18 +36,104 @@ namespace sniffercommit::application {
 namespace {
 
 using domain::ExitCode;
-
-bool is_grep_like(const std::string& cmd_basename) {
-  return cmd_basename == "grep" || cmd_basename == "egrep" || cmd_basename == "rg";
-}
-
 constexpr size_t k_result_col = 68;
+
+class CwdGuard {
+ public:
+  explicit CwdGuard(const std::filesystem::path& target) {
+    original_ = std::filesystem::current_path();
+    std::filesystem::current_path(target);
+  }
+
+  ~CwdGuard() {
+    try {
+      std::filesystem::current_path(original_);
+    } catch (const std::exception&) {
+      std::cout << "\n";
+    }
+  }
+
+  CwdGuard(const CwdGuard&) = delete;
+  CwdGuard& operator=(const CwdGuard&) = delete;
+  CwdGuard(CwdGuard&&) = delete;
+  CwdGuard& operator=(CwdGuard&&) = delete;
+
+ private:
+  std::filesystem::path original_;
+};
+
+class IExitCodeInterpreter {
+ public:
+  virtual ~IExitCodeInterpreter() = default;
+  [[nodiscard]] virtual int interpret(int raw_exit_code) const = 0;
+  [[nodiscard]] virtual bool is_failure(int interpreted_code) const = 0;
+};
+
+class DefaultInterpreter : public IExitCodeInterpreter {
+ public:
+  [[nodiscard]] int interpret(int raw_exit_code) const override { return raw_exit_code; }
+
+  [[nodiscard]] bool is_failure(int interpreted_code) const override {
+    return interpreted_code != 0;
+  }
+};
+
+class GrepInterpreter : public IExitCodeInterpreter {
+ public:
+  [[nodiscard]] int interpret(int raw_exit_code) const override {
+    if (raw_exit_code == 0) {
+      return 1;
+    }
+
+    if (raw_exit_code == 1) {
+      return 0;
+    }
+
+    return raw_exit_code;
+  }
+
+  [[nodiscard]] bool is_failure(int interpreted_code) const override {
+    return interpreted_code != 0;
+  }
+};
+
+class RgInterpreter : public IExitCodeInterpreter {
+ public:
+  [[nodiscard]] int interpret(int raw_exit_code) const override {
+    if (raw_exit_code == 0) {
+      return 1;
+    }
+
+    if (raw_exit_code == 1) {
+      return 0;
+    }
+
+    return raw_exit_code;
+  }
+
+  [[nodiscard]] bool is_failure(int interpreted_code) const override {
+    return interpreted_code != 0;
+  }
+};
+
+std::unique_ptr<IExitCodeInterpreter> make_interpreter(std::string_view cmd) {
+  auto basename = std::filesystem::path(cmd).filename().string();
+  if (basename == "grep" || basename == "egrep") {
+    return std::make_unique<GrepInterpreter>();
+  }
+
+  if (basename == "rg") {
+    return std::make_unique<RgInterpreter>();
+  }
+
+  return std::make_unique<DefaultInterpreter>();
+}
 
 class SyncPrinter {
  public:
   void print_check_result(const std::string& name, std::string_view result, int exit_code = 0,
                           std::string_view tool_output = {}, bool verbose = false) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     size_t dot_count = (name.length() < k_result_col) ? k_result_col - name.length() : 1;
     std::cout << name << std::string(dot_count, '.') << result << "\n";
     if (!tool_output.empty() && (exit_code != 0 || verbose)) {
@@ -73,7 +162,7 @@ class SyncPrinter {
 
   void print_file_result(const std::string& file_name, std::string_view status,
                          size_t indent_col = 2) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     std::string label = std::string(indent_col, ' ') + file_name;
     size_t effective_col = k_result_col - indent_col;
     if (effective_col > label.length()) {
@@ -84,12 +173,12 @@ class SyncPrinter {
   }
 
   void print_verbose(std::string_view msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     std::cout << msg;
   }
 
   void print_error(std::string_view msg) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard lock(mutex_);
     std::cerr << msg;
   }
 
@@ -335,6 +424,8 @@ CheckResult run_check_for_files(const domain::config::Check& check,
   int overall_exit = 0;
   std::string accumulated_output;
 
+  auto interpreter = make_interpreter(check.command);
+
   for (const auto& file_name : matched_files) {
     std::string full_cmd = fmt::format("{} {}", cmd_base, shell_escape(file_name));
 
@@ -343,14 +434,9 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     }
 
     auto result = shell->exec_captured(full_cmd);
-    int code = result.exit_code;
+    int code = interpreter->interpret(result.exit_code);
 
-    auto cmd_basename = std::filesystem::path(check.command).filename().string();
-    if (is_grep_like(cmd_basename) && code == 1) {
-      code = 0;
-    }
-
-    if (code != 0) {
+    if (interpreter->is_failure(code)) {
       overall_exit = code;
       if (!result.output.empty()) {
         accumulated_output += result.output;
@@ -508,8 +594,7 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
     // spinner started automatically in constructor
   }
 
-  auto orig_cwd = std::filesystem::current_path();
-  std::filesystem::current_path(repo_root);
+  CwdGuard cwd_guard(repo_root);
 
   if (!cfg.parallel || work_items.size() == 1) {
     int exit_code = static_cast<int>(ExitCode::SUCCESS);
@@ -520,8 +605,6 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
         exit_code = result.exit_code;
       }
     }
-
-    std::filesystem::current_path(orig_cwd);
 
     if (exit_code != 0) {
       printer.print_error("One or more checks failed.\n");
@@ -545,8 +628,6 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
       exit_code = result.exit_code;
     }
   }
-
-  std::filesystem::current_path(orig_cwd);
 
   if (exit_code != 0) {
     printer.print_error("One or more checks failed.\n");

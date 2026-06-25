@@ -31,7 +31,6 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
   try {
     repo_root = config_repo_->find_git_root();
   } catch (const std::exception&) {
-    std::cerr << "use cwd as fallback\n";
   }
 
   if (opts.enable_clang_tidy) {

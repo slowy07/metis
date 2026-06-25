@@ -8,9 +8,46 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <toml++/toml.hpp>
 
 namespace sniffercommit::infrastructure {
+
+namespace {
+
+toml::node* safe_get(toml::table& tbl, std::string_view key) { return tbl.get(key); }
+
+const toml::node* safe_get(const toml::table& tbl, std::string_view key) { return tbl.get(key); }
+
+toml::table* as_table_safe(toml::node* node) {
+  return (node != nullptr) ? node->as_table() : nullptr;
+}
+
+toml::array* as_array_safe(toml::node* node) {
+  return (node != nullptr) ? node->as_array() : nullptr;
+}
+
+std::string get_string_safe(const toml::table& tbl, std::string_view key,
+                            std::string_view default_val) {
+  if (const auto* node = safe_get(tbl, key)) {
+    if (const auto* val = node->as_string()) {
+      return std::string(val->get());
+    }
+  }
+
+  return std::string(default_val);
+}
+
+bool get_bool_safe(const toml::table& tbl, std::string_view key, bool default_val) {
+  if (const auto* node = safe_get(tbl, key)) {
+    if (const auto* val = node->as_boolean()) {
+      return val->get();
+    }
+  }
+  return default_val;
+}
+
+}  // namespace
 
 TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileSystem> fs,
                                            std::unique_ptr<domain::ports::IShellExecutor> shell)
@@ -30,26 +67,36 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
 
   domain::config::ProjectConfig cfg;
 
-  if (auto* project = tbl.at("project").as_table()) {
-    cfg.project_name = project->at("name").value_or("unnamed");
+  if (auto* project = as_table_safe(safe_get(tbl, "project"))) {
+    cfg.project_name = get_string_safe(*project, "name", "unnamed");
+  } else {
+    cfg.project_name = "unnamed";
   }
 
-  if (auto* checks_arr = tbl.at("checks").as_array()) {
+  if (auto* checks_arr = as_array_safe(safe_get(tbl, "checks"))) {
     for (auto& item : *checks_arr) {
       if (auto* check_tbl = item.as_table()) {
         domain::config::Check check;
-        check.name = check_tbl->at("name").value_or("unnamed");
-        check.command = check_tbl->at("command").value_or("");
+        check.name = get_string_safe(*check_tbl, "name", "unnamed");
+        check.command = get_string_safe(*check_tbl, "command", "");
 
-        if (auto* args = check_tbl->at("args").as_array()) {
+        if (auto* args = as_array_safe(safe_get(*check_tbl, "args"))) {
           for (auto& arg : *args) {
-            check.args.emplace_back(arg.value_or(""));
+            if (auto* val = arg.as_string()) {
+              check.args.emplace_back(val->get());
+            } else {
+              check.args.emplace_back("");
+            }
           }
         }
 
-        if (auto* pats = check_tbl->at("patterns").as_array()) {
+        if (auto* pats = as_array_safe(safe_get(*check_tbl, "patterns"))) {
           for (auto& pat : *pats) {
-            check.patterns.emplace_back(pat.value_or(""));
+            if (auto* val = pat.as_string()) {
+              check.patterns.emplace_back(val->get());
+            } else {
+              check.patterns.emplace_back("");
+            }
           }
         }
 
@@ -58,21 +105,28 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
     }
   }
 
-  if (auto* exclude_tbl = tbl.at("exclude").as_table()) {
-    if (auto* paths = exclude_tbl->at("paths").as_array()) {
+  if (auto* exclude_tbl = as_table_safe(safe_get(tbl, "exclude"))) {
+    if (auto* paths = as_array_safe(safe_get(*exclude_tbl, "paths"))) {
       for (auto& path_item : *paths) {
-        cfg.exclude_paths.emplace_back(path_item.value_or(""));
+        if (auto* val = path_item.as_string()) {
+          cfg.exclude_paths.emplace_back(val->get());
+        } else {
+          cfg.exclude_paths.emplace_back("");
+        }
       }
     }
   }
 
-  if (auto* output = tbl.at("output").as_table()) {
-    cfg.generate_local_hook = output->at("local_hook").value_or(true);
-    cfg.generate_gha = output->at("github_actions").value_or(false);
+  if (auto* output = as_table_safe(safe_get(tbl, "output"))) {
+    cfg.generate_local_hook = get_bool_safe(*output, "local_hook", true);
+    cfg.generate_gha = get_bool_safe(*output, "github_actions", false);
+  } else {
+    cfg.generate_local_hook = true;
+    cfg.generate_gha = false;
   }
 
-  if (auto* exec = tbl.at("execution").as_table()) {
-    cfg.parallel = exec->at("parallel").value_or(true);
+  if (auto* exec = as_table_safe(safe_get(tbl, "execution"))) {
+    cfg.parallel = get_bool_safe(*exec, "parallel", true);
   } else {
     cfg.parallel = true;
   }

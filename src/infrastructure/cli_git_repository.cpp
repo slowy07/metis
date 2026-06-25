@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "sniffercommit/util.hpp"
 
 namespace sniffercommit::infrastructure {
 
@@ -16,18 +17,27 @@ namespace {
 
 std::vector<std::string> split_lines(const std::string& output) {
   std::vector<std::string> lines;
-  std::string remaining = output;
+  if (output.empty()) {
+    return lines;
+  }
+
+  lines.reserve(static_cast<size_t>(std::count(output.begin(), output.end(), '\n')) + 1);
+
+  size_t start = 0;
   size_t pos = 0;
-  while ((pos = remaining.find('\n')) != std::string::npos) {
-    std::string line = remaining.substr(0, pos);
-    remaining.erase(0, pos + 1);
-    if (!line.empty()) {
-      lines.push_back(line);
+
+  while ((pos = output.find('\n', start)) != std::string::npos) {
+    if (pos > start) {
+      lines.emplace_back(output.substr(start, pos - start));
     }
+
+    start = pos += 1;
   }
-  if (!remaining.empty()) {
-    lines.push_back(remaining);
+
+  if (start < output.size()) {
+    lines.emplace_back(output.substr(start));
   }
+
   return lines;
 }
 
@@ -38,18 +48,15 @@ CliGitRepository::CliGitRepository(std::unique_ptr<domain::ports::IShellExecutor
 
 std::vector<std::string> CliGitRepository::list_staged_files(
     const std::filesystem::path& repo_root) {
-  auto orig = std::filesystem::current_path();
-  std::filesystem::current_path(repo_root);
-  std::string out = shell_->exec("git diff --cached --name-only --diff-filter=ACM");
-  std::filesystem::current_path(orig);
+  std::string cmd = "git -C " + util::shell_escape(repo_root.string()) +
+                    " diff --cached --name-only --diff-filter=ACM";
+  std::string out = shell_->exec(cmd);
   return split_lines(out);
 }
 
 std::vector<std::string> CliGitRepository::list_all_files(const std::filesystem::path& repo_root) {
-  auto orig = std::filesystem::current_path();
-  std::filesystem::current_path(repo_root);
-  std::string out = shell_->exec("git ls-files");
-  std::filesystem::current_path(orig);
+  std::string cmd = "git -C " + util::shell_escape(repo_root.string()) + " ls-files";
+  std::string out = shell_->exec(cmd);
   return split_lines(out);
 }
 
@@ -60,10 +67,8 @@ bool CliGitRepository::is_file_modified(const std::filesystem::path& file) {
 
 std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::path& start) {
   try {
-    auto orig = std::filesystem::current_path();
-    std::filesystem::current_path(start);
-    std::string out = shell_->exec("git rev-parse --show-toplevel");
-    std::filesystem::current_path(orig);
+    std::string cmd = "git -C " + util::shell_escape(start.string()) + " rev-parse --show-toplevel";
+    std::string out = shell_->exec(cmd);
     if (!out.empty()) {
       return std::filesystem::path(out);
     }

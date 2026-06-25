@@ -75,7 +75,7 @@ bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept 
 static std::string make_config_file_arg(const std::filesystem::path& repo_root,
                                         const std::string& filename) {
   auto abs_path = std::filesystem::absolute(repo_root / filename);
-  return "--config-file" + abs_path.string();
+  return "--config-file=" + abs_path.string();
 }
 
 std::string generate_default_config(const std::string& project_name,
