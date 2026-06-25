@@ -1,10 +1,10 @@
 #include "sniffercommit/application/install_use_case.hpp"
 
 #include <fmt/format.h>
+#include <unistd.h>
 
 #include <cstdlib>
 #include <filesystem>
-#include <unistd.h>
 #include <fstream>
 #include <random>
 #include <sstream>
@@ -25,9 +25,7 @@ std::string regex_escape(const std::string& str) {
   out.reserve(str.size() * 2);
   for (char chr : str) {
     switch (chr) {
-      case '\\':
       case '.':
-      case '+':
       case '*':
       case '?':
       case '[':
@@ -39,16 +37,8 @@ std::string regex_escape(const std::string& str) {
       case '{':
       case '}':
       case '|':
-      case '`':
-      case '"':
-      case '!':
-      case '&':
-      case ';':
-      case '<':
-      case '>':
-      case '#':
-      case '~':
-      case '\n':
+      case '\\':
+      case '+':
         out += '\\';
         break;
       default:

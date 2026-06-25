@@ -76,7 +76,7 @@ std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::pa
     // fallthrough
   }
 
-  auto dir = std::filesystem::current_path();
+  auto dir = std::filesystem::absolute(start);
   while (true) {
     if (std::filesystem::exists(dir / ".git")) {
       return dir;

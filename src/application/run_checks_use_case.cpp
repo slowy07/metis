@@ -318,13 +318,20 @@ class Spinner {
 
   void stop() {
     if (!running_.load()) {
-      return;
+    return;
     }
+
     stop_requested_.store(true);
     cv_.notify_all();
+
     if (thread_.joinable()) {
-      thread_.join();
+      try {
+        thread_.join();
+      } catch (...) {
+        std::cout << "\n";
+      }
     }
+
     running_.store(false);
     clear_line();
   }
