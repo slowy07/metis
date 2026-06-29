@@ -93,19 +93,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: brew install cmake ninja
-      - run: sh install.sh --verbose
-        env:
-          SNIFFERCOMMIT_FORCE_BUILD: 1
-          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - name: Find install dir
         run: |
           if [ -n "${CARGO_HOME:-}" ]; then
             echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+            echo "SNIFFERCOMMIT_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
           elif [ -d "$HOME/.cargo/bin" ]; then
             echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+            echo "SNIFFERCOMMIT_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
           else
             echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+            echo "SNIFFERCOMMIT_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
           fi
+      - run: sh install.sh --verbose
+        env:
+          SNIFFERCOMMIT_FORCE_BUILD: 1
+          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
       - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
       - run: '"${SNIFFER_INSTALL_DIR}/sniffercommit" --version'
       - run: |
