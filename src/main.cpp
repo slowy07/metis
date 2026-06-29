@@ -1,12 +1,12 @@
 #include <fmt/format.h>
 
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-#include <cstring>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
 #include "sniffercommit/application/init_use_case.hpp"

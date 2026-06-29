@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace sniffercommit {

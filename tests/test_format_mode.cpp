@@ -43,7 +43,8 @@ class FormatModeTest : public ::testing::Test {
     (void)std::system(
         ("cd " + repo_root_.string() + " && git config user.name test >/dev/null 2>&1").c_str());
     (void)std::system(("cd " + repo_root_.string() + " && git add . >/dev/null 2>&1").c_str());
-    (void)std::system(("cd " + repo_root_.string() + " && git commit -m 'init' >/dev/null 2>&1").c_str());
+    (void)std::system(
+        ("cd " + repo_root_.string() + " && git commit -m 'init' >/dev/null 2>&1").c_str());
 
     std::filesystem::current_path(repo_root_);
   }
