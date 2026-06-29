@@ -2,10 +2,10 @@ name: Release
 
 on:
   push:
-    branches: ["**"]
+    branches: [main, develop]
     tags: ["v*"]
   pull_request:
-    branches: ["**"]
+    branches: [main, develop]
   workflow_dispatch:
 
 concurrency:
@@ -21,9 +21,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ git
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DSNIFFERCOMMIT_BUILD_TESTS=ON
@@ -63,7 +68,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -88,7 +93,7 @@ jobs:
         run: ${{ matrix.pack_cmd }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: sniffercommit-${{ matrix.target }}
           path: build/bin/sniffercommit-${{ matrix.target }}.${{ matrix.artifact_ext }}

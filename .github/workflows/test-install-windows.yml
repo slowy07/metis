@@ -1,358 +1,213 @@
-name: Test Windows Installer
+name: Test install.sh
 
 on:
   push:
     branches: [develop, main]
     paths:
-      - 'install.ps1'
-      - '.github/workflows/test-install-windows.yml'
+      - 'install.sh'
+      - '.github/workflows/test-install-posix.yml'
       - 'CMakeLists.txt'
       - 'src/**'
   pull_request:
     branches: [develop, main]
     paths:
-      - 'install.ps1'
-      - '.github/workflows/test-install-windows.yml'
+      - 'install.sh'
+      - '.github/workflows/test-install-posix.yml'
   workflow_dispatch:
     inputs:
       test_source_build:
         description: 'Force source build test'
-        required: false
+        default: 'true'
+      test_release_download:
+        description: 'Test release binary download'
         default: 'false'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
-
-env:
-  NO_COLOR: 1
 
 jobs:
   lint:
-    name: Lint install.ps1
+    name: Lint install.sh
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install PSScriptAnalyzer
-        shell: pwsh
+      - name: shellcheck
+        run: shellcheck --severity=warning install.sh
+      - name: shfmt
         run: |
-          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
-          Import-Module PSScriptAnalyzer
-
-      - name: Run PSScriptAnalyzer
-        shell: pwsh
+          wget -qO /tmp/shfmt https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64
+          chmod +x /tmp/shfmt
+          /tmp/shfmt -d -i 4 -ci install.sh
+      - name: POSIX shebang
+        run: head -n 1 install.sh | grep -q '^#!/bin/sh$'
+      - name: bashisms check
         run: |
-          $results = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Error -Recurse:$false
-          if ($results) {
-            $results | Format-Table -AutoSize
-            exit 1
-          }
-          Write-Host "PSScriptAnalyzer passed with no errors."
-
-      - name: PSScriptAnalyzer warnings (non-blocking)
-        shell: pwsh
+          sudo apt-get install -y devscripts
+          checkbashisms -p install.sh || true
+      - name: typo check
         run: |
-          $warnings = Invoke-ScriptAnalyzer -Path ./install.ps1 -Severity Warning -Recurse:$false
-          if ($warnings) {
-            Write-Host "PSScriptAnalyzer warnings (non-blocking):"
-            $warnings | Format-Table RuleName, Severity, Line, Message
-          } else {
-            Write-Host "No PSScriptAnalyzer warnings."
-          }
+          grep -n 'succesfully' install.sh && exit 1 || true
+          grep -n 'verion' install.sh && exit 1 || true
+          grep -n 'Erorr' install.sh && exit 1 || true
 
-      - name: Check for common typos
-        shell: pwsh
-        run: |
-          $content = Get-Content ./install.ps1 -Raw
-          $typos = @{
-            'Write-Erorr'       = 'Typo: Write-Erorr should be Write-Error'
-            '--verion'          = 'Typo: --verion should be --version'
-            'succesfully'       = 'Typo: succesfully should be successfully'
-            '\$dir-parent'      = 'Typo: $dir-parent should be Split-Path syntax'
-            '\$CurrentPath'     = 'Inconsistency: \$CurrentPath vs \$currentPath'
-            'no .* compile found'  = "Typo: 'compile' should be 'compiler'"
-          }
-          $found = $false
-          foreach ($pattern in $typos.Keys) {
-            if ($content -cmatch $pattern) {
-              Write-Error "$($typos[$pattern]) (found: '$pattern')"
-              $found = $true
-            }
-          }
-          if ($found) { exit 1 }
-          Write-Host "No common typos found."
-
-  test-install-release:
-    name: Test Install (Release Binary)
-    runs-on: windows-latest
+  test-ubuntu-source:
+    name: Ubuntu Source Build
+    runs-on: ubuntu-latest
     needs: lint
     steps:
       - uses: actions/checkout@v4
-
-      - name: Test installer help
-        shell: pwsh
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ git
+      - name: Set install directory
         run: |
-          $output = & .\install.ps1 -Help
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          if ($output -notmatch "sniffercommit") {
-            Write-Error "Help output missing 'sniffercommit'"
-            exit 1
-          }
-          Write-Host "Help flag works correctly."
-
-      - name: Test installer with local script (dry-run simulation)
-        shell: pwsh
-        run: |
-          # Since we may not have releases yet, test that the script runs
-          # without syntax errors and reaches the "no binary found" fallback
-          $output = & .\install.ps1 2>&1 | Out-String
-          Write-Host $output
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Unexpected error during install"
-            exit 1
-          }
-
-      - name: Verify PATH handling
-        shell: pwsh
-        run: |
-          # Test that -NoModifyPath prevents PATH changes
-          $beforePath = $env:Path
-          # We can't easily test full install without a release, but we can test PATH logic
-          Write-Host "PATH logic test passed (NoModifyPath flag exists)"
-
-  test-install-source-mingw:
-    name: Test Source Build (MinGW)
-    runs-on: windows-latest
-    needs: lint
-    if: ${{ github.event.inputs.test_source_build == 'true' || github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup MinGW
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: mingw64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-            mingw-w64-x86_64-make
-            git
-
-      - name: Add MinGW to PATH
-        run: |
-          echo "C:\msys64\mingw64\bin" >> $env:GITHUB_PATH
-
-      - name: Verify toolchain
-        shell: pwsh
-        run: |
-          gcc --version
-          cmake --version
-          ninja --version
-          git --version
-
-      - name: Test source build via installer
-        shell: pwsh
+          INSTALL_DIR="${HOME}/.local/bin"
+          mkdir -p "${INSTALL_DIR}"
+          echo "SNIFFER_INSTALL_DIR=${INSTALL_DIR}" >> "$GITHUB_ENV"
+          echo "SNIFFERCOMMIT_INSTALL_DIR=${INSTALL_DIR}" >> "$GITHUB_ENV"
+      - run: sh install.sh --help
+      - name: Test --version
+        run: sh install.sh --version
+      - run: sh install.sh --verbose
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
-        run: |
-          # Run installer forcing source build
-          & .\install.ps1 -Force
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Source build installation failed"
-            exit 1
-          }
-
-      - name: Verify installation
-        shell: pwsh
-        run: |
-          # Check binary exists and is executable
-          $installDirs = @(
-            "$env:LOCALAPPDATA\Programs\sniffercommit"
-            "$env:USERPROFILE\.local\bin"
-            "$env:APPDATA\sniffercommit"
-          )
-          $found = $false
-          foreach ($dir in $installDirs) {
-            $exe = Join-Path $dir "sniffercommit.exe"
-            if (Test-Path $exe) {
-              Write-Host "Found: $exe"
-              $version = & $exe --version
-              Write-Host "Version: $version"
-              $found = $true
-              # Make available in PATH for subsequent steps
-              echo "$dir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-              break
-            }
-          }
-          if (-not $found) {
-            Write-Error "sniffercommit.exe not found in expected locations"
-            exit 1
-          }
-
-      - name: Test installed binary
-        shell: pwsh
-        run: |
-          sniffercommit --version
-          sniffercommit --help
-
-      - name: Test init command
-        shell: pwsh
-        run: |
-          mkdir test-project
-          cd test-project
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: '"${SNIFFER_INSTALL_DIR}/sniffercommit" --version'
+      - run: |
+          mkdir -p /tmp/test-project && cd /tmp/test-project
           git init
-          sniffercommit init --style google --enable-clang-tidy
-          if (-not (Test-Path ".sniffercommit.toml")) {
-            Write-Error ".sniffercommit.toml not generated"
-            exit 1
-          }
-          if (-not (Test-Path ".clang-format")) {
-            Write-Error ".clang-format not generated"
-            exit 1
-          }
-
-      - name: Test reinstall (Force flag)
-        shell: pwsh
-        run: |
-          # Should succeed even when already installed
-          $env:SNIFFERCOMMIT_FORCE_BUILD = 1
-          & .\install.ps1 -Force
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Force reinstall failed"
-            exit 1
-          }
-
-      - name: Test uninstall
-        shell: pwsh
-        run: |
-          & .\install.ps1 -Uninstall
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Uninstall failed"
-            exit 1
-          }
-          # Verify removal
-          $installDirs = @(
-            "$env:LOCALAPPDATA\Programs\sniffercommit"
-            "$env:USERPROFILE\.local\bin"
-            "$env:APPDATA\sniffercommit"
-          )
-          foreach ($dir in $installDirs) {
-            $exe = Join-Path $dir "sniffercommit.exe"
-            if (Test-Path $exe) {
-              Write-Error "sniffercommit.exe still exists after uninstall: $exe"
-              exit 1
-            }
-          }
-          Write-Host "Uninstall verified successfully."
-
-  test-install-source-msvc:
-    name: Test Source Build (MSVC)
-    runs-on: windows-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Verify toolchain
-        shell: pwsh
-        run: |
-          cl
-          cmake --version
-          git --version
-
-      - name: Test source build via installer
-        shell: pwsh
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" init --style google --enable-clang-tidy
+          test -f .sniffercommit.toml
+          test -f .clang-format
+          test -f .clang-tidy
+      - run: |
+          cd /tmp/test-project
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" run --dry-run --all-files
+      - run: sh install.sh --force-build --verbose
         env:
           SNIFFERCOMMIT_FORCE_BUILD: 1
           SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
-        run: |
-          & .\install.ps1 -Force
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "MSVC source build installation failed"
-            exit 1
-          }
+      - run: sh install.sh --uninstall
+      - run: test ! -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
-      - name: Verify installation
-        shell: pwsh
+  test-macos-source:
+    name: macOS Source Build
+    runs-on: macos-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install cmake ninja
+      - run: sh install.sh --verbose
+        env:
+          SNIFFERCOMMIT_FORCE_BUILD: 1
+          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
+      - name: Find install dir
         run: |
-          $installDirs = @(
-            "$env:LOCALAPPDATA\Programs\sniffercommit"
-            "$env:USERPROFILE\.local\bin"
-            "$env:APPDATA\sniffercommit"
-          )
-          $found = $false
-          foreach ($dir in $installDirs) {
-            $exe = Join-Path $dir "sniffercommit.exe"
-            if (Test-Path $exe) {
-              Write-Host "Found: $exe"
-              $version = & $exe --version
-              Write-Host "Version: $version"
-              $found = $true
-              echo "$dir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-              break
-            }
-          }
-          if (-not $found) {
-            Write-Error "sniffercommit.exe not found in expected locations"
-            exit 1
-          }
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: '"${SNIFFER_INSTALL_DIR}/sniffercommit" --version'
+      - run: |
+          mkdir -p /tmp/test-project && cd /tmp/test-project
+          git init
+          "${SNIFFER_INSTALL_DIR}/sniffercommit" init --style llvm --enable-clang-tidy
+          test -f .sniffercommit.toml
+      - run: sh install.sh --uninstall
+      - run: test ! -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
-      - name: Test installed binary
-        shell: pwsh
+  test-shells:
+    name: Test with Different Shells
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        shell: [bash, dash, zsh]
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ git
+          if [ "${{ matrix.shell }}" = "zsh" ]; then sudo apt-get install -y zsh; fi
+      - run: ${{ matrix.shell }} install.sh --verbose
+        env:
+          SNIFFERCOMMIT_FORCE_BUILD: 1
+          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
+      - name: Find install dir
         run: |
-          sniffercommit --version
-          sniffercommit --help
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: rm -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
-      - name: Test uninstall
-        shell: pwsh
-        run: |
-          & .\install.ps1 -Uninstall
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-
-  test-syntax-linux:
-    name: Syntax Check (Linux PowerShell)
+  test-no-modify-path:
+    name: Test --no-modify-path
     runs-on: ubuntu-latest
     needs: lint
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install PowerShell
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ git
+      - run: sh install.sh --no-modify-path --verbose
+        env:
+          SNIFFERCOMMIT_FORCE_BUILD: 1
+          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
+      - run: |
+          if grep -q "sniffercommit" "$HOME/.bashrc" 2>/dev/null; then
+            echo "PATH was modified despite --no-modify-path" && exit 1
+          fi
+      - name: Find install dir
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget apt-transport-https software-properties-common
-          wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
-          sudo dpkg -i packages-microsoft-prod.deb
-          sudo apt-get update
-          sudo apt-get install -y powershell
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: test -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
+      - run: rm -f "${SNIFFER_INSTALL_DIR}/sniffercommit"
 
-      - name: Parse script (no execution)
-        shell: pwsh
+  test-release-download:
+    name: Test Release Binary Download
+    runs-on: ubuntu-latest
+    needs: lint
+    if: ${{ github.event.inputs.test_release_download == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: 'sh install.sh --verbose; code=$?; echo "exit code: $code"'
+      - name: Find install dir
         run: |
-          $null = [System.Management.Automation.PSParser]::Tokenize((Get-Content ./install.ps1), [ref]$null)
-          Write-Host "PowerShell syntax is valid."
+          if [ -n "${CARGO_HOME:-}" ]; then
+            echo "SNIFFER_INSTALL_DIR=${CARGO_HOME}/bin" >> "$GITHUB_ENV"
+          elif [ -d "$HOME/.cargo/bin" ]; then
+            echo "SNIFFER_INSTALL_DIR=$HOME/.cargo/bin" >> "$GITHUB_ENV"
+          else
+            echo "SNIFFER_INSTALL_DIR=$HOME/.local/bin" >> "$GITHUB_ENV"
+          fi
+      - run: |
+          if [ -f "${SNIFFER_INSTALL_DIR}/sniffercommit" ]; then
+            "${SNIFFER_INSTALL_DIR}/sniffercommit" --version
+          else
+            echo "No release binary (expected if none published)"
+          fi
 
-      - name: Test parameter binding
-        shell: pwsh
-        run: |
-          # Test that parameters are defined correctly by parsing the param block
-          $ast = [System.Management.Automation.Language.Parser]::ParseFile(
-            (Resolve-Path ./install.ps1),
-            [ref]$null, [ref]$null
-          )
-          $params = $ast.ParamBlock.Parameters.Name.VariablePath.UserPath
-          $expected = @("Version", "InstallDir", "NoModifyPath", "Force", "Help", "Uninstall")
-          foreach ($p in $expected) {
-            if ($params -notcontains $p) {
-              Write-Error "Missing parameter: $p"
-              exit 1
-            }
-          }
-          Write-Host "All expected parameters found: $($params -join ', ')"
+  test-cargo-home:
+    name: Test CARGO_HOME Install Dir
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ git
+      - run: sh install.sh --verbose
+        env:
+          CARGO_HOME: /tmp/cargo-test
+          SNIFFERCOMMIT_FORCE_BUILD: 1
+          SNIFFERCOMMIT_BRANCH: ${{ github.ref_name }}
+      - run: test -f "/tmp/cargo-test/bin/sniffercommit"
+      - run: '"/tmp/cargo-test/bin/sniffercommit" --version'
+      - run: rm -rf /tmp/cargo-test
