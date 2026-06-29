@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstring>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
 #include "sniffercommit/application/init_use_case.hpp"
@@ -32,7 +33,7 @@ struct SafeArgs {
     }
     return inner.data()[i];
   }
-  size_t size() const { return inner.size(); }
+  [[nodiscard]] size_t size() const { return inner.size(); }
 };
 
 std::string preparse_config_path(SafeArgs& args) {
@@ -99,7 +100,7 @@ bool parse_init_flags(SafeArgs& args, sniffercommit::application::InitOptions& o
     } else if (arg == "--cmake-enable-sanitizers") {
       opts.cmake_enable_sanitizers = true;
     } else if (arg == "--add-dep" && i + 1 < args.size()) {
-      opts.dependencies.push_back(args.at(++i));
+      opts.dependencies.emplace_back(args.at(++i));
     } else if (arg == "--generate-src") {
       opts.generate_source = true;
     }
