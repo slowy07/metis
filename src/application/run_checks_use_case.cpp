@@ -6,6 +6,8 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <filesystem>
@@ -18,6 +20,7 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #ifdef _WIN32
@@ -318,7 +321,7 @@ class Spinner {
 
   void stop() {
     if (!running_.load()) {
-    return;
+      return;
     }
 
     stop_requested_.store(true);
@@ -363,48 +366,44 @@ class Spinner {
 };
 
 bool check_command_exists(const std::string& cmd) {
-  static std::mutex cache_mutex;
-  static std::unordered_map<std::string, bool> cache;
-
-  {
-    std::lock_guard<std::mutex> lock(cache_mutex);
-    if (auto iter = cache.find(cmd); iter != cache.end()) {
-      return iter->second;
-    }
-  }
-
 #ifdef _WIN32
   std::string test_cmd = "where " + shell_escape(cmd) + " >nul 2>&1";
-  bool exists = (std::system(test_cmd.c_str()) == 0);
+  return std::system(test_cmd.c_str()) == 0;
 #else
-  bool exists = false;
   if (cmd.find('/') != std::string::npos) {
-    exists = (::access(cmd.c_str(), X_OK) == 0);
-  } else {
-    const char* path_env = std::getenv("PATH");
-    if (path_env != nullptr) {
-      std::string path_copy = path_env;
-      size_t start = 0;
-      while (start < path_copy.size()) {
-        size_t end = path_copy.find(':', start);
-        std::string dir = path_copy.substr(start, end - start);
-        if (!dir.empty()) {
-          std::string full = dir + '/' + cmd;
-          if (::access(full.c_str(), X_OK) == 0) {
-            exists = true;
-            break;
-          }
-        }
-        if (end == std::string::npos) break;
-        start = end + 1;
+    return ::access(cmd.c_str(), X_OK) == 0;
+  }
+
+  const char* path_env = std::getenv("PATH");
+  if (!path_env) {
+    return false;
+  }
+
+  std::string_view path(path_env);
+  size_t start = 0;
+
+  while (start < path.size()) {
+    size_t end = path.find(":", start);
+    std::string_view dir = path.substr(start, end - start);
+
+    if (!dir.empty()) {
+      std::string full(dir);
+      full += '/';
+      full += cmd;
+
+      if (::access(full.c_str(), X_OK) == 0) {
+        return true;
       }
     }
-  }
-#endif
 
-  std::lock_guard<std::mutex> lock(cache_mutex);
-  cache[cmd] = exists;
-  return exists;
+    if (end == std::string::npos) {
+      break;
+    }
+    start = end + 1;
+  }
+
+  return false;
+#endif  // _WIN32
 }
 
 CheckResult run_check_for_files(const domain::config::Check& check,
@@ -428,13 +427,22 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     cmd_base += shell_escape(arg);
   }
 
+  auto interpreter = make_interpreter(check.command);
   int overall_exit = 0;
   std::string accumulated_output;
 
-  auto interpreter = make_interpreter(check.command);
+  static const std::unordered_set<std::string> k_multi_file_tools = {
+      "clang-format", "clang-tidy", "grep", "egrep", "rg", "cppcheck",
+  };
+  bool batch = matched_files.size() > 1 &&
+               k_multi_file_tools.count(std::filesystem::path(check.command).filename().string());
 
-  for (const auto& file_name : matched_files) {
-    std::string full_cmd = fmt::format("{} {}", cmd_base, shell_escape(file_name));
+  if (batch) {
+    std::string full_cmd = cmd_base;
+
+    for (const auto& file : matched_files) {
+      full_cmd += " " + shell_escape(file);
+    }
 
     if (opts.verbose) {
       printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
@@ -445,10 +453,23 @@ CheckResult run_check_for_files(const domain::config::Check& check,
 
     if (interpreter->is_failure(code)) {
       overall_exit = code;
-      if (!result.output.empty()) {
-        accumulated_output += result.output;
-        if (!accumulated_output.empty() && accumulated_output.back() != '\n') {
-          accumulated_output += '\n';
+      accumulated_output = result.output;
+    }
+  } else {
+    for (const auto& file_name : matched_files) {
+      std::string full_cmd = fmt::format("{} {}", cmd_base, shell_escape(file_name));
+      if (opts.verbose) {
+        printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
+      }
+      auto res = shell->exec_captured(full_cmd);
+      int code = interpreter->interpret(res.exit_code);
+      if (interpreter->is_failure(code)) {
+        overall_exit = code;
+        if (!res.output.empty()) {
+          accumulated_output += res.output;
+          if (!accumulated_output.empty() && accumulated_output.back() != '\n') {
+            accumulated_output += '\n';
+          }
         }
       }
     }
