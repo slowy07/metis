@@ -137,8 +137,8 @@ void Spinner::run_loop() {
 }
 
 void Spinner::clear_line() const {
-  std::cout << "\r" << std::string(message_.size() + frames_[0].size() + 2, ' ') << "\r"
-            << std::flush;
+  size_t frame_len = frames_.empty() ? 1 : frames_[0].size();
+  std::cout << "\r" << std::string(message_.size() + frame_len + 2, ' ') << "\r" << std::flush;
 }
 
 }  // namespace sniffercommit

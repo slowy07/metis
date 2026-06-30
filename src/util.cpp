@@ -231,27 +231,8 @@ bool matches_pattern(const std::string& file, const std::vector<std::string>& pa
 }
 
 bool is_excluded(const std::string& file, const std::vector<std::string>& excludes) {
-  for (const auto& excl : excludes) {
-    if (file == excl) {
-      return true;
-    }
-
-    if (excl.starts_with("*.") && file.ends_with(excl.substr(1))) {
-      return true;
-    }
-
-    std::string norm_e = excl;
-
-    if (!norm_e.empty() && norm_e.back() != '/') {
-      norm_e += '/';
-    }
-
-    if (file.starts_with(norm_e)) {
-      return true;
-    }
-  }
-
-  return false;
+  return std::ranges::any_of(
+      excludes, [&file](const std::string& excl) { return matches_pattern(file, {excl}); });
 }
 
 }  // namespace sniffercommit::util

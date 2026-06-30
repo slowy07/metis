@@ -25,19 +25,15 @@ bool check_command_exists(const std::string& cmd) {
   static std::mutex cache_mutex;
   static std::unordered_map<std::string, bool> cache;
 
-  {
-    std::lock_guard<std::mutex> lock(cache_mutex);
-    if (auto iter = cache.find(cmd); iter != cache.end()) {
-      return iter->second;
-    }
+  std::lock_guard<std::mutex> lock(cache_mutex);
+  auto cache_cmd = cache.find(cmd);
+
+  if (cache_cmd != cache.end()) {
+    return cache_cmd->second;
   }
 
   bool exists = util::command_exists(cmd);
-
-  {
-    std::lock_guard<std::mutex> lock(cache_mutex);
-    cache[cmd] = exists;
-  }
+  cache[cmd] = exists;
 
   return exists;
 }
