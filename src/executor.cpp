@@ -491,7 +491,7 @@ int execute_checks(const std::filesystem::path& repo_root, const project::Projec
   futures.reserve(work_items.size());
 
   for (const auto& item : work_items) {
-    futures.push_back(std::async(std::launch::async, [&]() {
+    futures.push_back(std::async(std::launch::async, [item, &opts, &printer]() {
       return run_check_for_files(*item.check, item.matched_files, opts, printer);
     }));
   }
