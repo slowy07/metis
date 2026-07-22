@@ -1,5 +1,7 @@
 #include "sniffercommit/application/run_checks_use_case.hpp"
 
+#include "sniffercommit/glob_match.hpp"
+
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -573,18 +575,7 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   for (const auto& check : cfg.checks) {
     std::vector<std::string> matched;
     for (const auto& file_name : files) {
-      if (check.patterns.empty() || std::ranges::any_of(check.patterns, [&](const auto& pattern) {
-            if (pattern.empty()) return true;
-            if (pattern.starts_with("*.") && file_name.ends_with(pattern.substr(1))) return true;
-            if (pattern.ends_with("/**") &&
-                file_name.starts_with(pattern.substr(0, pattern.size() - 3) + "/"))
-              return true;
-            if (pattern.starts_with("**/")) {
-              if (file_name.ends_with(pattern.substr(3))) return true;
-            }
-            if (file_name == pattern || file_name.starts_with(pattern)) return true;
-            return false;
-          })) {
+      if (util::matches_any_pattern(file_name, check.patterns)) {
         matched.push_back(file_name);
       }
     }

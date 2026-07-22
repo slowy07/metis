@@ -153,6 +153,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/logger.cpp
   src/spinner.cpp
   src/util.cpp
+  src/glob_match.cpp
 )
 
 set(SNIFFERCOMMIT_HEADERS
@@ -180,6 +181,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/logger.hpp
   include/sniffercommit/spinner.hpp
   include/sniffercommit/util.hpp
+  include/sniffercommit/glob_match.hpp
 )
 
 add_library(sniffercommit_lib STATIC ${SNIFFERCOMMIT_SOURCES})
