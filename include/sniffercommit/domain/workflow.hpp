@@ -26,7 +26,7 @@ class IWorkflowGenerator {
  public:
   virtual ~IWorkflowGenerator() = default;
   [[nodiscard]] virtual std::string generate(const config::ProjectConfig& cfg,
-                                              const WorkflowConfig& wf_cfg) const = 0;
+                                             const WorkflowConfig& wf_cfg) const = 0;
 };
 
 [[nodiscard]] std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform);

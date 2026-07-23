@@ -102,13 +102,51 @@ jobs:
   }
 };
 
+class GitLabCIGenerator : public IWorkflowGenerator {
+ public:
+  [[nodiscard]] std::string generate(const config::ProjectConfig& cfg,
+                                     const WorkflowConfig& wf_cfg) const override {
+    bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
+    bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
+
+    return fmt::format(
+        R"yaml(stages:
+  - check
+
+{job_name}:
+  stage: check
+  image: ubuntu:latest
+  timeout: {timeout}m
+  script:
+    - apt-get update
+    - apt-get install -y {packages}
+    - chmod +x {binary_path}
+    - {binary_path} run --all-files --verbose
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+)yaml",
+        fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
+        fmt::arg("binary_path", wf_cfg.binary_path),
+        fmt::arg("packages", format_packages(need_clang_format, need_clang_tidy)));
+  }
+
+ private:
+  [[nodiscard]] static std::string format_packages(bool need_clang_format, bool need_clang_tidy) {
+    std::string pkgs = "build-essential";
+    if (need_clang_format) pkgs += " clang-format";
+    if (need_clang_tidy) pkgs += " clang-tidy";
+    return pkgs;
+  }
+};
+
 std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform) {
   switch (platform) {
     default:
     case Platform::GithubAction:
       return std::make_unique<GithubActionsGenerator>();
     case Platform::GitLabCI:
-      throw std::runtime_error("GitLab CI generator not yet implemented");
+      return std::make_unique<GitLabCIGenerator>();
     case Platform::AzureDevOps:
       throw std::runtime_error("Azure DevOps generator is not yet implemented");
     case Platform::Generic:
@@ -121,7 +159,7 @@ std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform) {
 }
 
 std::string generate_github_actions(const config::ProjectConfig& cfg,
-                                   const WorkflowConfig& wf_cfg) {
+                                    const WorkflowConfig& wf_cfg) {
   return GithubActionsGenerator().generate(cfg, wf_cfg);
 }
 
@@ -130,7 +168,7 @@ std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowCo
     case Platform::GithubAction:
       return generate_github_actions(cfg, wf_cfg);
     case Platform::GitLabCI:
-      throw std::runtime_error("GitLab CI not yet implemented");
+      return GitLabCIGenerator().generate(cfg, wf_cfg);
     case Platform::AzureDevOps:
       throw std::runtime_error("Azure DevOps not yet implemented");
     case Platform::Generic:
