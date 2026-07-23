@@ -2,7 +2,7 @@
 #define SNIFFERCOMMIT_DOMAIN_WORKFLOW_HPP
 
 #include <cstdint>
-#include <filesystem>
+#include <memory>
 #include <string>
 
 namespace sniffercommit::domain::config {
@@ -21,6 +21,15 @@ struct WorkflowConfig {
   bool install_clang_tidy = false;
   std::string binary_path = "./sniffercommit";
 };
+
+class IWorkflowGenerator {
+ public:
+  virtual ~IWorkflowGenerator() = default;
+  [[nodiscard]] virtual std::string generate(const config::ProjectConfig& cfg,
+                                              const WorkflowConfig& wf_cfg) const = 0;
+};
+
+[[nodiscard]] std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform);
 
 // CI/CD generation — pure string generation, no I/O
 [[nodiscard]] bool requires_clang_format(const config::ProjectConfig& cfg) noexcept;

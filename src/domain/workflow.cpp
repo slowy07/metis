@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 
-#include <filesystem>
+#include <memory>
 #include <stdexcept>
 #include <string>
 
@@ -18,61 +18,111 @@ bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-tidy");
 }
 
-std::string generate_github_actions(const config::ProjectConfig& cfg,
-                                    const WorkflowConfig& wf_cfg) {
-  std::string yml;
+class GithubActionsGenerator : public IWorkflowGenerator {
+ public:
+  [[nodiscard]] std::string generate(const config::ProjectConfig& cfg,
+                                     const WorkflowConfig& wf_cfg) const override {
+    bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
+    bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
 
-  yml += "name: sniffercommit\n\n";
-  yml += "on:\n";
-  yml += "  push:\n";
-  yml += "    branches:\n";
-  yml += "      - \"**\"\n\n";
-  yml += "  pull_request:\n";
-  yml += "    branches:\n";
-  yml += "      - \"**\"\n\n";
-  yml += "concurrency:\n";
-  yml += "  group: sniffercommit-${{ github.ref }}\n";
-  yml += "  cancel-in-progress: true\n\n";
-  yml += "permissions:\n";
-  yml += "  contents: read\n\n";
-  yml += "jobs:\n";
-  yml += "  checks:\n";
-  yml += fmt::format("    name: {}\n", wf_cfg.job_name);
-  yml += "    runs-on: ubuntu-latest\n";
-  yml += fmt::format("    timeout-minutes: {}\n\n", wf_cfg.timeout_minutes);
+    std::string setup_step = generate_setup_step(need_clang_format, need_clang_tidy);
 
-  yml += "    steps:\n";
-  yml += "      - name: Checkout repository\n";
-  yml += "        uses: actions/checkout@v4\n";
-  yml += "        with:\n";
-  yml += "          fetch-depth: 0\n\n";
+    return fmt::format(
+        R"yaml(name: sniffercommit
 
-  bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
-  bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
 
-  if (need_clang_format || need_clang_tidy) {
-    yml += "      - name: Install LLVM tooling\n";
-    yml += "        run: |\n";
-    yml += "          sudo apt-get update\n";
-    if (need_clang_format) {
-      yml += "          sudo apt-get install -y clang-format\n";
-    }
-    if (need_clang_tidy) {
-      yml += "          sudo apt-get install -y clang-tidy\n";
-    }
-    yml += "\n";
+concurrency:
+  group: sniffercommit-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: {job_name}
+    runs-on: ubuntu-latest
+    timeout-minutes: {timeout}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+{setup_step}
+      - name: Make sniffercommit executable
+        run: chmod +x {binary_path}
+
+      - name: Run sniffercommit
+        shell: bash
+        run: |
+          set -euo pipefail
+          {binary_path} run --all-files --verbose
+)yaml",
+        fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
+        fmt::arg("binary_path", wf_cfg.binary_path), fmt::arg("setup_step", setup_step));
   }
 
-  yml += "      - name: Make sniffercommit executable\n";
-  yml += "        run: chmod +x " + wf_cfg.binary_path + "\n\n";
+ private:
+  [[nodiscard]] std::string generate_setup_step(bool need_clang_format,
+                                                bool need_clang_tidy) const {
+    if (!need_clang_format && !need_clang_tidy) {
+      return "";
+    }
 
-  yml += "      - name: Run sniffercommit\n";
-  yml += "        shell: bash\n";
-  yml += "        run: |\n";
-  yml += "          set -euo pipefail\n";
-  yml += "          " + wf_cfg.binary_path + " run --all-files --verbose\n";
+    std::vector<std::string> packages;
+    if (need_clang_format) {
+      packages.emplace_back("clang-format");
+    }
+    if (need_clang_tidy) {
+      packages.emplace_back("clang-tidy");
+    }
 
-  return yml;
+    std::string package_list;
+    for (size_t i = 0; i < packages.size(); ++i) {
+      if (i > 0) {
+        package_list += " ";
+      }
+      package_list += packages[i];
+    }
+
+    return fmt::format(
+        R"yaml(      - name: Install LLVM tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y {packages}
+)yaml",
+        fmt::arg("packages", package_list));
+  }
+};
+
+std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform) {
+  switch (platform) {
+    default:
+    case Platform::GithubAction:
+      return std::make_unique<GithubActionsGenerator>();
+    case Platform::GitLabCI:
+      throw std::runtime_error("GitLab CI generator not yet implemented");
+    case Platform::AzureDevOps:
+      throw std::runtime_error("Azure DevOps generator is not yet implemented");
+    case Platform::Generic:
+      throw std::runtime_error(
+          "Generic platform requires explicit CI/CD target (e.g GithubAction)");
+      break;
+  }
+
+  throw std::runtime_error("Unknown workflow platform detected");
+}
+
+std::string generate_github_actions(const config::ProjectConfig& cfg,
+                                   const WorkflowConfig& wf_cfg) {
+  return GithubActionsGenerator().generate(cfg, wf_cfg);
 }
 
 std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
