@@ -38,6 +38,8 @@ class IWorkflowGenerator {
                                             const WorkflowConfig& wf_cfg);
 [[nodiscard]] std::string generate_github_actions(const config::ProjectConfig& cfg,
                                                   const WorkflowConfig& wf_cfg = {});
+[[nodiscard]] std::string generate_gitlab_ci(const config::ProjectConfig& cfg,
+                                             const WorkflowConfig& wf_cfg = {});
 
 }  // namespace sniffercommit::domain::workflow
 
