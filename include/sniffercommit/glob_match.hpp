@@ -5,8 +5,9 @@
 #include <string_view>
 #include <vector>
 namespace sniffercommit::util {
-  [[nodiscard]] bool glob_match(std::string_view file, std::string_view pattern) noexcept;
-  [[nodiscard]] bool matches_any_pattern(const std::string& file, const std::vector<std::string>& patterns);
-}
+[[nodiscard]] bool glob_match(std::string_view file, std::string_view pattern) noexcept;
+[[nodiscard]] bool matches_any_pattern(const std::string& file,
+                                       const std::vector<std::string>& patterns);
+}  // namespace sniffercommit::util
 
-#endif // !SNIFFERCOMMIT_GLOB_MATCH_HPP
+#endif  // !SNIFFERCOMMIT_GLOB_MATCH_HPP

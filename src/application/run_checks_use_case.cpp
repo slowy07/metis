@@ -1,7 +1,5 @@
 #include "sniffercommit/application/run_checks_use_case.hpp"
 
-#include "sniffercommit/glob_match.hpp"
-
 #include <fmt/format.h>
 
 #include <algorithm>
@@ -24,6 +22,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "sniffercommit/glob_match.hpp"
 
 #ifdef _WIN32
 #include <io.h>

@@ -3,7 +3,7 @@
 #include <algorithm>
 
 [[nodiscard]] bool sniffercommit::util::glob_match(std::string_view file,
-                                                          std::string_view pattern) noexcept {
+                                                   std::string_view pattern) noexcept {
   if (pattern == "") {
     return true;
   }
