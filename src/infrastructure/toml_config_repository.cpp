@@ -27,8 +27,7 @@ toml::array* as_array_safe(toml::node* node) {
   return (node != nullptr) ? node->as_array() : nullptr;
 }
 
-std::string get_string_safe(const toml::table& tbl, std::string_view key,
-                            std::string_view default_val) {
+std::string get_string_safe(const toml::table& tbl, std::string_view key, std::string default_val) {
   if (const auto* node = safe_get(tbl, key)) {
     if (const auto* val = node->as_string()) {
       return std::string(val->get());
@@ -62,16 +61,14 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   try {
     tbl = toml::parse_file(path.string());
   } catch (const toml::parse_error& error_parsing) {
-    throw std::runtime_error("TOML parse error: " + std::string(error_parsing.description()));
+    throw std::runtime_error("TOML parse error at line " +
+                             std::to_string(error_parsing.source().begin.line) + ": " +
+                             std::string(error_parsing.description()));
   }
 
   domain::config::ProjectConfig cfg;
 
-  if (auto* project = as_table_safe(safe_get(tbl, "project"))) {
-    cfg.project_name = get_string_safe(*project, "name", "unnamed");
-  } else {
-    cfg.project_name = "unnamed";
-  }
+  cfg.project_name = tbl["project"]["name"].value_or("unnamed");
 
   if (auto* checks_arr = as_array_safe(safe_get(tbl, "checks"))) {
     for (auto& item : *checks_arr) {
@@ -80,23 +77,15 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
         check.name = get_string_safe(*check_tbl, "name", "unnamed");
         check.command = get_string_safe(*check_tbl, "command", "");
 
-        if (auto* args = as_array_safe(safe_get(*check_tbl, "args"))) {
+        if (auto* args = (*check_tbl)["args"].as_array()) {
           for (auto& arg : *args) {
-            if (auto* val = arg.as_string()) {
-              check.args.emplace_back(val->get());
-            } else {
-              check.args.emplace_back("");
-            }
+            check.args.emplace_back(arg.value_or(""));
           }
         }
 
-        if (auto* pats = as_array_safe(safe_get(*check_tbl, "patterns"))) {
+        if (auto* pats = (*check_tbl)["patterns"].as_array()) {
           for (auto& pat : *pats) {
-            if (auto* val = pat.as_string()) {
-              check.patterns.emplace_back(val->get());
-            } else {
-              check.patterns.emplace_back("");
-            }
+            check.patterns.emplace_back(pat.value_or(""));
           }
         }
 
@@ -106,13 +95,9 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   }
 
   if (auto* exclude_tbl = as_table_safe(safe_get(tbl, "exclude"))) {
-    if (auto* paths = as_array_safe(safe_get(*exclude_tbl, "paths"))) {
+    if (auto* paths = (*exclude_tbl)["paths"].as_array()) {
       for (auto& path_item : *paths) {
-        if (auto* val = path_item.as_string()) {
-          cfg.exclude_paths.emplace_back(val->get());
-        } else {
-          cfg.exclude_paths.emplace_back("");
-        }
+        cfg.exclude_paths.emplace_back(path_item.value_or(""));
       }
     }
   }
