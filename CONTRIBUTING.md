@@ -70,14 +70,15 @@ this make sure your contributions pass formatting and static analysis checks
 
 ## Style Guide
 
-| Rule        | Project Convention                                                                      |
-| ----------- | --------------------------------------------------------------------------------------- |
-| Naming      | `snake_case` for variables/functions, `PascalCase` for types, `kConstant` for constants |
-| Namespaces  | `sniffercommit::domain` (e.g., `sniffercommit::project`, `sniffercommit::tooling`)      |
-| Headers     | `#ifndef SNIFFERCOMMIT_MODULE_HPP` / `#define SNIFFERCOMMIT_MODULE_HPP`                 |
-| Line length | 100 columns (enforced by `.clang-format`)                                               |
-| Indentation | 2 spaces                                                                                |
-| Braces      | Attach style (`if (x) {`)                                                               |
+| Rule          | Project Convention                                                                      |
+| ------------- | --------------------------------------------------------------------------------------- |
+| Naming        | `snake_case` for variables/functions, `PascalCase` for types, `kConstant` for constants |
+| Namespaces    | `sniffercommit::domain` (e.g., `sniffercommit::project`, `sniffercommit::tooling`)      |
+| Headers       | `#ifndef SNIFFERCOMMIT_MODULE_HPP` / `#define SNIFFERCOMMIT_MODULE_HPP`                 |
+| Line length   | 100 columns (enforced by `.clang-format`)                                               |
+| Indentation   | 2 spaces                                                                                |
+| Braces        | Attach style (`if (x) {`)                                                               |
+| Private Member| Using `_` after declare member suffix, e.g `std::string name_;`                         |
 
 **clang-format** configuration
 
