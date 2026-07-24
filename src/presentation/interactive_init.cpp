@@ -1,19 +1,15 @@
 #include "sniffercommit/presentation/interactive_init.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cstring>
 #include <iostream>
-#include <ranges>
 #include <span>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include "sniffercommit/application/init_use_case.hpp"
-#include "sniffercommit/spinner.hpp"
 
 namespace sniffercommit::presentation {
 

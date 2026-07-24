@@ -2,9 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <memory>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
 #include "sniffercommit/infrastructure/os_file_system.hpp"
 
 using namespace sniffercommit;

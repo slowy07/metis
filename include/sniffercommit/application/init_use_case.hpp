@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/ports/config_repository.hpp"
 #include "sniffercommit/domain/ports/file_system.hpp"
 

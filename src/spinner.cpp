@@ -1,6 +1,5 @@
 #include "sniffercommit/spinner.hpp"
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <iostream>

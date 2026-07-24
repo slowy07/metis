@@ -4,8 +4,6 @@
 #include <iomanip>
 #include <string_view>
 
-#include "sniffercommit/spinner.hpp"
-
 namespace sniffercommit {
 
 namespace {

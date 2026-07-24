@@ -2,7 +2,6 @@
 
 #include <fmt/format.h>
 
-#include <algorithm>
 #include <cctype>
 #include <stdexcept>
 #include <string>
