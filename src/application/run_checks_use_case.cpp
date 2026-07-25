@@ -3,11 +3,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
 #include <cstddef>
-#include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <filesystem>
@@ -18,23 +14,15 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#include "sniffercommit/glob_match.hpp"
-
-#ifdef _WIN32
-#include <io.h>
-#include <windows.h>
-#else
-#include <sys/wait.h>
-#include <unistd.h>
-#endif
-
 #include "sniffercommit/domain/error_codes.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "sniffercommit/glob_match.hpp"
+#include "sniffercommit/spinner.hpp"
+#include "sniffercommit/util.hpp"
 
 namespace sniffercommit::application {
 
@@ -42,30 +30,6 @@ namespace {
 
 using domain::ExitCode;
 constexpr size_t k_result_col = 68;
-
-class CwdGuard {
- public:
-  explicit CwdGuard(const std::filesystem::path& target) {
-    original_ = std::filesystem::current_path();
-    std::filesystem::current_path(target);
-  }
-
-  ~CwdGuard() {
-    try {
-      std::filesystem::current_path(original_);
-    } catch (const std::exception&) {
-      std::cout << "\n";
-    }
-  }
-
-  CwdGuard(const CwdGuard&) = delete;
-  CwdGuard& operator=(const CwdGuard&) = delete;
-  CwdGuard(CwdGuard&&) = delete;
-  CwdGuard& operator=(CwdGuard&&) = delete;
-
- private:
-  std::filesystem::path original_;
-};
 
 class IExitCodeInterpreter {
  public:
@@ -194,8 +158,8 @@ class SyncPrinter {
 bool is_format_eligible(const std::string& file) {
   static const std::vector<std::string> k_format_extensions = {
       ".cpp", ".cc", ".cxx", ".c++", ".hpp", ".h", ".hh", ".hxx", ".inc", ".c"};
-  std::filesystem::path p(file);
-  std::string ext = p.extension().string();
+  std::filesystem::path file_path(file);
+  std::string ext = file_path.extension().string();
   std::ranges::transform(ext, ext.begin(),
                          [](unsigned char chr) { return static_cast<char>(std::tolower(chr)); });
   return std::ranges::any_of(k_format_extensions, [&ext](const auto& e) { return ext == e; });
@@ -212,39 +176,10 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
   return result;
 }
 
-std::string shell_escape(const std::string& value) {
-#ifdef _WIN32
-  if (value.find(' ') == std::string::npos && value.find('\t') == std::string::npos) {
-    return value;
-  }
-  std::string escaped = "\"";
-  for (char chr : value) {
-    if (chr == '"') {
-      escaped += "\"\"";
-    } else {
-      escaped += chr;
-    }
-  }
-  escaped += "\"";
-  return escaped;
-#else
-  std::string escaped = "'";
-  for (char chr : value) {
-    if (chr == '\'') {
-      escaped += "'\\''";
-    } else {
-      escaped += chr;
-    }
-  }
-  escaped += "'";
-  return escaped;
-#endif
-}
-
 struct ConfigRequirement {
-  std::string tool_name;
-  std::string config_arg;
-  std::string default_file;
+  std::string tool_name_;
+  std::string config_arg_;
+  std::string default_file_;
 };
 
 std::optional<std::string> extract_config_path(std::string_view arg, std::string_view prefix) {
@@ -257,18 +192,20 @@ std::optional<std::string> extract_config_path(std::string_view arg, std::string
 std::string validate_tool_config(const domain::config::Check& check,
                                  const std::filesystem::path& repo_root) {
   static const std::vector<ConfigRequirement> k_config_tools = {
-      {.tool_name = "clang-tidy", .config_arg = "--config-file=", .default_file = ".clang-tidy"},
-      {.tool_name = "clang-format", .config_arg = "-style=file", .default_file = ".clang-format"},
+      {.tool_name_ = "clang-tidy", .config_arg_ = "--config-file=", .default_file_ = ".clang-tidy"},
+      {.tool_name_ = "clang-format",
+       .config_arg_ = "-style=file",
+       .default_file_ = ".clang-format"},
   };
 
   for (const auto& req : k_config_tools) {
-    if (check.command != req.tool_name) {
+    if (check.command != req.tool_name_) {
       continue;
     }
 
     bool has_explicit_config = false;
     for (const auto& arg : check.args) {
-      if (auto path = extract_config_path(arg, req.config_arg)) {
+      if (auto path = extract_config_path(arg, req.config_arg_)) {
         has_explicit_config = true;
         std::filesystem::path config_path(*path);
         if (config_path.is_relative()) {
@@ -284,14 +221,14 @@ std::string validate_tool_config(const domain::config::Check& check,
       }
     }
 
-    if (!has_explicit_config && !req.default_file.empty()) {
-      auto default_path = repo_root / req.default_file;
+    if (!has_explicit_config && !req.default_file_.empty()) {
+      auto default_path = repo_root / req.default_file_;
       if (!std::filesystem::exists(default_path)) {
         return fmt::format(
             "Default config file not found for `{}`: {}\n"
             " Run `sniffercommit init` to generate it\n"
             " or create {} manually in the repository root",
-            check.name, default_path.string(), req.default_file);
+            check.name, default_path.string(), req.default_file_);
       }
     }
   }
@@ -300,138 +237,36 @@ std::string validate_tool_config(const domain::config::Check& check,
 }
 
 struct CheckResult {
-  std::string check_name;
-  int exit_code{0};
-  std::string output;
-  bool verbose{false};
+  std::string check_name_{};
+  int exit_code_{0};
+  std::string output_{};
+  bool verbose_{false};
 };
-
-class Spinner {
- public:
-  explicit Spinner(std::string_view message)
-      : message_(message),
-        frames_({"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}),
-        interval_ms_(80) {
-    bool expected = false;
-    if (!running_.compare_exchange_strong(expected, true)) {
-      return;
-    }
-    thread_ = std::thread(&Spinner::run_loop, this);
-  }
-
-  ~Spinner() { stop(); }
-
-  void stop() {
-    if (!running_.load()) {
-      return;
-    }
-
-    stop_requested_.store(true);
-    cv_.notify_all();
-
-    if (thread_.joinable()) {
-      try {
-        thread_.join();
-      } catch (...) {
-        std::cout << "\n";
-      }
-    }
-
-    running_.store(false);
-    clear_line();
-  }
-
- private:
-  void run_loop() {
-    size_t frame_idx = 0;
-    while (!stop_requested_.load()) {
-      std::cout << "\r" << message_ << " " << frames_[frame_idx] << " " << std::flush;
-      frame_idx = (frame_idx + 1) % frames_.size();
-      std::unique_lock<std::mutex> lock(mutex_);
-      cv_.wait_for(lock, interval_ms_, [this] { return stop_requested_.load(); });
-    }
-  }
-
-  void clear_line() {
-    std::cout << "\r" << std::string(message_.size() + frames_[0].size() + 2, ' ') << "\r"
-              << std::flush;
-  }
-
-  std::string message_;
-  std::vector<std::string> frames_;
-  std::chrono::milliseconds interval_ms_;
-  std::atomic<bool> running_{false};
-  std::atomic<bool> stop_requested_{false};
-  std::thread thread_;
-  std::mutex mutex_;
-  std::condition_variable cv_;
-};
-
-bool check_command_exists(const std::string& cmd) {
-#ifdef _WIN32
-  std::string test_cmd = "where " + shell_escape(cmd) + " >nul 2>&1";
-  return std::system(test_cmd.c_str()) == 0;
-#else
-  if (cmd.find('/') != std::string::npos) {
-    return ::access(cmd.c_str(), X_OK) == 0;
-  }
-
-  const char* path_env = std::getenv("PATH");
-  if (!path_env) {
-    return false;
-  }
-
-  std::string_view path(path_env);
-  size_t start = 0;
-
-  while (start < path.size()) {
-    size_t end = path.find(":", start);
-    std::string_view dir = path.substr(start, end - start);
-
-    if (!dir.empty()) {
-      std::string full(dir);
-      full += '/';
-      full += cmd;
-
-      if (::access(full.c_str(), X_OK) == 0) {
-        return true;
-      }
-    }
-
-    if (end == std::string::npos) {
-      break;
-    }
-    start = end + 1;
-  }
-
-  return false;
-#endif  // _WIN32
-}
 
 CheckResult run_check_for_files(const domain::config::Check& check,
                                 const std::vector<std::string>& matched_files,
                                 const RunOptions& opts, SyncPrinter& printer,
                                 domain::ports::IShellExecutor* shell) {
-  if (!check_command_exists(check.command)) {
+  if (!shell->command_exists(check.command)) {
     printer.print_check_result(
         check.name, "Missing", static_cast<int>(ExitCode::MISSING_DEPENDENCY),
         fmt::format("'{}' not found in PATH. Install it or check your configuration.",
                     check.command),
         opts.verbose);
-    return {.check_name = check.name,
-            .exit_code = static_cast<int>(ExitCode::MISSING_DEPENDENCY),
-            .output = {}};
+    return {.check_name_ = check.name,
+            .exit_code_ = static_cast<int>(ExitCode::MISSING_DEPENDENCY),
+            .output_ = {}};
   }
 
-  std::string cmd_base = shell_escape(check.command);
+  std::string cmd_base = util::shell_escape(check.command);
   for (const auto& arg : check.args) {
     cmd_base += " ";
-    cmd_base += shell_escape(arg);
+    cmd_base += util::shell_escape(arg);
   }
 
   auto interpreter = make_interpreter(check.command);
   int overall_exit = 0;
-  std::string accumulated_output;
+  std::string accumulated_output{};
 
   static const std::unordered_set<std::string> k_multi_file_tools = {
       "clang-format", "clang-tidy", "grep", "egrep", "rg", "cppcheck",
@@ -443,7 +278,7 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     std::string full_cmd = cmd_base;
 
     for (const auto& file : matched_files) {
-      full_cmd += " " + shell_escape(file);
+      full_cmd += " " + util::shell_escape(file);
     }
 
     if (opts.verbose) {
@@ -459,7 +294,7 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     }
   } else {
     for (const auto& file_name : matched_files) {
-      std::string full_cmd = fmt::format("{} {}", cmd_base, shell_escape(file_name));
+      std::string full_cmd = fmt::format("{} {}", cmd_base, util::shell_escape(file_name));
       if (opts.verbose) {
         printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
       }
@@ -484,7 +319,7 @@ CheckResult run_check_for_files(const domain::config::Check& check,
                                opts.verbose);
   }
 
-  return {.check_name = check.name, .exit_code = overall_exit, .output = {}};
+  return {.check_name_ = check.name, .exit_code_ = overall_exit, .output_ = {}};
 }
 
 }  // namespace
@@ -613,15 +448,15 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
     // spinner started automatically in constructor
   }
 
-  CwdGuard cwd_guard(repo_root);
+  util::CwdGuard cwd_guard(repo_root);
 
   if (!cfg.parallel || work_items.size() == 1) {
     int exit_code = static_cast<int>(ExitCode::SUCCESS);
     for (const auto& item : work_items) {
       auto result =
           run_check_for_files(*item.check, item.matched_files, opts, printer, shell_.get());
-      if (result.exit_code != 0) {
-        exit_code = result.exit_code;
+      if (result.exit_code_ != 0) {
+        exit_code = result.exit_code_;
       }
     }
 
@@ -643,8 +478,8 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   int exit_code = static_cast<int>(ExitCode::SUCCESS);
   for (auto& future : futures) {
     auto result = future.get();
-    if (result.exit_code != 0) {
-      exit_code = result.exit_code;
+    if (result.exit_code_ != 0) {
+      exit_code = result.exit_code_;
     }
   }
 
@@ -660,7 +495,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
                                      const RunOptions& opts) {
   SyncPrinter printer;
 
-  if (!check_command_exists("clang-format")) {
+  if (!shell_->command_exists("clang-format")) {
     printer.print_error(
         "[ERROR] 'clang-format' not found in PATH. Install it or check your configuration.\n");
     return static_cast<int>(ExitCode::MISSING_DEPENDENCY);
@@ -705,7 +540,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
   int clean_count = 0;
 
   for (const auto& file : format_files) {
-    std::string cmd = "clang-format -i " + shell_escape(file);
+    std::string cmd = "clang-format -i " + util::shell_escape(file);
     if (opts.verbose) {
       printer.print_verbose(" $ " + cmd + "\n");
     }
@@ -718,7 +553,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
       continue;
     }
 
-    auto diff_result = shell_->exec_captured("git diff --quiet " + shell_escape(file));
+    auto diff_result = shell_->exec_captured("git diff --quiet " + util::shell_escape(file));
     if (diff_result.exit_code != 0) {
       ++formatted_count;
       printer.print_file_result(file, "Formatted");

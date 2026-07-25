@@ -63,7 +63,6 @@ Options:
 Environment variables:
   SNIFFERCOMMIT_INSTALL_DIR   Override the install directory
   SNIFFERCOMMIT_FORCE_BUILD   Same as --force if set to a non-empty value
-  CARGO_HOME                  Used to pick a default install dir if set
 EOF
     exit 0
     ;;
@@ -90,8 +89,6 @@ fi
 
 if [ -n "${SNIFFERCOMMIT_INSTALL_DIR:-}" ]; then
   DEFAULT_INSTALL_DIR="${SNIFFERCOMMIT_INSTALL_DIR}"
-elif [ -n "${CARGO_HOME:-}" ]; then
-  DEFAULT_INSTALL_DIR="${CARGO_HOME}/bin"
 else
   DEFAULT_INSTALL_DIR="${HOME}/.local/bin"
 fi
@@ -231,14 +228,18 @@ install_prebuilt() {
 }
 
 install_from_source() {
-  say "building from source (this requires cargo/rustc)"
-  need_cmd cargo
+  say "building from source (this requires cmake and a C++20 compiler)"
+  need_cmd cmake
+  need_cmd make
   (cd "${WORK_DIR}" &&
     git clone --depth 1 --branch "${VERSION}" "https://github.com/${REPO}.git" src &&
     cd src &&
-    cargo build --release)
+    mkdir -p build &&
+    cd build &&
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DSNIFFERCOMMIT_BUILD_TESTS=OFF &&
+    cmake --build . --parallel "$(nproc)")
   mkdir -p "${INSTALL_DIR}"
-  install -m 755 "${WORK_DIR}/src/target/release/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
+  install -m 755 "${WORK_DIR}/src/build/bin/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
 }
 
 if [ "${FORCE_BUILD}" = "true" ]; then

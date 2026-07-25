@@ -33,7 +33,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # User options
 option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
-option(SNIFFERCOMMIT_ENABLE_STATIC_LINK "Link statically for portable binary (Unix only)" OFF)
 option(SNIFFERCOMMIT_VERBOSE_CONFIG "Print detailed configuration summary" ON)
 option(SNIFFERCOMMIT_BUILD_TESTS "Build unit tests" ON)
 option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" OFF)
@@ -85,25 +84,6 @@ configure_file(
   ${CMAKE_BINARY_DIR}/generated/sniffercommit/config_build.hpp
   @ONLY
 )
-
-# Detect libc implement
-if(WIN32)
-  set(SNIFFERCOMMIT_NULL_DEVICE "NUL")
-else()
-  set(SNIFFERCOMMIT_NULL_DEVICE "/dev/null")
-endif()
-execute_process(
-  COMMAND ${CMAKE_CXX_COMPILER} -dM -E -x c++ ${SNIFFERCOMMIT_NULL_DEVICE}
-  OUTPUT_VARIABLE SNIFFERCOMMIT_PREDEFINED_MACROS
-)
-
-if(SNIFFERCOMMIT_PREDEFINED_MACROS MATCHES "__GLIBC__")
-  set(SNIFFERCOMMIT_LIBC "glibc")
-elseif(SNIFFERCOMMIT_PREDEFINED_MACROS MATCHES "__MUSL__")
-  set(SNIFFERCOMMIT_LIBC "musl")
-else()
-  set(SNIFFERCOMMIT_LIBC "unknown")
-endif()
 
 # Dependencies: fmt and tomlplusplus
 include(FetchContent)
@@ -165,7 +145,6 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/domain/ports/shell_executor.hpp
   include/sniffercommit/domain/ports/file_system.hpp
   include/sniffercommit/domain/ports/git_repository.hpp
-  include/sniffercommit/domain/ports/logger_port.hpp
   include/sniffercommit/application/init_use_case.hpp
   include/sniffercommit/application/install_use_case.hpp
   include/sniffercommit/application/run_checks_use_case.hpp
@@ -372,7 +351,6 @@ if(SNIFFERCOMMIT_VERBOSE_CONFIG)
     "  Build type  : ${CMAKE_BUILD_TYPE}\n"
     "  Git commit  : ${SNIFFERCOMMIT_GIT_COMMIT}\n"
     "  Sanitizers  : ${SNIFFERCOMMIT_ENABLE_SANITIZERS}\n"
-    "  Static link : ${SNIFFERCOMMIT_ENABLE_STATIC_LINK}\n"
     "  Tests       : ${SNIFFERCOMMIT_BUILD_TESTS}\n"
     "  Install prefix: ${CMAKE_INSTALL_PREFIX}\n"
   )
