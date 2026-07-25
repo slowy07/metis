@@ -1,5 +1,5 @@
 pkgname=sniffercommit
-pkgver=0.3.15
+pkgver=0.3.20
 pkgrel=1
 pkgdesc="Fast C++20-powered pre-commit hook and CI generator"
 

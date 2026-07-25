@@ -49,7 +49,7 @@ std::string regex_escape(const std::string& str) {
   return out;
 }
 
-constexpr std::string_view k_version = "0.3.15";
+constexpr std::string_view k_version = "0.3.20";
 
 std::string generate_hook_content(const domain::config::ProjectConfig& cfg) {
   std::string exclude_pattern = "^.NO_MATCH$";
