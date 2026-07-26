@@ -23,12 +23,12 @@ struct ProjectConfig {
   std::vector<std::string> exclude_paths;
   bool generate_local_hook = true;
   bool generate_gha = false;
+  bool generate_gitlab_ci = false;
   bool parallel = true;
 
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept { return validate().empty(); }
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;
-  [[nodiscard]] bool has_matching_checks(const std::string& file) const noexcept;
 };
 
 // default config string generators (pure string generation, no I/O)

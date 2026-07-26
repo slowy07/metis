@@ -105,9 +105,11 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   if (auto* output = as_table_safe(safe_get(tbl, "output"))) {
     cfg.generate_local_hook = get_bool_safe(*output, "local_hook", true);
     cfg.generate_gha = get_bool_safe(*output, "github_actions", false);
+    cfg.generate_gitlab_ci = get_bool_safe(*output, "gitlab_ci", false);
   } else {
     cfg.generate_local_hook = true;
     cfg.generate_gha = false;
+    cfg.generate_gitlab_ci = false;
   }
 
   if (auto* exec = as_table_safe(safe_get(tbl, "execution"))) {
@@ -169,7 +171,8 @@ bool TomlConfigRepository::save(const std::filesystem::path& path,
 
   content += "[output]\n";
   content += "local_hook = " + std::string(cfg.generate_local_hook ? "true" : "false") + "\n";
-  content += "github_actions = " + std::string(cfg.generate_gha ? "true" : "false") + "\n\n";
+  content += "github_actions = " + std::string(cfg.generate_gha ? "true" : "false") + "\n";
+  content += "gitlab_ci = " + std::string(cfg.generate_gitlab_ci ? "true" : "false") + "\n\n";
 
   content += "[execution]\n";
   content += "parallel = " + std::string(cfg.parallel ? "true" : "false") + "\n";

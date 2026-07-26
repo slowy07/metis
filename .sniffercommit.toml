@@ -25,6 +25,7 @@ paths = ["build/", "third_party/", ".git/"]
 [output]
 local_hook = true
 github_actions = false
+gitlab_ci = false
 
 [execution]
 parallel = true

@@ -6,6 +6,7 @@
 
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/ports/file_system.hpp"
+#include "sniffercommit/domain/workflow.hpp"
 
 namespace sniffercommit::application {
 
@@ -14,7 +15,9 @@ class GenerateWorkflowUseCase {
   explicit GenerateWorkflowUseCase(std::unique_ptr<domain::ports::IFileSystem> file_system);
 
   [[nodiscard]] bool execute(const domain::config::ProjectConfig& cfg,
-                             const std::filesystem::path& repo_root);
+                             const std::filesystem::path& repo_root,
+                             domain::workflow::Platform platform =
+                                 domain::workflow::Platform::GithubAction);
 
  private:
   std::unique_ptr<domain::ports::IFileSystem> file_system_;

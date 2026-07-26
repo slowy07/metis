@@ -60,11 +60,6 @@ std::vector<std::string> CliGitRepository::list_all_files(const std::filesystem:
   return split_lines(out);
 }
 
-bool CliGitRepository::is_file_modified(const std::filesystem::path& file) {
-  auto result = shell_->exec_captured("git diff --quiet " + file.string());
-  return result.exit_code != 0;
-}
-
 std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::path& start) {
   try {
     std::string cmd = "git -C " + util::shell_escape(start.string()) + " rev-parse --show-toplevel";

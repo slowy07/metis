@@ -14,7 +14,6 @@ struct IGitRepository {
       const std::filesystem::path& repo_root) = 0;
   [[nodiscard]] virtual std::vector<std::string> list_all_files(
       const std::filesystem::path& repo_root) = 0;
-  [[nodiscard]] virtual bool is_file_modified(const std::filesystem::path& file) = 0;
   [[nodiscard]] virtual std::filesystem::path find_repo_root(
       const std::filesystem::path& start) = 0;
 };

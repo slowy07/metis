@@ -33,7 +33,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # User options
 option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
-option(SNIFFERCOMMIT_VERBOSE_CONFIG "Print detailed configuration summary" ON)
 option(SNIFFERCOMMIT_BUILD_TESTS "Build unit tests" ON)
 option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" OFF)
 option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" OFF)
@@ -130,7 +129,6 @@ set(SNIFFERCOMMIT_SOURCES
   src/generators/clang_tidy_generator.cpp
   src/generators/cmake_generator.cpp
   src/presentation/interactive_init.cpp
-  src/logger.cpp
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp
@@ -157,7 +155,6 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/generators/clang_tidy_generator.hpp
   include/sniffercommit/generators/cmake_generator.hpp
   include/sniffercommit/presentation/interactive_init.hpp
-  include/sniffercommit/logger.hpp
   include/sniffercommit/spinner.hpp
   include/sniffercommit/util.hpp
   include/sniffercommit/glob_match.hpp
@@ -340,18 +337,3 @@ elseif(APPLE)
 endif()
 
 include(CPack)
-
-
-# Verbose configuration summary
-if(SNIFFERCOMMIT_VERBOSE_CONFIG)
-  message(STATUS "\n"
-    "  sniffercommit v${PROJECT_VERSION} - Configuration\n"
-    "  Platform    : ${SNIFFERCOMMIT_PLATFORM}\n"
-    "  Compiler    : ${SNIFFERCOMMIT_COMPILER}\n"
-    "  Build type  : ${CMAKE_BUILD_TYPE}\n"
-    "  Git commit  : ${SNIFFERCOMMIT_GIT_COMMIT}\n"
-    "  Sanitizers  : ${SNIFFERCOMMIT_ENABLE_SANITIZERS}\n"
-    "  Tests       : ${SNIFFERCOMMIT_BUILD_TESTS}\n"
-    "  Install prefix: ${CMAKE_INSTALL_PREFIX}\n"
-  )
-endif()

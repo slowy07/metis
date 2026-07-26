@@ -31,72 +31,17 @@ namespace {
 using domain::ExitCode;
 constexpr size_t k_result_col = 68;
 
-class IExitCodeInterpreter {
- public:
-  virtual ~IExitCodeInterpreter() = default;
-  [[nodiscard]] virtual int interpret(int raw_exit_code) const = 0;
-  [[nodiscard]] virtual bool is_failure(int interpreted_code) const = 0;
-};
-
-class DefaultInterpreter : public IExitCodeInterpreter {
- public:
-  [[nodiscard]] int interpret(int raw_exit_code) const override { return raw_exit_code; }
-
-  [[nodiscard]] bool is_failure(int interpreted_code) const override {
-    return interpreted_code != 0;
-  }
-};
-
-class GrepInterpreter : public IExitCodeInterpreter {
- public:
-  [[nodiscard]] int interpret(int raw_exit_code) const override {
-    if (raw_exit_code == 0) {
-      return 1;
-    }
-
-    if (raw_exit_code == 1) {
-      return 0;
-    }
-
-    return raw_exit_code;
-  }
-
-  [[nodiscard]] bool is_failure(int interpreted_code) const override {
-    return interpreted_code != 0;
-  }
-};
-
-class RgInterpreter : public IExitCodeInterpreter {
- public:
-  [[nodiscard]] int interpret(int raw_exit_code) const override {
-    if (raw_exit_code == 0) {
-      return 1;
-    }
-
-    if (raw_exit_code == 1) {
-      return 0;
-    }
-
-    return raw_exit_code;
-  }
-
-  [[nodiscard]] bool is_failure(int interpreted_code) const override {
-    return interpreted_code != 0;
-  }
-};
-
-std::unique_ptr<IExitCodeInterpreter> make_interpreter(std::string_view cmd) {
+// ponytail: replaced IExitCodeInterpreter interface + 3 classes with one function.
+// grep/rg invert 0↔1; everything else passes through.
+int interpret_exit_code(int raw, std::string_view cmd) {
   auto basename = std::filesystem::path(cmd).filename().string();
-  if (basename == "grep" || basename == "egrep") {
-    return std::make_unique<GrepInterpreter>();
+  if ((basename == "grep" || basename == "egrep" || basename == "rg") && (raw == 0 || raw == 1)) {
+    return raw == 0 ? 1 : 0;
   }
-
-  if (basename == "rg") {
-    return std::make_unique<RgInterpreter>();
-  }
-
-  return std::make_unique<DefaultInterpreter>();
+  return raw;
 }
+
+bool is_interpreter_failure(int code) { return code != 0; }
 
 class SyncPrinter {
  public:
@@ -264,7 +209,6 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     cmd_base += util::shell_escape(arg);
   }
 
-  auto interpreter = make_interpreter(check.command);
   int overall_exit = 0;
   std::string accumulated_output{};
 
@@ -286,9 +230,9 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     }
 
     auto result = shell->exec_captured(full_cmd);
-    int code = interpreter->interpret(result.exit_code);
+    int code = interpret_exit_code(result.exit_code, check.command);
 
-    if (interpreter->is_failure(code)) {
+    if (is_interpreter_failure(code)) {
       overall_exit = code;
       accumulated_output = result.output;
     }
@@ -299,8 +243,8 @@ CheckResult run_check_for_files(const domain::config::Check& check,
         printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
       }
       auto res = shell->exec_captured(full_cmd);
-      int code = interpreter->interpret(res.exit_code);
-      if (interpreter->is_failure(code)) {
+      int code = interpret_exit_code(res.exit_code, check.command);
+      if (is_interpreter_failure(code)) {
         overall_exit = code;
         if (!res.output.empty()) {
           accumulated_output += res.output;

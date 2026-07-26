@@ -219,6 +219,21 @@ InstallResult InstallUseCase::execute(const std::filesystem::path& repo_root,
     result.workflow_path = wf_path.string();
   }
 
+  if (cfg.generate_gitlab_ci) {
+    domain::workflow::WorkflowConfig wf_cfg;
+    wf_cfg.platform = domain::workflow::Platform::GitLabCI;
+    auto wf_content = domain::workflow::generate_workflow(cfg, wf_cfg);
+
+    auto wf_path = repo_root / ".gitlab-ci.yml";
+    if (!file_system_->write_file(wf_path, wf_content)) {
+      result.error_message = "Failed to write GitLab CI workflow";
+      return result;
+    }
+
+    result.workflow_installed = true;
+    result.workflow_path = wf_path.string();
+  }
+
   return result;
 }
 

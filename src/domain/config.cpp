@@ -45,33 +45,6 @@ bool ProjectConfig::has_command(std::string_view cmd) const noexcept {
   return std::ranges::any_of(checks, [cmd](const auto& check) { return check.command == cmd; });
 }
 
-bool ProjectConfig::has_matching_checks(const std::string& file) const noexcept {
-  for (const auto& check : checks) {
-    for (const auto& pattern : check.patterns) {
-      if (pattern == "*") {
-        return true;
-      }
-      if (pattern.starts_with("*.") && file.ends_with(pattern.substr(1))) {
-        return true;
-      }
-      if (pattern.ends_with("/**") &&
-          file.starts_with(pattern.substr(0, pattern.size() - 3) + "/")) {
-        return true;
-      }
-      if (pattern.starts_with("**/")) {
-        std::string suffix = pattern.substr(3);
-        if (file.ends_with(suffix)) {
-          return true;
-        }
-      }
-      if (file.starts_with(pattern) || file == pattern) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 static std::string make_config_file_arg(const std::filesystem::path& repo_root,
                                         const std::string& filename) {
   auto abs_path = std::filesystem::absolute(repo_root / filename);

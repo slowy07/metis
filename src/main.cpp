@@ -24,31 +24,21 @@
 
 namespace {
 
-struct SafeArgs {
-  std::span<char*> inner;
+// ponytail: SafeArgs was a thin std::span wrapper. Use raw span directly.
 
-  char*& at(size_t i) {
-    if (i >= inner.size()) {
-      throw std::runtime_error("BUG: args index out of range");
-    }
-    return inner.data()[i];
-  }
-  [[nodiscard]] size_t size() const { return inner.size(); }
-};
-
-std::string preparse_config_path(SafeArgs& args) {
+std::string preparse_config_path(std::span<char*> args) {
   std::string config_path = ".sniffercommit.toml";
   for (size_t i = 1; i + 1 < args.size(); ++i) {
-    std::string_view arg = args.at(i);
+    std::string_view arg = args[i];
     if ((arg == "-c" || arg == "--config") && i + 1 < args.size()) {
-      config_path = args.at(i + 1);
+      config_path = args[i + 1];
       break;
     }
   }
   return config_path;
 }
 
-bool parse_init_flags(SafeArgs& args, sniffercommit::application::InitOptions& opts) {
+bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOptions& opts) {
   auto to_lower = [](std::string s) {
     for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
@@ -67,40 +57,40 @@ bool parse_init_flags(SafeArgs& args, sniffercommit::application::InitOptions& o
   };
 
   for (size_t i = 1; i < args.size(); ++i) {
-    std::string arg = args.at(i);
+    std::string arg = args[i];
     if (arg == "--style" && i + 1 < args.size()) {
-      opts.style = to_lower(args.at(++i));
+      opts.style = to_lower(args[++i]);
     } else if (arg == "--name" && i + 1 < args.size()) {
-      opts.project_name = args.at(++i);
+      opts.project_name = args[++i];
     } else if (arg == "--indent-width" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.indent_width);
+      safe_stoi(args[++i], opts.indent_width);
     } else if (arg == "--column-limit" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.column_limit);
+      safe_stoi(args[++i], opts.column_limit);
     } else if (arg == "--pointer-alignment" && i + 1 < args.size()) {
-      opts.pointer_alignment = args.at(++i);
+      opts.pointer_alignment = args[++i];
     } else if (arg == "--brace-style" && i + 1 < args.size()) {
-      opts.brace_style = args.at(++i);
+      opts.brace_style = args[++i];
     } else if (arg == "--enable-clang-tidy" || arg == "--tidy") {
       opts.enable_clang_tidy = true;
     } else if (arg == "--tidy-preset" && i + 1 < args.size()) {
-      opts.tidy_preset = to_lower(args.at(++i));
+      opts.tidy_preset = to_lower(args[++i]);
     } else if (arg == "--tidy-severity" && i + 1 < args.size()) {
-      opts.tidy_severity = to_lower(args.at(++i));
+      opts.tidy_severity = to_lower(args[++i]);
     } else if (arg == "--tidy-header-filter" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.tidy_header_filter);
+      safe_stoi(args[++i], opts.tidy_header_filter);
     } else if (arg == "--enable-cmake" || arg == "--cmake") {
       opts.enable_cmake = true;
       opts.generate_source = true;
     } else if (arg == "--cmake-cpp-standard" && i + 1 < args.size()) {
-      opts.cmake_cpp_standard = to_lower(args.at(++i));
+      opts.cmake_cpp_standard = to_lower(args[++i]);
     } else if (arg == "--cmake-target-type" && i + 1 < args.size()) {
-      opts.cmake_target_type = to_lower(args.at(++i));
+      opts.cmake_target_type = to_lower(args[++i]);
     } else if (arg == "--cmake-enable-testing") {
       opts.cmake_enable_testing = true;
     } else if (arg == "--cmake-enable-sanitizers") {
       opts.cmake_enable_sanitizers = true;
     } else if (arg == "--add-dep" && i + 1 < args.size()) {
-      opts.dependencies.emplace_back(args.at(++i));
+      opts.dependencies.emplace_back(args[++i]);
     } else if (arg == "--generate-src") {
       opts.generate_source = true;
     }
@@ -114,8 +104,7 @@ int main(int argc, char** argv) {
   using namespace sniffercommit;
 
   auto argc_sz = static_cast<size_t>(argc);
-  std::span raw_args(argv, argc_sz);
-  SafeArgs args{raw_args};
+  std::span<char*> args(argv, argc_sz);
   std::string config_path = preparse_config_path(args);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
@@ -124,6 +113,7 @@ int main(int argc, char** argv) {
       .add_subcommand("init", "Create default .sniffercommit.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
+      .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
       .add_subcommand("run", "Execute checks on files");
 
   if (!app.parse(argc, argv)) {
@@ -144,7 +134,7 @@ int main(int argc, char** argv) {
 
       bool interactive = false;
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg == "--interactive" || arg == "-i") {
           interactive = true;
           break;
@@ -153,7 +143,7 @@ int main(int argc, char** argv) {
 
       bool has_flags = false;
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg.starts_with("--") || arg.starts_with('-')) {
           has_flags = true;
           break;
@@ -222,6 +212,17 @@ int main(int argc, char** argv) {
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 
+    if (subcmd == "generate-gitlab") {
+      application::GenerateWorkflowUseCase gen_use_case(std::move(fs));
+      if (!gen_use_case.execute(cfg, repo_root, domain::workflow::Platform::GitLabCI)) {
+        std::cerr << "[ERROR] Failed to write GitLab CI workflow\n";
+        return static_cast<int>(domain::ExitCode::WORKFLOW_GENERATION_ERROR);
+      }
+      std::cout << "[INFO] GitLab CI workflow generated at "
+                << (repo_root / ".gitlab-ci.yml").string() << "\n";
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
     if (subcmd == "run") {
       bool all_files = false;
       bool verbose = false;
@@ -230,7 +231,7 @@ int main(int argc, char** argv) {
       std::vector<std::string> run_files;
 
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg == "run") continue;
         if (arg == "--all-files")
           all_files = true;

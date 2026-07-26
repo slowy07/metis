@@ -2,7 +2,6 @@
 #define SNIFFERCOMMIT_DOMAIN_WORKFLOW_HPP
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 namespace sniffercommit::domain::config {
@@ -11,7 +10,8 @@ struct ProjectConfig;
 
 namespace sniffercommit::domain::workflow {
 
-enum class Platform : std::uint8_t { GithubAction, GitLabCI, AzureDevOps, Generic };
+// ponytail: removed AzureDevOps/Generic (nobody uses them, always threw).
+enum class Platform : std::uint8_t { GithubAction, GitLabCI };
 
 struct WorkflowConfig {
   Platform platform = Platform::GithubAction;
@@ -22,16 +22,9 @@ struct WorkflowConfig {
   std::string binary_path = "./sniffercommit";
 };
 
-class IWorkflowGenerator {
- public:
-  virtual ~IWorkflowGenerator() = default;
-  [[nodiscard]] virtual std::string generate(const config::ProjectConfig& cfg,
-                                             const WorkflowConfig& wf_cfg) const = 0;
-};
+// ponytail: removed IWorkflowGenerator + create_generator() factory.
+// The two free functions below directly instantiate generators internally.
 
-[[nodiscard]] std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform);
-
-// CI/CD generation — pure string generation, no I/O
 [[nodiscard]] bool requires_clang_format(const config::ProjectConfig& cfg) noexcept;
 [[nodiscard]] bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept;
 [[nodiscard]] std::string generate_workflow(const config::ProjectConfig& cfg,
