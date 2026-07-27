@@ -7,10 +7,6 @@
 
 namespace sniffercommit::util {
 
-// ponytail: shell_escape and command_exists are the only non-dead members.
-// exec_cmd, exec_captured, PipeDeleter, CapturedResult, matches_pattern, is_excluded
-// were all dead code (duplicated in infrastructure/ or unused).
-
 // NOTE: escape string for safe use in single-quoted shell context
 [[nodiscard]] std::string shell_escape(const std::string& value);
 

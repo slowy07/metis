@@ -11,6 +11,7 @@
 #include "sniffercommit/generators/clang_format_generator.hpp"
 #include "sniffercommit/generators/clang_tidy_generator.hpp"
 #include "sniffercommit/generators/cmake_generator.hpp"
+#include "sniffercommit/generators/conan_generator.hpp"
 
 namespace sniffercommit::application {
 
@@ -115,7 +116,7 @@ int main() {
       auto cmake_content = generators::generate_cmake_lists(
           project_name, opts.cmake_cpp_standard, opts.cmake_target_type, opts.cmake_enable_testing,
           opts.cmake_enable_sanitizers, opts.cmake_enable_warnings, opts.enable_clang_tidy,
-          opts.dependencies);
+          opts.enable_conan, opts.dependencies);
       if (!file_system_->write_file(cmake_path, cmake_content)) {
         result.error_message = "Failed to create " + cmake_path.string();
         return result;
@@ -125,6 +126,23 @@ int main() {
       return result;
     }
     result.cmake_config_path = cmake_path.string();
+  }
+
+  // Write conanfile.py
+  if (opts.enable_conan) {
+    auto conan_path = cwd / "conanfile.py";
+    try {
+      auto conan_content = generators::generate_conanfile(project_name, opts.cmake_enable_testing,
+                                                          opts.dependencies);
+      if (!file_system_->write_file(conan_path, conan_content)) {
+        result.error_message = "Failed to create " + conan_path.string();
+        return result;
+      }
+    } catch (const std::exception& e) {
+      result.error_message = std::string("Failed to generate conanfile.py: ") + e.what();
+      return result;
+    }
+    result.conan_config_path = conan_path.string();
   }
 
   result.success = true;

@@ -11,8 +11,8 @@ GenerateWorkflowUseCase::GenerateWorkflowUseCase(
     : file_system_(std::move(file_system)) {}
 
 bool GenerateWorkflowUseCase::execute(const domain::config::ProjectConfig& cfg,
-                                       const std::filesystem::path& repo_root,
-                                       domain::workflow::Platform platform) {
+                                      const std::filesystem::path& repo_root,
+                                      domain::workflow::Platform platform) {
   domain::workflow::WorkflowConfig wf_cfg;
   wf_cfg.platform = platform;
   auto content = domain::workflow::generate_workflow(cfg, wf_cfg);

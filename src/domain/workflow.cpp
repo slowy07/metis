@@ -16,8 +16,6 @@ bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-tidy");
 }
 
-// ponytail: generators are local classes, no interface/factory needed.
-
 namespace {
 
 std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy) {
@@ -127,8 +125,7 @@ std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowC
 )yaml",
       fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
       fmt::arg("binary_path", wf_cfg.binary_path),
-      fmt::arg("before_script",
-               generate_gitlab_before_script(need_clang_format, need_clang_tidy)));
+      fmt::arg("before_script", generate_gitlab_before_script(need_clang_format, need_clang_tidy)));
 }
 
 std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {

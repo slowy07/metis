@@ -5,7 +5,6 @@
 
 namespace sniffercommit::domain {
 
-// ponytail: removed exit_code_name()/exit_code_description() — zero callers.
 enum class ExitCode : std::uint8_t {
   SUCCESS = 0,
   GENERAL_ERROR = 1,

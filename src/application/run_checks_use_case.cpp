@@ -31,8 +31,6 @@ namespace {
 using domain::ExitCode;
 constexpr size_t k_result_col = 68;
 
-// ponytail: replaced IExitCodeInterpreter interface + 3 classes with one function.
-// grep/rg invert 0↔1; everything else passes through.
 int interpret_exit_code(int raw, std::string_view cmd) {
   auto basename = std::filesystem::path(cmd).filename().string();
   if ((basename == "grep" || basename == "egrep" || basename == "rg") && (raw == 0 || raw == 1)) {

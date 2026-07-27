@@ -14,6 +14,7 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 - **.clang-format scaffolding** : generate `.clang-format` with configurable style presets
 - **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `strict`)
 - **CMake scaffolding** : generate `CMakeLists.txt` with compiler warnings, sanitizers, clang-tidy/clang-format integration, and testing
+- **Conan support** : generate `conanfile.py` alongside CMakeLists.txt for Conan package manager integration
 - **Hook syntax validation** : generated bash hooks are validated with `bash -n` before install
 - **Git worktree support** : works in worktrees, submodules, and detached checkouts
 
@@ -74,6 +75,7 @@ Global flag: `--config <path>` — use a non-default config file path with any s
 | [fmt](https://github.com/fmtlib/fmt.git) | Modern formatting library | `v11.0.2` |
 
 Both are fetched automatically at configure time via CMake's `FetchContent`. No system installation required.
+
 Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
 
 ```bash
@@ -100,7 +102,6 @@ cmake --build build --parallel
 | Option | Default | Description |
 | ----- | ------- | ----------- |
 | `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | AddressSanitizer + UBSan (Debug only) |
-| `SNIFFERCOMMIT_VERBOSE_CONFIG` | `ON` | Print platform/compiler summary at configure |
 | `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `ON` | Use system `libfmt` instead of FetchContent |
 | `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system `tomlplusplus` instead of FetchContent |
 
@@ -299,6 +300,7 @@ Creates:
 | `--cmake-target-type` | `executable`, `static`, `shared`, `header-only` | `executable` | Build target type |
 | `--cmake-enable-testing` | (flag) | off | Add `enable_testing()` + `add_subdirectory(tests)` |
 | `--cmake-enable-sanitizers` | (flag) | off | AddressSanitizer + UBSan (Debug only) |
+| `--enable-conan` | (flag) | off | Generate `conanfile.py` alongside CMakeLists.txt for Conan package manager |
 
 **What the generated CMakeLists.txt includes:**
 
@@ -335,6 +337,19 @@ sniffercommit init \
 
 # Header-only library (no src/main.cpp generated)
 sniffercommit init --enable-cmake --cmake-target-type header-only
+
+# Project with Conan package manager support
+sniffercommit init --enable-cmake --enable-conan
+
+# Full-featured project with Conan + clang-tidy + testing
+sniffercommit init \
+  --enable-cmake \
+  --enable-conan \
+  --cmake-cpp-standard 20 \
+  --cmake-enable-testing \
+  --enable-clang-tidy \
+  --tidy-preset strict \
+  --style google
 ```
 
 **Generate `src/main.cpp` without CMake:**
@@ -344,6 +359,38 @@ sniffercommit init --generate-src
 ```
 
 Creates only `src/main.cpp`, no `CMakeLists.txt`.
+
+---
+
+### Conan Package Manager Integration
+
+When `--enable-conan` is passed with `--enable-cmake`, sniffercommit generates:
+
+- `conanfile.py` — Conan package definition with CMakeToolchain/CMakeDeps
+- `CMakeLists.txt` — Updated to use `find_package()` instead of FetchContent
+
+The generated `conanfile.py` includes:
+- Python class-based Conan recipe
+- CMakeToolchain and CMakeDeps generators
+- Proper dependency resolution from `.sniffercommit.toml`
+
+**What the generated CMakeLists.txt includes (with Conan):**
+
+- Uses `find_package(fmt REQUIRED)` instead of FetchContent
+- Uses `find_package(tomlplusplus REQUIRED)` instead of FetchContent
+- Links against imported targets (`fmt::fmt`, `tomlplusplus::tomlplusplus`)
+
+**Usage example:**
+
+```bash
+# Generate with Conan support
+sniffercommit init --enable-cmake --enable-conan
+
+# Build with Conan
+conan install . --output-folder=build --build=missing
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
 
 ## Troubleshooting
 

@@ -12,7 +12,6 @@
 namespace sniffercommit {
 class Spinner {
  public:
-  // ponytail: removed Mode::Manual — never used, every construction defaults Auto.
   enum class Mode { Auto };
 
   explicit Spinner(std::string_view message, Mode mode = Mode::Auto,

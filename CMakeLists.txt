@@ -128,6 +128,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/generators/clang_format_generator.cpp
   src/generators/clang_tidy_generator.cpp
   src/generators/cmake_generator.cpp
+  src/generators/conan_generator.cpp
   src/presentation/interactive_init.cpp
   src/spinner.cpp
   src/util.cpp
@@ -154,6 +155,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/generators/clang_format_generator.hpp
   include/sniffercommit/generators/clang_tidy_generator.hpp
   include/sniffercommit/generators/cmake_generator.hpp
+  include/sniffercommit/generators/conan_generator.hpp
   include/sniffercommit/presentation/interactive_init.hpp
   include/sniffercommit/spinner.hpp
   include/sniffercommit/util.hpp

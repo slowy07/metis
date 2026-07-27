@@ -177,6 +177,8 @@ void run_interactive_init(application::InitOptions& opts) {
     prompt_dependencies(opts);
   }
 
+  opts.enable_conan = prompt_bool("generate conanfile.py", opts.enable_conan);
+
   std::cout << "\n";
 }
 
@@ -215,6 +217,10 @@ void print_init_summary(const application::InitOptions& opts,
   if (opts.enable_clang_tidy) {
     std::cout << "    " << green << check << reset << " .clang-tidy"
               << "  (preset: " << opts.tidy_preset << ", severity: " << opts.tidy_severity << ")\n";
+  }
+
+  if (!result.conan_config_path.empty()) {
+    std::cout << "    " << green << check << reset << " conanfile.py\n";
   }
 
   std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "sniffercommit install"

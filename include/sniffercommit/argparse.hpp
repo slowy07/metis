@@ -215,6 +215,8 @@ class ArgParser {
 
     std::cout << "        - [--enable-cmake]     CMakeLists.txt + src/main.cpp\n";
 
+    std::cout << "        - [--enable-conan]     conanfile.py\n";
+
     std::cout << "        - [--generate-src]     src/main.cpp\n\n";
 
     std::cout << "      Options:\n";
@@ -244,6 +246,8 @@ class ArgParser {
     std::cout << "        --tidy-header-filter <0|1|2>\n";
 
     std::cout << "        --enable-cmake, --cmake\n";
+
+    std::cout << "        --enable-conan\n";
 
     std::cout << "        --cmake-cpp-standard "
                  "<17|20|23>\n";

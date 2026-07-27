@@ -10,7 +10,6 @@ struct ProjectConfig;
 
 namespace sniffercommit::domain::workflow {
 
-// ponytail: removed AzureDevOps/Generic (nobody uses them, always threw).
 enum class Platform : std::uint8_t { GithubAction, GitLabCI };
 
 struct WorkflowConfig {
@@ -21,9 +20,6 @@ struct WorkflowConfig {
   bool install_clang_tidy = false;
   std::string binary_path = "./sniffercommit";
 };
-
-// ponytail: removed IWorkflowGenerator + create_generator() factory.
-// The two free functions below directly instantiate generators internally.
 
 [[nodiscard]] bool requires_clang_format(const config::ProjectConfig& cfg) noexcept;
 [[nodiscard]] bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept;

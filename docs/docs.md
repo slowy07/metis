@@ -416,6 +416,7 @@ Creates both `.sniffercommit.toml` and `.clang-format` with sensible defaults in
 | `--tidy-severity <s>` | Warnings-as-errors level: `note` (off), `warning` (compiler only), `error` (all) (default: `error`) |
 | `--tidy-header-filter <0\|1\|2>` | Header filtering: `0`=none, `1`=project, `2`=all (default: `1`) |
 | `--enable-cmake`, `--cmake` | Enable CMake scaffolding (generates `CMakeLists.txt` + `src/main.cpp`) |
+| `--enable-conan` | Generate `conanfile.py` alongside CMakeLists.txt (uses `find_package` instead of `FetchContent`) |
 | `--cmake-cpp-standard <n>` | C++ standard: `17`, `20`, `23` (default: `20`) |
 | `--cmake-target-type <t>` | Build target: `executable`, `static`, `shared`, `header-only` (default: `executable`) |
 | `--cmake-enable-testing` | Add testing infrastructure to generated `CMakeLists.txt` |
@@ -689,7 +690,8 @@ Stateless free functions in `sniffercommit::generators` namespace:
 |-----------|-----------|
 | `clang_format_generator` | `generate_clang_format(style, indent_width, column_limit, pointer_alignment, brace_style)`, `generate_clang_format_style(style)` |
 | `clang_tidy_generator` | `generate_clang_tidy(preset, severity, header_filter_level)`, `get_preset_checks(preset)` |
-| `cmake_generator` | `generate_cmake_lists(project_name, cpp_standard, target_type, enable_testing, enable_sanitizers, enable_warnings, enable_clang_tidy, dependencies)` |
+| `cmake_generator` | `generate_cmake_lists(project_name, cpp_standard, target_type, enable_testing, enable_sanitizers, enable_warnings, enable_clang_tidy, use_conan, dependencies)` |
+| `conan_generator` | `generate_conanfile(project_name, cpp_standard, enable_testing, dependencies)` |
 
 All return `std::string` — pure string generation, no I/O.
 

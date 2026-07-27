@@ -80,7 +80,7 @@ TEST(ClangTidyTest, GenerateClangTidy) {
 
 TEST(CMakeTest, GenerateCMakeLists) {
   std::string content =
-      generate_cmake_lists("test-project", "20", "executable", false, false, true, false, {});
+      generate_cmake_lists("test-project", "20", "executable", false, false, true, false, false, {});
   EXPECT_NE(content.find("cmake_minimum_required(VERSION 3.20)"), std::string::npos);
   EXPECT_NE(content.find("project(test-project"), std::string::npos);
   EXPECT_NE(content.find("CMAKE_CXX_STANDARD 20"), std::string::npos);
@@ -88,7 +88,7 @@ TEST(CMakeTest, GenerateCMakeLists) {
 }
 
 TEST(CMakeTest, GenerateCMakeListsWithTesting) {
-  std::string content = generate_cmake_lists("test", "17", "static", true, false, true, false, {});
+  std::string content = generate_cmake_lists("test", "17", "static", true, false, true, false, false, {});
   EXPECT_NE(content.find("enable_testing()"), std::string::npos);
   EXPECT_NE(content.find("add_library(test STATIC"), std::string::npos);
   EXPECT_NE(content.find("CMAKE_CXX_STANDARD 17"), std::string::npos);

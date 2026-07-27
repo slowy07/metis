@@ -24,8 +24,6 @@
 
 namespace {
 
-// ponytail: SafeArgs was a thin std::span wrapper. Use raw span directly.
-
 std::string preparse_config_path(std::span<char*> args) {
   std::string config_path = ".sniffercommit.toml";
   for (size_t i = 1; i + 1 < args.size(); ++i) {
@@ -81,6 +79,8 @@ bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOpt
     } else if (arg == "--enable-cmake" || arg == "--cmake") {
       opts.enable_cmake = true;
       opts.generate_source = true;
+    } else if (arg == "--enable-conan") {
+      opts.enable_conan = true;
     } else if (arg == "--cmake-cpp-standard" && i + 1 < args.size()) {
       opts.cmake_cpp_standard = to_lower(args[++i]);
     } else if (arg == "--cmake-target-type" && i + 1 < args.size()) {
