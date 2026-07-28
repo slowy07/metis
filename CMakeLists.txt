@@ -115,6 +115,7 @@ endif()
 
 # Library target (core logic)
 set(SNIFFERCOMMIT_SOURCES
+  src/argparse.cpp
   src/domain/config.cpp
   src/domain/workflow.cpp
   src/application/init_use_case.cpp

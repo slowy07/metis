@@ -80,8 +80,9 @@ std::string generate_conanfile(std::string_view project_name, bool enable_testin
   conan += "        cmake.build()\n\n";
 
   conan += "    def package(self):\n";
-  conan += fmt::format("        copy(self, \"LICENSE\", src=self.source_folder, "
-                       "dst=os.path.join(self.package_folder, \"licenses\"))\n");
+  conan += fmt::format(
+      "        copy(self, \"LICENSE\", src=self.source_folder, "
+      "dst=os.path.join(self.package_folder, \"licenses\"))\n");
   conan += "        cmake = CMake(self)\n";
   conan += "        cmake.install()\n\n";
 
