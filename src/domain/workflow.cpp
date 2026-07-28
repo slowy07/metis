@@ -8,6 +8,7 @@
 
 namespace sniffercommit::domain::workflow {
 
+// Checks if the project config includes clang-format checks.
 bool requires_clang_format(const config::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-format");
 }
@@ -18,6 +19,8 @@ bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept {
 
 namespace {
 
+// Generates the GitHub Actions setup step that installs clang-format/clang-tidy.
+// Only added if the config uses these tools.
 std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy) {
   if (!need_clang_format && !need_clang_tidy) {
     return "";
@@ -36,6 +39,10 @@ std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy
       fmt::arg("packages", packages));
 }
 
+// Generates the GitLab CI before_script that installs clang-format/clang-tidy.
+// lazy: same logic as generate_gha_setup_step but different YAML format.
+// Could be unified, but the YAML templates are different enough that
+// keeping them separate is clearer.
 std::string generate_gitlab_before_script(bool need_clang_format, bool need_clang_tidy) {
   if (!need_clang_format && !need_clang_tidy) {
     return "";
@@ -55,6 +62,10 @@ std::string generate_gitlab_before_script(bool need_clang_format, bool need_clan
 
 }  // namespace
 
+// Generates a GitHub Actions workflow YAML.
+// Triggers on push and PR to all branches, with concurrency control.
+// The workflow checks out the repo, optionally installs LLVM tools,
+// then runs sniffercommit on all files.
 std::string generate_github_actions(const config::ProjectConfig& cfg,
                                     const WorkflowConfig& wf_cfg) {
   bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
@@ -103,6 +114,9 @@ jobs:
       fmt::arg("setup_step", generate_gha_setup_step(need_clang_format, need_clang_tidy)));
 }
 
+// Generates a GitLab CI pipeline YAML.
+// Single-stage pipeline that runs sniffercommit on all files.
+// Uses ubuntu:latest image, installs LLVM tools if needed.
 std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
   bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
   bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
@@ -128,6 +142,10 @@ std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowC
       fmt::arg("before_script", generate_gitlab_before_script(need_clang_format, need_clang_tidy)));
 }
 
+// Dispatches to the appropriate platform-specific generator.
+// lazy: switch with __builtin_unreachable() for GCC/Clang to suppress
+// "not all control paths return a value" warning. MSVC path returns
+// a default as fallback.
 std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
   switch (wf_cfg.platform) {
     case Platform::GithubAction:

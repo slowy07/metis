@@ -9,6 +9,8 @@
 
 namespace sniffercommit::domain::config {
 
+// Validates a single check definition.
+// Returns empty string if valid, error message if not.
 std::string Check::validate() const noexcept {
   if (name.empty()) {
     return "Check name cannot be empty";
@@ -19,6 +21,9 @@ std::string Check::validate() const noexcept {
   return "";
 }
 
+// Validates the entire project config.
+// Checks: non-empty project name, at least one check, valid checks,
+// and no duplicate check names.
 std::string ProjectConfig::validate() const noexcept {
   if (project_name.empty()) {
     return "Project name cannot be empty";
@@ -41,16 +46,22 @@ std::string ProjectConfig::validate() const noexcept {
   return "";
 }
 
+// Checks if any check in the config uses the given command.
+// Used to determine if clang-format/clang-tidy checks are configured.
 bool ProjectConfig::has_command(std::string_view cmd) const noexcept {
   return std::ranges::any_of(checks, [cmd](const auto& check) { return check.command == cmd; });
 }
 
+// Builds a --config-file=... argument for a tool, using an absolute path.
+// Used by generate_default_config_with_tidy to embed the .clang-tidy path.
 static std::string make_config_file_arg(const std::filesystem::path& repo_root,
                                         const std::string& filename) {
   auto abs_path = std::filesystem::absolute(repo_root / filename);
   return "--config-file=" + abs_path.string();
 }
 
+// Generates a basic .sniffercommit.toml with clang-format and trailing-whitespace checks.
+// This is the default config when no special options are enabled.
 std::string generate_default_config(const std::string& project_name,
                                     const std::string& fallback_style,
                                     const std::filesystem::path& repo_root) {
@@ -88,6 +99,8 @@ parallel = true
       project_name, fallback_style);
 }
 
+// Like generate_default_config(), but adds a clang-tidy check.
+// The tidy config path is embedded as an absolute path in the check args.
 std::string generate_default_config_with_tidy(const std::string& project_name,
                                               const std::string& fallback_style,
                                               const std::string& tidy_preset,
@@ -133,6 +146,9 @@ parallel = true
       project_name, fallback_style, tidy_config_arg);
 }
 
+// Generates config with clang-format + cmake-format checks.
+// lazy: never called — dead code. The cmake format check was added
+// speculatively but init_use_case.cpp doesn't use this variant.
 std::string generate_default_config_with_cmake(const std::string& project_name,
                                                const std::string& fallback_style) {
   return fmt::format(

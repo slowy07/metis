@@ -6,6 +6,10 @@
 
 namespace sniffercommit::domain::ports {
 
+// Interface for filesystem operations.
+// lazy: wraps std::filesystem 1:1. Exists primarily for test mocking,
+// but only 6 of 8 methods are actually used in production code.
+// read_file() and remove() are dead via this interface.
 struct IFileSystem {
   virtual ~IFileSystem() = default;
 

@@ -24,6 +24,11 @@
 
 namespace {
 
+// Pre-parses --config/-c from argv before ArgParser runs.
+// This is needed because the config path must be known before loading
+// the config file, but ArgParser processes it as a regular option.
+// lazy: duplicated parsing — ArgParser could support pre-parse hooks,
+// but that's more code for a one-off need.
 std::string preparse_config_path(std::span<char*> args) {
   std::string config_path = ".sniffercommit.toml";
   for (size_t i = 1; i + 1 < args.size(); ++i) {
@@ -36,6 +41,11 @@ std::string preparse_config_path(std::span<char*> args) {
   return config_path;
 }
 
+// Manually parses init-specific flags from argv.
+// lazy: ArgParser handles subcommands but not value-bearing options for init.
+// This is a second parser that runs after ArgParser identifies the subcommand.
+// The two parsers could be unified, but ArgParser's add_option template
+// doesn't support all the init flags cleanly.
 bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOptions& opts) {
   auto to_lower = [](std::string s) {
     for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -124,6 +134,8 @@ int main(int argc, char** argv) {
     auto subcmd = app.get_subcommand();
 
     if (subcmd == "init") {
+      // Init needs its own filesystem and config repo instances because
+      // it creates files (config, .clang-format, etc.) from templates.
       auto fs = std::make_unique<infrastructure::OsFileSystem>();
       auto config_repo = std::make_unique<infrastructure::TomlConfigRepository>(
           std::make_unique<infrastructure::OsFileSystem>(),
@@ -132,6 +144,10 @@ int main(int argc, char** argv) {
       application::InitOptions opts;
       opts.project_name = fs->current_path().filename().string();
 
+      // Determine if we should run interactive mode:
+      //   - Explicit --interactive/-i flag → interactive
+      //   - No flags at all → interactive (sensible default for new users)
+      //   - Any flags present → CLI-only mode
       bool interactive = false;
       for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
@@ -224,6 +240,9 @@ int main(int argc, char** argv) {
     }
 
     if (subcmd == "run") {
+      // Run subcommand: executes checks against files.
+      // Parses its own flags (--all-files, --verbose, --dry-run, --format)
+      // and builds a RunOptions struct for the use case.
       bool all_files = false;
       bool verbose = false;
       bool dry_run = false;

@@ -10,6 +10,8 @@ namespace sniffercommit {
 ArgParser::ArgParser(std::string_view name, std::string_view desc)
     : app_name_(name), description_(desc) {}
 
+// Registers a boolean flag (no value).
+// When the flag is present, storage is set to true.
 ArgParser& ArgParser::add_flag(std::string_view short_flag, std::string_view long_flag,
                                std::string_view desc, bool& storage) {
   options_.emplace_back(Option{.short_flag = short_flag,
@@ -32,7 +34,16 @@ ArgParser& ArgParser::set_version(std::string_view ver) {
   return *this;
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+// Parses command-line arguments.
+//
+// Flow:
+// 1. Check for --help/-h and --version/-v (early exit)
+// 2. If subcommands are registered, match the first positional arg
+// 3. Match remaining args against registered options/flags
+//
+// Returns true if a subcommand was matched, false for help/version/unknown.
+// lazy: doesn't support combined short flags (-abc) or --key=value syntax.
+// These haven't been needed.
 bool ArgParser::parse(int argc, char** argv) {
   auto argc_sz = static_cast<size_t>(argc);
   if (argc_sz < 2) {
@@ -127,6 +138,9 @@ void ArgParser::print_aligned(std::string_view left, std::string_view right) {
 
 void ArgParser::print_section_title(std::string_view title) { std::cout << title << ":\n"; }
 
+// Prints the help message with formatted output.
+// Sections: Core Workflow (subcommands), Examples, Subcommand details, Global Options.
+// Uses column alignment for readability.
 void ArgParser::show_help() const {
   std::cout << app_name_ << " - " << description_ << "\n\n";
 

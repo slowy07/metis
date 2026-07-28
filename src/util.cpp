@@ -14,6 +14,9 @@
 
 namespace sniffercommit::util {
 
+// Checks if a command exists in PATH.
+// lazy: duplicates ProcessShellExecutor::command_exists() — one should be deleted.
+// Uses `where` on Windows, `access(X_OK)` on Unix.
 bool command_exists(const std::string& cmd) {
 #ifdef _WIN32
   std::string test = "where " + shell_escape(cmd) + " >nul 2>&1";
@@ -51,6 +54,8 @@ bool command_exists(const std::string& cmd) {
 #endif
 }
 
+// Escapes a string for safe use in single-quoted shell context.
+// Replaces ' with '\'' (end quote, escaped quote, start quote).
 std::string shell_escape(const std::string& value) {
   std::string escaped = "'";
 
@@ -66,6 +71,9 @@ std::string shell_escape(const std::string& value) {
   return escaped;
 }
 
+// RAII guard that changes the working directory on construction
+// and restores it on destruction. Used by run_checks_use_case
+// to run checks from the repo root.
 CwdGuard::CwdGuard(const std::filesystem::path& target)
     : original_cwd(std::filesystem::current_path()) {
   std::filesystem::current_path(target);

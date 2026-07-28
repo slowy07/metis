@@ -7,6 +7,8 @@
 
 namespace sniffercommit::domain::ports {
 
+// Interface for git repository operations.
+// lazy: only one implementation (CliGitRepository). Same pattern.
 struct IGitRepository {
   virtual ~IGitRepository() = default;
 

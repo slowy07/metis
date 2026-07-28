@@ -15,10 +15,25 @@
 
 namespace sniffercommit::application {
 
+// Creates an InitUseCase with ownership of its dependencies.
+// config_repo is used for find_git_root() to resolve relative paths.
+// file_system is used for all file writes (config, .clang-format, etc.)
 InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> config_repo,
                          std::unique_ptr<domain::ports::IFileSystem> file_system)
     : config_repo_(std::move(config_repo)), file_system_(std::move(file_system)) {}
 
+// Main entry point for project initialization.
+//
+// Generates configuration files based on InitOptions:
+//   1. .sniffercommit.toml  — always (main config)
+//   2. .clang-format        — always (formatter config)
+//   3. .clang-tidy          — if --enable-clang-tidy
+//   4. src/main.cpp         — if --generate-src (default with --enable-cmake)
+//   5. CMakeLists.txt       — if --enable-cmake
+//   6. conanfile.py         — if --enable-conan (requires --enable-cmake)
+//
+// Each file write is independent; failure on one doesn't prevent others.
+// The result struct accumulates paths and any error messages.
 InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOptions& opts) {
   InitResult result;
   std::string project_name =
@@ -27,6 +42,9 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
   // Write .sniffercommit.toml
   auto config_path = cwd / ".sniffercommit.toml";
   std::string config_content;
+  // Resolve repo root for relative path references in config.
+  // e.g. .clang-tidy path in the clang-tidy check args.
+  // Falls back to cwd if not in a git repo.
   std::filesystem::path repo_root = cwd;
 
   try {
