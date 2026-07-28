@@ -36,10 +36,10 @@ class ArgParser {
       default_str = std::to_string(default_val);
     }
     options_.emplace_back(Option{.short_flag = short_flag,
-                                .long_flag = long_flag,
-                                .description = desc,
-                                .default_value = std::move(default_str),
-                                .has_value = true});
+                                 .long_flag = long_flag,
+                                 .description = desc,
+                                 .default_value = std::move(default_str),
+                                 .has_value = true});
     option_stores_.emplace_back([&storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
