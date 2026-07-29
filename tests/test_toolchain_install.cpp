@@ -31,7 +31,10 @@ struct MockProvider : domain::ports::IToolchainProvider {
   [[nodiscard]] domain::ports::ToolchainInstallResult install(
       const std::filesystem::path& /*archive_path*/) override {
     installed_ = true;
-    return {.success_ = true, .installed_path_ = "/mock/gcc", .version_ = "12.3.0", .error_message_ = ""};
+    return {.success_ = true,
+            .installed_path_ = "/mock/gcc",
+            .version_ = "12.3.0",
+            .error_message_ = ""};
   }
   [[nodiscard]] std::string description() const override { return desc_; }
 };
@@ -39,9 +42,9 @@ struct MockProvider : domain::ports::IToolchainProvider {
 struct MockHttpClient : domain::ports::IHttpClient {
   bool fail_download_ = false;
 
-  [[nodiscard]] domain::ports::DownloadResult download(
-      const std::string& /*url*/, const std::filesystem::path& /*dest_dir*/,
-      const std::string& /*filename*/) override {
+  [[nodiscard]] domain::ports::DownloadResult download(const std::string& /*url*/,
+                                                       const std::filesystem::path& /*dest_dir*/,
+                                                       const std::string& /*filename*/) override {
     if (fail_download_) {
       return {.success_ = false, .download_path_ = "", .error_message_ = "mock failure"};
     }
@@ -60,8 +63,9 @@ struct MockArchiveExtractor : domain::ports::IArchiveExtractor {
 struct MockFileSystem : domain::ports::IFileSystem {
   bool exists(const std::filesystem::path& /*path*/) override { return false; }
   bool create_directories(const std::filesystem::path& /*path*/) override { return true; }
-  bool write_file(const std::filesystem::path& /*path*/,
-                  const std::string& /*content*/) override { return true; }
+  bool write_file(const std::filesystem::path& /*path*/, const std::string& /*content*/) override {
+    return true;
+  }
   std::string read_file(const std::filesystem::path& /*path*/) override { return {}; }
   bool remove(const std::filesystem::path& /*path*/) override { return true; }
   bool set_permissions(const std::filesystem::path& /*path*/, std::filesystem::perms /*perms*/,

@@ -18,10 +18,18 @@ namespace {
 enum class PackageManager : std::uint8_t { Unknown, Apt, Dnf, Pacman, Zypper };
 
 PackageManager detect_package_manager(domain::ports::IShellExecutor& shell) {
-  if (shell.command_exists("apt-get")) { return PackageManager::Apt; }
-  if (shell.command_exists("dnf")) { return PackageManager::Dnf; }
-  if (shell.command_exists("pacman")) { return PackageManager::Pacman; }
-  if (shell.command_exists("zypper")) { return PackageManager::Zypper; }
+  if (shell.command_exists("apt-get")) {
+    return PackageManager::Apt;
+  }
+  if (shell.command_exists("dnf")) {
+    return PackageManager::Dnf;
+  }
+  if (shell.command_exists("pacman")) {
+    return PackageManager::Pacman;
+  }
+  if (shell.command_exists("zypper")) {
+    return PackageManager::Zypper;
+  }
   return PackageManager::Unknown;
 }
 
