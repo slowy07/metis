@@ -245,6 +245,8 @@ void ArgParser::show_help() const {
 
   std::cout << "        --staged\n";
 
+  std::cout << "        --detail\n";
+
   std::cout << "        <explicit files>\n\n";
 
   std::cout << "  generate-gha\n";

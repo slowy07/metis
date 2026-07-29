@@ -17,6 +17,8 @@ enum class ExitCode : std::uint8_t {
   FILESYSTEM_ERROR = 8,
   HOOK_INSTALL_ERROR = 9,
   WORKFLOW_GENERATION_ERROR = 10,
+  TOOLCHAIN_INSTALL_ERROR = 11,
+  UNSUPPORTED_PLATFORM = 12,
 };
 
 }  // namespace sniffercommit::domain

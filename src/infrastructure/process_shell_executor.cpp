@@ -136,14 +136,14 @@ domain::ports::CapturedResult ProcessShellExecutor::exec_captured(const std::str
   // so we capture both stdout and stderr in one string.
   int fds[2];
   if (::pipe(fds) == -1) {
-    return {.exit_code = 1, .output = "pipe() failed"};
+    return {.exit_code_ = 1, .output_ = "pipe() failed"};
   }
 
   pid_t pid = ::fork();
   if (pid == -1) {
     ::close(fds[0]);
     ::close(fds[1]);
-    return {.exit_code = 1, .output = "fork() failed"};
+    return {.exit_code_ = 1, .output_ = "fork() failed"};
   }
 
   if (pid == 0) {
@@ -179,7 +179,7 @@ domain::ports::CapturedResult ProcessShellExecutor::exec_captured(const std::str
     code = 128 + WTERMSIG(status);
   }
 
-  return {.exit_code = code, .output = output};
+  return {.exit_code_ = code, .output_ = output};
 #endif
 }
 

@@ -122,10 +122,17 @@ set(SNIFFERCOMMIT_SOURCES
   src/application/install_use_case.cpp
   src/application/run_checks_use_case.cpp
   src/application/generate_workflow_use_case.cpp
+  src/application/install_toolchain_use_case.cpp
   src/infrastructure/toml_config_repository.cpp
   src/infrastructure/process_shell_executor.cpp
   src/infrastructure/os_file_system.cpp
   src/infrastructure/cli_git_repository.cpp
+  src/infrastructure/curl_http_client.cpp
+  src/infrastructure/linux_gcc_provider.cpp
+  src/infrastructure/tar_archive_extractor.cpp
+  src/infrastructure/toolchain_factory.cpp
+  src/infrastructure/windows_gcc_provider.cpp
+  src/infrastructure/zip_archive_extractor.cpp
   src/generators/clang_format_generator.cpp
   src/generators/clang_tidy_generator.cpp
   src/generators/cmake_generator.cpp
@@ -144,15 +151,25 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/domain/ports/config_repository.hpp
   include/sniffercommit/domain/ports/shell_executor.hpp
   include/sniffercommit/domain/ports/file_system.hpp
+  include/sniffercommit/domain/ports/toolchain_provider.hpp
+  include/sniffercommit/domain/ports/http_client.hpp
+  include/sniffercommit/domain/ports/archive_extractor.hpp
   include/sniffercommit/domain/ports/git_repository.hpp
   include/sniffercommit/application/init_use_case.hpp
   include/sniffercommit/application/install_use_case.hpp
   include/sniffercommit/application/run_checks_use_case.hpp
   include/sniffercommit/application/generate_workflow_use_case.hpp
+  include/sniffercommit/application/install_toolchain_use_case.hpp
   include/sniffercommit/infrastructure/toml_config_repository.hpp
   include/sniffercommit/infrastructure/process_shell_executor.hpp
   include/sniffercommit/infrastructure/os_file_system.hpp
   include/sniffercommit/infrastructure/cli_git_repository.hpp
+  include/sniffercommit/infrastructure/curl_http_client.hpp
+  include/sniffercommit/infrastructure/linux_gcc_provider.hpp
+  include/sniffercommit/infrastructure/tar_archive_extractor.hpp
+  include/sniffercommit/infrastructure/toolchain_factory.hpp
+  include/sniffercommit/infrastructure/windows_gcc_provider.hpp
+  include/sniffercommit/infrastructure/zip_archive_extractor.hpp
   include/sniffercommit/generators/clang_format_generator.hpp
   include/sniffercommit/generators/clang_tidy_generator.hpp
   include/sniffercommit/generators/cmake_generator.hpp
@@ -260,30 +277,6 @@ if(SNIFFERCOMMIT_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
       target_link_options(${target} PRIVATE -fsanitize=address,undefined)
     endforeach()
   endif()
-endif()
-
-# Static linking (Unix only, for the final executable)
-option(SNIFFERCOMMIT_PORTABLE_RELEASE "Build static portable release binary" OFF)
-
-if(SNIFFERCOMMIT_PORTABLE_RELEASE)
-  set(SNIFFERCOMMIT_USE_SYSTEM_FMT OFF CACHE BOOL "" FORCE)
-  set(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS OFF CACHE BOOL "" FORCE)
-endif()
-
-if(SNIFFERCOMMIT_PORTABLE_RELEASE AND UNIX AND NOT APPLE)
-  message(STATUS "building fully static portable binary")
-
-  target_compile_options(sniffercommit PRIVATE
-    -static
-    -static-libgcc
-    -static-libstdc++
-  )
-
-  target_link_options(sniffercommit PRIVATE
-    -static
-    -static-libgcc
-    -static-libstdc++
-  )
 endif()
 
 # Unit tests (Google Test)
