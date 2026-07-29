@@ -39,59 +39,77 @@ sniffercommit/
 │   └── config.hpp.in             # CMake configure_file template for build metadata
 ├── include/
 │   └── sniffercommit/
-│       ├── argparse.hpp          # Header-only templated CLI argument parser
+│       ├── argparse.hpp          # Interface-only CLI argument parser
 │       ├── glob_match.hpp        # Glob pattern matching
-│       ├── logger.hpp            # Colored console logging
 │       ├── spinner.hpp           # Terminal spinner animation
 │       ├── util.hpp              # Shared utilities (shell_escape, etc.)
 │       ├── domain/
 │       │   ├── config.hpp        # ProjectConfig, Check structs
 │       │   ├── error_codes.hpp   # Typed exit codes
-│       │   ├── workflow.hpp      # Platform enum, WorkflowConfig, IWorkflowGenerator
+│       │   ├── workflow.hpp      # Platform enum, WorkflowConfig, workflow generation
 │       │   └── ports/
 │       │       ├── config_repository.hpp   # IConfigRepository interface
 │       │       ├── file_system.hpp         # IFileSystem interface
 │       │       ├── git_repository.hpp      # IGitRepository interface
-│       │       └── shell_executor.hpp      # IShellExecutor interface
+│       │       ├── shell_executor.hpp      # IShellExecutor interface
+│       │       ├── toolchain_provider.hpp  # IToolchainProvider interface
+│       │       ├── http_client.hpp         # IHttpClient interface
+│       │       └── archive_extractor.hpp   # IArchiveExtractor interface
 │       ├── application/
 │       │   ├── init_use_case.hpp            # InitUseCase (init subcommand)
 │       │   ├── install_use_case.hpp         # InstallUseCase (install subcommand)
+│       │   ├── install_toolchain_use_case.hpp # InstallToolchainUseCase (install-gcc)
 │       │   ├── run_checks_use_case.hpp      # RunChecksUseCase (run subcommand)
 │       │   └── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
 │       ├── generators/
 │       │   ├── clang_format_generator.hpp   # .clang-format content generation
 │       │   ├── clang_tidy_generator.hpp     # .clang-tidy content generation
-│       │   └── cmake_generator.hpp          # CMakeLists.txt content generation
+│       │   ├── cmake_generator.hpp          # CMakeLists.txt content generation
+│       │   └── conan_generator.hpp          # conanfile.py content generation
 │       ├── infrastructure/
 │       │   ├── toml_config_repository.hpp   # TOML config read/write
 │       │   ├── os_file_system.hpp           # OS filesystem operations
 │       │   ├── cli_git_repository.hpp       # Git CLI wrapper
-│       │   └── process_shell_executor.hpp   # popen/system wrapper
+│       │   ├── process_shell_executor.hpp   # popen/fork wrapper
+│       │   ├── curl_http_client.hpp         # curl/wget HTTP download adapter
+│       │   ├── tar_archive_extractor.hpp    # tar archive extraction adapter
+│       │   ├── zip_archive_extractor.hpp    # unzip/powershell extraction adapter
+│       │   ├── linux_gcc_provider.hpp       # GCC install via package manager
+│       │   ├── windows_gcc_provider.hpp     # MinGW-w64 download + install
+│       │   └── toolchain_factory.hpp        # Platform-conditional provider factory
 │       └── presentation/
 │           └── interactive_init.hpp         # TUI prompts for init wizard
 ├── src/
 │   ├── main.cpp                  # Entry point, CLI dispatch
 │   ├── glob_match.cpp
-│   ├── logger.cpp
 │   ├── spinner.cpp
 │   ├── util.cpp
+│   ├── argparse.cpp               # ArgParser implementation
 │   ├── domain/
 │   │   ├── config.cpp
 │   │   └── workflow.cpp
 │   ├── application/
 │   │   ├── init_use_case.cpp
 │   │   ├── install_use_case.cpp
+│   │   ├── install_toolchain_use_case.cpp
 │   │   ├── run_checks_use_case.cpp
 │   │   └── generate_workflow_use_case.cpp
 │   ├── generators/
 │   │   ├── clang_format_generator.cpp
 │   │   ├── clang_tidy_generator.cpp
-│   │   └── cmake_generator.cpp
+│   │   ├── cmake_generator.cpp
+│   │   └── conan_generator.cpp
 │   ├── infrastructure/
 │   │   ├── toml_config_repository.cpp
 │   │   ├── os_file_system.cpp
 │   │   ├── cli_git_repository.cpp
-│   │   └── process_shell_executor.cpp
+│   │   ├── process_shell_executor.cpp
+│   │   ├── curl_http_client.cpp
+│   │   ├── tar_archive_extractor.cpp
+│   │   ├── zip_archive_extractor.cpp
+│   │   ├── linux_gcc_provider.cpp
+│   │   ├── windows_gcc_provider.cpp
+│   │   └── toolchain_factory.cpp
 │   └── presentation/
 │       └── interactive_init.cpp
 └── docs/
@@ -111,20 +129,24 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 ├─────────────────────────────────────────────────────┤
 │                  application/                        │
 │   InitUseCase · InstallUseCase · RunChecksUseCase   │
-│              GenerateWorkflowUseCase                 │
+│    GenerateWorkflowUseCase · InstallToolchainUseCase │
 ├─────────────────────────────────────────────────────┤
 │                   domain/                            │
 │   ProjectConfig · Check · Workflow · ExitCode        │
 │                    ports/                            │
 │   IConfigRepository · IFileSystem · IGitRepository   │
-│                IShellExecutor                        │
+│   IShellExecutor · IToolchainProvider               │
+│   IHttpClient · IArchiveExtractor                   │
 ├─────────────────────────────────────────────────────┤
 │               infrastructure/                        │
-│   TomlConfigRepository · OsFileSystem                │
-│   CliGitRepository · ProcessShellExecutor            │
+│  TomlConfigRepository · OsFileSystem                │
+│  CliGitRepository · ProcessShellExecutor            │
+│  CurlHttpClient · TarArchiveExtractor               │
+│  ZipArchiveExtractor · LinuxGccProvider             │
+│  WindowsGccProvider · ToolchainFactory              │
 ├─────────────────────────────────────────────────────┤
 │                 generators/                          │
-│   clang_format · clang_tidy · cmake                  │
+│  clang_format · clang_tidy · cmake · conan          │
 │            (pure string generation)                  │
 ├─────────────────────────────────────────────────────┤
 │              src/main.cpp (CLI entry)                │
@@ -133,10 +155,10 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 ```
 
 1. **`main.cpp`** parses CLI arguments via `argparse.hpp`, determines the active subcommand, wires infrastructure adapters, and delegates to use cases.
-2. **Domain layer** (`domain/`) defines core data structures (`ProjectConfig`, `Check`, `WorkflowConfig`) and port interfaces (`IConfigRepository`, `IFileSystem`, `IGitRepository`, `IShellExecutor`).
+2. **Domain layer** (`domain/`) defines core data structures (`ProjectConfig`, `Check`, `WorkflowConfig`) and port interfaces (`IConfigRepository`, `IFileSystem`, `IGitRepository`, `IShellExecutor`, `IToolchainProvider`, `IHttpClient`, `IArchiveExtractor`).
 3. **Application layer** (`application/`) contains use cases that orchestrate domain logic. Each use case receives port interfaces via constructor injection.
-4. **Infrastructure layer** (`infrastructure/`) implements the port interfaces with real OS/git/TOML operations.
-5. **Generators** (`generators/`) are stateless free functions that produce string content for `.clang-format`, `.clang-tidy`, and `CMakeLists.txt`.
+4. **Infrastructure layer** (`infrastructure/`) implements the port interfaces with real OS/git/TOML/curl operations.
+5. **Generators** (`generators/`) are stateless free functions that produce string content for `.clang-format`, `.clang-tidy`, `CMakeLists.txt`, and `conanfile.py`.
 6. **Presentation layer** (`presentation/`) handles interactive TUI prompts for the `init` wizard.
 
 ---
@@ -146,13 +168,18 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 ```
 sniffercommit
 ├── domain::config      — ProjectConfig, Check, config string generation
-├── domain::workflow    — Platform, WorkflowConfig, IWorkflowGenerator, workflow generation
-├── domain::ports       — IConfigRepository, IFileSystem, IGitRepository, IShellExecutor
-├── application         — InitUseCase, InstallUseCase, RunChecksUseCase, GenerateWorkflowUseCase
-├── generators          — clang_format, clang_tidy, cmake generators (free functions)
-├── infrastructure      — TomlConfigRepository, OsFileSystem, CliGitRepository, ProcessShellExecutor
+├── domain::workflow    — Platform, WorkflowConfig, workflow generation
+├── domain::ports       — IConfigRepository, IFileSystem, IGitRepository, IShellExecutor,
+│                         IToolchainProvider, IHttpClient, IArchiveExtractor
+├── application         — InitUseCase, InstallUseCase, RunChecksUseCase,
+│                         GenerateWorkflowUseCase, InstallToolchainUseCase
+├── generators          — clang_format, clang_tidy, cmake, conan generators (free functions)
+├── infrastructure      — TomlConfigRepository, OsFileSystem, CliGitRepository,
+│                         ProcessShellExecutor, CurlHttpClient, TarArchiveExtractor,
+│                         ZipArchiveExtractor, LinuxGccProvider, WindowsGccProvider,
+│                         ToolchainFactory
 ├── presentation        — interactive_init
-└── (global)            — ArgParser, glob_match, logger, spinner, util
+└── (global)            — ArgParser, glob_match, spinner, util
 ```
 
 ## Exit Codes
@@ -161,6 +188,8 @@ sniffercommit
 |------|---------|
 | `0` | Success — all checks passed, or command completed normally |
 | `1` | Failure — one or more checks failed, or a CLI/config error occurred |
+| `2` | Unsupported platform error (e.g., `install-gcc` on unsupported OS) |
+| `3` | Toolchain install error (download, extraction, or PATH failure) |
 
 All `RunChecksUseCase::execute()` return values propagate directly as the process exit code.
 
@@ -200,7 +229,9 @@ cmake --build build --parallel
 | Option | Default | Description |
 |--------|---------|-------------|
 | `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | Enable AddressSanitizer + UndefinedBehaviorSanitizer (Debug only) |
-| `SNIFFERCOMMIT_VERBOSE_CONFIG` | `ON` | Print platform/compiler summary at configure time |
+| `SNIFFERCOMMIT_BUILD_TESTS` | `ON` | Build unit test suite |
+| `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `OFF` | Use system-installed fmt instead of FetchContent |
+| `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system-installed tomlplusplus instead of FetchContent |
 
 ### Compiler Warnings & Hardening
 
@@ -344,6 +375,7 @@ Core Workflow:
   generate-gha    Output GitHub Actions workflow
   generate-gitlab Output GitLab CI workflow
   run             Execute checks on files
+  install-gcc     Download & install GCC toolchain
 
 Subcommands:
   init
@@ -388,6 +420,15 @@ Subcommands:
 
   generate-gitlab
       Generate GitLab CI workflow.
+
+  install-gcc
+      Download and install GCC/MinGW toolchain.
+
+      Options:
+        --version <version>    Compiler version string
+        --prefix <path>        Custom install prefix
+        --force                Reinstall even if already installed
+        --dry-run, -n          Show what would be installed
 
 Global Options:
   -c, --config <value>  Config file path [default: .sniffercommit.toml]
@@ -462,6 +503,7 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 |------|-------------|
 | `--all-files` | Run checks on all files tracked by git (via `git ls-files`) |
 | `--verbose`, `-V` | Print detailed per-file execution output |
+| `--detail` | Alias for `--verbose` |
 | `--dry-run`, `-n` | List files that would be checked without running checks |
 
 **File source selection (mutually exclusive, listed in priority order):**
@@ -537,7 +579,7 @@ Free functions for config string generation (no I/O):
 Namespace: `sniffercommit::domain::workflow`
 
 ```cpp
-enum class Platform : std::uint8_t { GithubAction, GitLabCI, AzureDevOps, Generic };
+enum class Platform : std::uint8_t { GithubAction, GitLabCI };
 
 struct WorkflowConfig {
   Platform platform = Platform::GithubAction;
@@ -557,20 +599,23 @@ Key functions:
 
 #### ports/ — Port Interfaces
 
-Four port interfaces define the contracts between layers:
+Seven port interfaces define the contracts between layers:
 
 | Port | File | Methods |
 |------|------|---------|
-| `IConfigRepository` | `config_repository.hpp` | `load()`, `save()`, `find_git_root()` |
+| `IConfigRepository` | `config_repository.hpp` | `load()`, `find_git_root()` |
 | `IFileSystem` | `file_system.hpp` | `exists()`, `create_directories()`, `write_file()`, `read_file()`, `remove()`, `set_permissions()`, `current_path()`, `absolute()` |
-| `IGitRepository` | `git_repository.hpp` | `list_staged_files()`, `list_all_files()`, `is_file_modified()`, `find_repo_root()` |
+| `IGitRepository` | `git_repository.hpp` | `list_staged_files()`, `list_all_files()`, `find_repo_root()` |
 | `IShellExecutor` | `shell_executor.hpp` | `exec()`, `exec_captured()`, `command_exists()` |
+| `IToolchainProvider` | `toolchain_provider.hpp` | `is_installed()`, `get_version()`, `resolve_package()`, `install()`, `description()` |
+| `IHttpClient` | `http_client.hpp` | `download()` |
+| `IArchiveExtractor` | `archive_extractor.hpp` | `extract()` |
 
 #### error_codes.hpp — Typed Exit Codes
 
 **File:** `include/sniffercommit/domain/error_codes.hpp`
 
-Provides a typed enum with 11 exit code values for consistent error reporting.
+Provides a typed enum with 13 exit code values for consistent error reporting.
 
 ### Application Layer
 
@@ -671,16 +716,60 @@ class GenerateWorkflowUseCase {
 
 Single dependency: `IFileSystem`. Dispatches to platform-specific workflow generators.
 
+#### install_toolchain_use_case.hpp
+
+**File:** `include/sniffercommit/application/install_toolchain_use_case.hpp`
+
+```cpp
+struct InstallToolchainOptions {
+  std::string compiler_ = "gcc";
+  std::string version_;
+  std::filesystem::path install_prefix_;
+  bool force_ = false;
+  bool dry_run_ = false;
+};
+
+struct InstallToolchainResult {
+  bool success_ = false;
+  bool was_already_installed_ = false;
+  std::string installed_path_;
+  std::string version_;
+  std::string error_message_;
+};
+
+class InstallToolchainUseCase {
+  InstallToolchainUseCase(std::unique_ptr<IToolchainProvider>,
+                          std::unique_ptr<IHttpClient>,
+                          std::unique_ptr<IArchiveExtractor>,
+                          std::unique_ptr<IFileSystem>);
+  [[nodiscard]] InstallToolchainResult execute(const InstallToolchainOptions& opts);
+};
+```
+
+Downloads and installs a GCC toolchain. Flow:
+1. If compiler is already installed and `--force` is not set → return early
+2. Resolve the provider package (URL or package manager)
+3. Download archive via `IHttpClient` (if URL is present)
+4. Extract via `IArchiveExtractor` (if downloaded)
+5. Install via `IToolchainProvider::install()`
+6. Verify compiler is in PATH after installation
+
 ### Infrastructure Layer
 
-Four adapters implement the port interfaces:
+Ten adapters implement the port interfaces:
 
 | Adapter | Port | Implementation |
 |---------|------|----------------|
 | `TomlConfigRepository` | `IConfigRepository` | TOML parsing via `tomlplusplus`, config string generation |
 | `OsFileSystem` | `IFileSystem` | `std::filesystem` operations |
 | `CliGitRepository` | `IGitRepository` | `popen()` wrapping git CLI commands |
-| `ProcessShellExecutor` | `IShellExecutor` | `popen()` / `std::system()` for command execution |
+| `ProcessShellExecutor` | `IShellExecutor` | `popen()` / `fork()` / `std::system()` for command execution |
+| `CurlHttpClient` | `IHttpClient` | Shells out to `curl` or `wget` for downloads |
+| `TarArchiveExtractor` | `IArchiveExtractor` | `tar` command for `.tar.gz`/`.tar.xz`/`.tar.bz2` archives |
+| `ZipArchiveExtractor` | `IArchiveExtractor` | `unzip` (Unix) or `powershell Expand-Archive` (Windows) |
+| `LinuxGccProvider` | `IToolchainProvider` | Detects package manager (apt/dnf/pacman/zypper) and installs GCC |
+| `WindowsGccProvider` | `IToolchainProvider` | Downloads MinGW-w64 from WinLibs, extracts, and installs |
+| `ToolchainFactory` | — | Static `create()` method returns the platform-appropriate provider |
 
 ### Generators
 
@@ -690,7 +779,7 @@ Stateless free functions in `sniffercommit::generators` namespace:
 |-----------|-----------|
 | `clang_format_generator` | `generate_clang_format(style, indent_width, column_limit, pointer_alignment, brace_style)`, `generate_clang_format_style(style)` |
 | `clang_tidy_generator` | `generate_clang_tidy(preset, severity, header_filter_level)`, `get_preset_checks(preset)` |
-| `cmake_generator` | `generate_cmake_lists(project_name, cpp_standard, target_type, enable_testing, enable_sanitizers, enable_warnings, enable_clang_tidy, use_conan, dependencies)` |
+| `cmake_generator` | `generate_cmake_lists(project_name, cpp_standard, target_type, enable_testing, enable_sanitizers, enable_warnings, enable_clang_tidy, enable_conan, dependencies)` |
 | `conan_generator` | `generate_conanfile(project_name, cpp_standard, enable_testing, dependencies)` |
 
 All return `std::string` — pure string generation, no I/O.
@@ -731,6 +820,11 @@ main()
 │   ├── Manual argv re-parse for run flags
 │   ├── Wire TomlConfigRepository + OsFileSystem + CliGitRepository + ProcessShellExecutor
 │   ├── RunChecksUseCase(shell, git, fs).execute(cfg, opts)
+├── subcommand == "install-gcc"
+│   ├── Manual argv loop for install-gcc flags
+│   ├── Wire ToolchainFactory → platform-appropriate provider
+│   ├── Wire CurlHttpClient + TarArchiveExtractor/ZipArchiveExtractor + OsFileSystem
+│   ├── InstallToolchainUseCase(provider, http, extractor, fs).execute(opts)
 └── fallback
     └── show_help()
 ```
@@ -898,19 +992,6 @@ A GitHub Actions workflow (generated by `sniffercommit generate-gha`) runs on ev
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
 cmake --build build --parallel
-```
-
-When `SNIFFERCOMMIT_DEBUG` is defined (automatically in Debug builds), debug output enables:
-
-| Module | Debug Output |
-|--------|-------------|
-| `config.cpp` | Prints project name, check count, and parallel setting to stderr |
-
-### Config Debug
-
-```bash
-# Enable verbose CMake output at configure time
-cmake -B build -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
 ```
 
 ### Manual Hook Test

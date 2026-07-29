@@ -1,8 +1,6 @@
 #ifndef SNIFFERCOMMIT_INFRASTRUCTURE_CURL_HTTP_CLIENT_HPP
 #define SNIFFERCOMMIT_INFRASTRUCTURE_CURL_HTTP_CLIENT_HPP
 
-#include <emmintrin.h>
-
 #include <filesystem>
 #include <string>
 
@@ -12,14 +10,14 @@
 namespace sniffercommit::infrastructure {
 class CurlHttpClient : public domain::ports::IHttpClient {
  public:
-  explicit CurlHttpClient(domain::ports::IShellExecutor& shell);
+  explicit CurlHttpClient(domain::ports::IShellExecutor* shell);
 
   [[nodiscard]] domain::ports::DownloadResult download(const std::string& url,
                                                        const std::filesystem::path& dest_dir,
                                                        const std::string& filename = {}) override;
 
  private:
-  domain::ports::IShellExecutor& shell_;
+  domain::ports::IShellExecutor* shell_;
 
   [[nodiscard]] bool has_curl() const;
   [[nodiscard]] bool has_wget() const;

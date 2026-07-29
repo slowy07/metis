@@ -12,7 +12,7 @@ namespace sniffercommit::infrastructure {
 
 class LinuxGccProvider : public domain::ports::IToolchainProvider {
  public:
-  LinuxGccProvider(domain::ports::IShellExecutor& shell, std::string version = "");
+  LinuxGccProvider(domain::ports::IShellExecutor* shell, std::string version = "");
 
   [[nodiscard]] bool is_installed() const override;
   [[nodiscard]] std::optional<std::string> get_version() const override;
@@ -22,7 +22,7 @@ class LinuxGccProvider : public domain::ports::IToolchainProvider {
   [[nodiscard]] std::string description() const override;
 
  private:
-  domain::ports::IShellExecutor& shell_;
+  domain::ports::IShellExecutor* shell_;
   std::string version_;
 };
 }  // namespace sniffercommit::infrastructure

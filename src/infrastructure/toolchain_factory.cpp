@@ -18,10 +18,10 @@ std::unique_ptr<domain::ports::IToolchainProvider> ToolchainFactory::create(
   }
 
 #ifdef _WIN32
-  return std::make_unique<WindowsGccProvider>(shell, fs, version);
+  return std::make_unique<WindowsGccProvider>(&shell, &fs, version);
 #else
   (void)fs;
-  return std::make_unique<LinuxGccProvider>(shell, version);
+  return std::make_unique<LinuxGccProvider>(&shell, version);
 #endif  // _WIN32
 }
 }  // namespace sniffercommit::infrastructure

@@ -9,13 +9,13 @@
 namespace sniffercommit::infrastructure {
 class ZipArchiveExtractor : public domain::ports::IArchiveExtractor {
  public:
-  explicit ZipArchiveExtractor(domain::ports::IShellExecutor& shell);
+  explicit ZipArchiveExtractor(domain::ports::IShellExecutor* shell);
 
   [[nodiscard]] domain::ports::ExtractionResult extract(
       const std::filesystem::path& archive_path, const std::filesystem::path& dest_dir) override;
 
  private:
-  domain::ports::IShellExecutor& shell_;
+  domain::ports::IShellExecutor* shell_;
 };
 }  // namespace sniffercommit::infrastructure
 

@@ -9,7 +9,7 @@
 
 namespace sniffercommit::infrastructure {
 
-TarArchiveExtractor::TarArchiveExtractor(domain::ports::IShellExecutor& shell) : shell_(shell) {}
+TarArchiveExtractor::TarArchiveExtractor(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 domain::ports::ExtractionResult TarArchiveExtractor::extract(
     const std::filesystem::path& archive_path, const std::filesystem::path& dest_dir) {
@@ -26,10 +26,10 @@ domain::ports::ExtractionResult TarArchiveExtractor::extract(
   std::string cmd =
       fmt::format(R"(tar {} -C "{}" -xf "{}")", flags, dest_dir.string(), archive_path.string());
 
-  auto exec_result = shell_.exec_captured(cmd);
+  auto exec_result = shell_->exec_captured(cmd);
   if (exec_result.exit_code_ != 0) {
-    result.error_message_ = fmt::format("tar extraction failed (exit {}): {}", exec_result.exit_code_,
-                                       exec_result.output_);
+    result.error_message_ = fmt::format("tar extraction failed (exit {}): {}",
+                                        exec_result.exit_code_, exec_result.output_);
     return result;
   }
 

@@ -321,11 +321,11 @@ int main(int argc, char** argv) {
 
       std::unique_ptr<domain::ports::IArchiveExtractor> extractor;
 #ifdef _WIN32
-      extractor = std::make_unique<infrastructure::ZipArchiveExtractor>(*shell);
+      extractor = std::make_unique<infrastructure::ZipArchiveExtractor>(shell.get());
 #else
-      extractor = std::make_unique<infrastructure::TarArchiveExtractor>(*shell);
+      extractor = std::make_unique<infrastructure::TarArchiveExtractor>(shell.get());
 #endif  // _WIN32
-      auto http_client = std::make_unique<infrastructure::CurlHttpClient>(*shell);
+      auto http_client = std::make_unique<infrastructure::CurlHttpClient>(shell.get());
 
       application::InstallToolchainOptions opts;
       opts.version_ = version;

@@ -13,15 +13,15 @@
 #include "sniffercommit/domain/ports/toolchain_provider.hpp"
 
 namespace sniffercommit::infrastructure {
-WindowsGccProvider::WindowsGccProvider(domain::ports::IShellExecutor& shell,
-                                       domain::ports::IFileSystem& fs, std::string version)
+WindowsGccProvider::WindowsGccProvider(domain::ports::IShellExecutor* shell,
+                                       domain::ports::IFileSystem* fs, std::string version)
     : shell_(shell),
       fs_(fs),
       version_(version.empty() ? "14.2.0" : version),
       install_prefix_(default_install_prefix()) {}
 
 bool WindowsGccProvider::is_installed() const {
-  return shell_.command_exists("gcc") || shell_.command_exists("gcc.exe");
+  return shell_->command_exists("gcc") || shell_->command_exists("gcc.exe");
 }
 
 std::optional<std::string> WindowsGccProvider::get_version() const {
@@ -29,7 +29,7 @@ std::optional<std::string> WindowsGccProvider::get_version() const {
     return std::nullopt;
   }
 
-  auto result = shell_.exec_captured("gcc --version");
+  auto result = shell_->exec_captured("gcc --version");
   if (result.exit_code_ != 0 || result.output_.empty()) {
     return std::nullopt;
   }
@@ -60,13 +60,13 @@ domain::ports::ToolchainInstallResult WindowsGccProvider::install(
     return result;
   }
 
-  if (!fs_.create_directories(install_prefix_)) {
+  if (!fs_->create_directories(install_prefix_)) {
     result.error_message_ = "Failed to create installation directory";
     return result;
   }
 
   auto gcc_bin = install_prefix_ / "mingw64" / "bin" / "gcc.exe";
-  if (!fs_.exists(gcc_bin)) {
+  if (!fs_->exists(gcc_bin)) {
     result.error_message_ = fmt::format(
         "Extraction completed but gcc.exe not found at expected path: {}. "
         "The archive structure may have changed.",

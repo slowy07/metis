@@ -9,7 +9,7 @@
 #include "sniffercommit/util.hpp"
 
 namespace sniffercommit::infrastructure {
-CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor& shell) : shell_(shell) {}
+CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
                                                        const std::filesystem::path& dest_dir,
@@ -26,7 +26,7 @@ domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
 
   if (has_curl()) {
     std::string cmd = fmt::format(R"(curl -Lf -o "{}" "{}")", dest_path.string(), url);
-    auto exec_result = shell_.exec_captured(cmd);
+    auto exec_result = shell_->exec_captured(cmd);
 
     if (exec_result.exit_code_ != 0) {
       result.error_message_ =
@@ -36,7 +36,7 @@ domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
   } else if (has_wget()) {
     std::string cmd = fmt::format(R"(wget -o "{}" "{}")", dest_path.string(), url);
 
-    auto exec_result = shell_.exec_captured(cmd);
+    auto exec_result = shell_->exec_captured(cmd);
     if (exec_result.exit_code_ != 0) {
       result.error_message_ =
           fmt::format("wget failed (exit {}): {}", exec_result.exit_code_, exec_result.output_);
@@ -52,9 +52,9 @@ domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
   return result;
 }
 
-bool CurlHttpClient::has_curl() const { return shell_.command_exists("curl"); }
+bool CurlHttpClient::has_curl() const { return shell_->command_exists("curl"); }
 
-bool CurlHttpClient::has_wget() const { return shell_.command_exists("wget"); }
+bool CurlHttpClient::has_wget() const { return shell_->command_exists("wget"); }
 
 std::string CurlHttpClient::basename_for_url(const std::string& url) const {
   size_t last_slash = url.find_last_of('/');

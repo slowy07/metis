@@ -18,26 +18,26 @@ namespace {
 enum class PackageManager : std::uint8_t { Unknown, Apt, Dnf, Pacman, Zypper };
 
 PackageManager detect_package_manager(domain::ports::IShellExecutor& shell) {
-  if (shell.command_exists("apt-get")) return PackageManager::Apt;
-  if (shell.command_exists("dnf"))     return PackageManager::Dnf;
-  if (shell.command_exists("pacman"))  return PackageManager::Pacman;
-  if (shell.command_exists("zypper"))  return PackageManager::Zypper;
+  if (shell.command_exists("apt-get")) { return PackageManager::Apt; }
+  if (shell.command_exists("dnf")) { return PackageManager::Dnf; }
+  if (shell.command_exists("pacman")) { return PackageManager::Pacman; }
+  if (shell.command_exists("zypper")) { return PackageManager::Zypper; }
   return PackageManager::Unknown;
 }
 
 }  // namespace
 
-LinuxGccProvider::LinuxGccProvider(domain::ports::IShellExecutor& shell, std::string version)
+LinuxGccProvider::LinuxGccProvider(domain::ports::IShellExecutor* shell, std::string version)
     : shell_(shell), version_(std::move(version)) {}
 
-bool LinuxGccProvider::is_installed() const { return shell_.command_exists("gcc"); }
+bool LinuxGccProvider::is_installed() const { return shell_->command_exists("gcc"); }
 
 std::optional<std::string> LinuxGccProvider::get_version() const {
   if (!is_installed()) {
     return std::nullopt;
   }
 
-  auto result = shell_.exec_captured("gcc --version");
+  auto result = shell_->exec_captured("gcc --version");
   if (result.exit_code_ != 0 || result.output_.empty()) {
     return std::nullopt;
   }
@@ -58,10 +58,11 @@ domain::ports::ToolchainPackage LinuxGccProvider::resolve_package() const {
   return pkg;
 }
 
-domain::ports::ToolchainInstallResult LinuxGccProvider::install(const std::filesystem::path& /*archive_path*/) {
+domain::ports::ToolchainInstallResult LinuxGccProvider::install(
+    const std::filesystem::path& /*archive_path*/) {
   domain::ports::ToolchainInstallResult result;
 
-  auto package_manager = detect_package_manager(shell_);
+  auto package_manager = detect_package_manager(*shell_);
   if (package_manager == PackageManager::Unknown) {
     result.error_message_ = "No supported package manager found (apt, dnf, pacman, zypper)";
     return result;

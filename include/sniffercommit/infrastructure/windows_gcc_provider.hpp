@@ -11,7 +11,7 @@
 namespace sniffercommit::infrastructure {
 class WindowsGccProvider : public domain::ports::IToolchainProvider {
  public:
-  WindowsGccProvider(domain::ports::IShellExecutor& shell, domain::ports::IFileSystem& fs,
+  WindowsGccProvider(domain::ports::IShellExecutor* shell, domain::ports::IFileSystem* fs,
                      std::string version = "");
 
   [[nodiscard]] bool is_installed() const override;
@@ -22,8 +22,8 @@ class WindowsGccProvider : public domain::ports::IToolchainProvider {
   [[nodiscard]] std::string description() const override;
 
  private:
-  domain::ports::IShellExecutor& shell_;
-  domain::ports::IFileSystem& fs_;
+  domain::ports::IShellExecutor* shell_;
+  domain::ports::IFileSystem* fs_;
   std::string version_;
   std::filesystem::path install_prefix_;
 

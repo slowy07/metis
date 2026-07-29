@@ -1,8 +1,6 @@
 #ifndef SNIFFERCOMMIT_DOMAIN_PORTS_TOOLCHAIN_PROVIDER_HPP
 #define SNIFFERCOMMIT_DOMAIN_PORTS_TOOLCHAIN_PROVIDER_HPP
 
-#include <emmintrin.h>
-
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -30,7 +28,7 @@ struct IToolchainProvider {
   [[nodiscard]] virtual std::optional<std::string> get_version() const = 0;
   [[nodiscard]] virtual ToolchainPackage resolve_package() const = 0;
   [[nodiscard]] virtual ToolchainInstallResult install(
-      const std::filesystem::path& archive_parh) = 0;
+      const std::filesystem::path& archive_path) = 0;
   [[nodiscard]] virtual std::string description() const = 0;
 };
 }  // namespace sniffercommit::domain::ports
