@@ -128,7 +128,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/infrastructure/os_file_system.cpp
   src/infrastructure/cli_git_repository.cpp
   src/infrastructure/curl_http_client.cpp
-  src/infrastructure/linux_gcc_provider.cpp
+  src/infrastructure/posix_toolchain_provider.cpp
   src/infrastructure/tar_archive_extractor.cpp
   src/infrastructure/toolchain_factory.cpp
   src/infrastructure/windows_gcc_provider.cpp
@@ -141,8 +141,6 @@ set(SNIFFERCOMMIT_SOURCES
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp
-  # ponytail: platform guards — only compile providers for their native OS
-  $<$<PLATFORM_ID:Darwin>:src/infrastructure/macos_clang_provider.cpp>
   $<$<PLATFORM_ID:Windows>:src/infrastructure/windows_clang_provider.cpp>
 )
 
@@ -168,8 +166,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/infrastructure/os_file_system.hpp
   include/sniffercommit/infrastructure/cli_git_repository.hpp
   include/sniffercommit/infrastructure/curl_http_client.hpp
-  include/sniffercommit/infrastructure/linux_gcc_provider.hpp
-  include/sniffercommit/infrastructure/macos_clang_provider.hpp
+  include/sniffercommit/infrastructure/posix_toolchain_provider.hpp
   include/sniffercommit/infrastructure/tar_archive_extractor.hpp
   include/sniffercommit/infrastructure/toolchain_factory.hpp
   include/sniffercommit/infrastructure/windows_clang_provider.hpp

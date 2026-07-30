@@ -312,7 +312,8 @@ int main(int argc, char** argv) {
         }
       }
 
-      auto provider = infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
+      auto provider =
+          infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
 
       if (!provider) {
         std::cerr << "[ERROR] GCC installation is not supported on this platform\n";

@@ -1,6 +1,6 @@
-#include <fmt/format.h>
-
 #include "sniffercommit/infrastructure/windows_clang_provider.hpp"
+
+#include <fmt/format.h>
 
 namespace sniffercommit::infrastructure {
 WindowsClangProvider::WindowsClangProvider(domain::ports::IShellExecutor* shell,

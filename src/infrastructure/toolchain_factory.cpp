@@ -6,7 +6,7 @@
 #include "sniffercommit/domain/ports/file_system.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
 #include "sniffercommit/domain/ports/toolchain_provider.hpp"
-#include "sniffercommit/infrastructure/linux_gcc_provider.hpp"
+#include "sniffercommit/infrastructure/posix_toolchain_provider.hpp"
 
 namespace sniffercommit::infrastructure {
 
@@ -26,18 +26,11 @@ std::unique_ptr<domain::ports::IToolchainProvider> ToolchainFactory::create(
   if (comp == "clang") {
     return std::make_unique<WindowsClangProvider>(shell, fs, version);
   }
-#elif defined(__APPLE__)
-  if (comp == "clang") {
-    return std::make_unique<MacosClangProvider>(shell, fs, version);
-  }
-  if (comp == "gcc") {
-    return nullptr;
-  }
-#else   // Linux
+#else
   if (comp == "gcc" || comp == "clang") {
-    return std::make_unique<LinuxGccProvider>(shell, comp, version);
+    return std::make_unique<PosixToolchainProvider>(shell, comp, version);
   }
-#endif  // _WIN32
+#endif
   return nullptr;
 }
 }  // namespace sniffercommit::infrastructure
