@@ -39,12 +39,14 @@ domain::ports::ToolchainPackage PosixToolchainProvider::resolve_package() const 
   // binaries exist. GCC has no standard binary distribution on POSIX.
   if (compiler_ == "clang" && version_ != "latest" && !version_.empty()) {
     pkg.download_url_ = is_macos()
-        ? fmt::format("https://github.com/llvm/llvm-project/releases/download/"
-                       "llvmorg-{}/clang+llvm-{}-arm64-apple-darwin.tar.xz",
-                       version_, version_)
-        : fmt::format("https://github.com/llvm/llvm-project/releases/download/"
-                       "llvmorg-{}/clang+llvm-{}-x86_64-linux-gnu-ubuntu-22.04.tar.xz",
-                       version_, version_);
+                            ? fmt::format(
+                                  "https://github.com/llvm/llvm-project/releases/download/"
+                                  "llvmorg-{}/clang+llvm-{}-arm64-apple-darwin.tar.xz",
+                                  version_, version_)
+                            : fmt::format(
+                                  "https://github.com/llvm/llvm-project/releases/download/"
+                                  "llvmorg-{}/clang+llvm-{}-x86_64-linux-gnu-ubuntu-22.04.tar.xz",
+                                  version_, version_);
     pkg.archive_type_ = "tar.xz";
   }
   return pkg;
@@ -82,9 +84,9 @@ domain::ports::ToolchainInstallResult PosixToolchainProvider::install(
   auto pm = detect();
   if (pm == PkgMgr::Unknown) {
     result.error_message_ = is_macos()
-        ? "No supported package manager found (Homebrew or MacPorts).\n"
-          "  Install Xcode Command Line Tools: xcode-select --install"
-        : "No supported package manager found (apt, dnf, pacman, zypper)";
+                                ? "No supported package manager found (Homebrew or MacPorts).\n"
+                                  "  Install Xcode Command Line Tools: xcode-select --install"
+                                : "No supported package manager found (apt, dnf, pacman, zypper)";
     return result;
   }
 
