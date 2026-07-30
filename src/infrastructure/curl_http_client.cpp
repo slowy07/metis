@@ -6,7 +6,6 @@
 
 #include "sniffercommit/domain/ports/http_client.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
 
 namespace sniffercommit::infrastructure {
 CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell) : shell_(shell) {}
@@ -27,15 +26,13 @@ domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
   if (has_curl()) {
     std::string cmd = fmt::format(R"(curl -Lf -o "{}" "{}")", dest_path.string(), url);
     auto exec_result = shell_->exec_captured(cmd);
-
     if (exec_result.exit_code_ != 0) {
       result.error_message_ =
           fmt::format("curl failed (exit {}): {}", exec_result.exit_code_, exec_result.output_);
       return result;
     }
   } else if (has_wget()) {
-    std::string cmd = fmt::format(R"(wget -o "{}" "{}")", dest_path.string(), url);
-
+    std::string cmd = fmt::format(R"(wget -O "{}" "{}")", dest_path.string(), url);
     auto exec_result = shell_->exec_captured(cmd);
     if (exec_result.exit_code_ != 0) {
       result.error_message_ =

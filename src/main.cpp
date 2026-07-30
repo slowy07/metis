@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
@@ -17,6 +18,7 @@
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
+#include "sniffercommit/domain/ports/toolchain_provider.hpp"
 #include "sniffercommit/domain/workflow.hpp"
 #include "sniffercommit/infrastructure/cli_git_repository.hpp"
 #include "sniffercommit/infrastructure/os_file_system.hpp"
@@ -292,17 +294,22 @@ int main(int argc, char** argv) {
       return run_use_case.execute(cfg, opts);
     }
 
-    if (subcmd == "install-gcc") {
+    if (subcmd == "install-compiler") {
+      std::string compiler = "gcc";
       std::string version;
+      std::string cpp_standard_str = "20";
       std::string prefix;
       bool force = false;
       bool dry_run = false;
 
-      for (size_t i = 0; i < args.size(); ++i) {
+      for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
-
-        if (arg == "--version" && i + 1 < args.size()) {
+        if (arg == "--compiler" && i + 1 < args.size()) {
+          compiler = args[++i];
+        } else if (arg == "--version" && i + 1 < args.size()) {
           version = args[++i];
+        } else if (arg == "--cpp-standard" && i + 1 < args.size()) {
+          cpp_standard_str = args[++i];
         } else if (arg == "--prefix" && i + 1 < args.size()) {
           prefix = args[++i];
         } else if (arg == "--force") {
@@ -312,12 +319,31 @@ int main(int argc, char** argv) {
         }
       }
 
+      domain::ports::CppStandard cpp_standard = domain::ports::CppStandard::CPP_20;
+      if (cpp_standard_str == "20") {
+        cpp_standard = domain::ports::CppStandard::CPP_17;
+      } else if (cpp_standard_str == "20") {
+        cpp_standard = domain::ports::CppStandard::CPP_20;
+      } else if (cpp_standard_str == "23") {
+        cpp_standard = domain::ports::CppStandard::CPP_23;
+      } else {
+        std::cerr << "[ERROR] Invalid --cpp-standard. use 17, 20, or 23\n";
+        return static_cast<int>(domain::ExitCode::INVALID_ARGUMENTS);
+      }
+
       auto provider =
           infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
 
       if (!provider) {
         std::cerr << "[ERROR] GCC installation is not supported on this platform\n";
         return static_cast<int>(domain::ExitCode::UNSUPPORTED_PLATFORM);
+      }
+
+      if (!provider->supports_cpp_standard(cpp_standard)) {
+        auto max_std = provider->max_supported_standard();
+        std::cerr << "[ERROR] C++ " << cpp_standard_str << " is not supported by this compiler "
+                  << "Max supported: C++ " << static_cast<int>(max_std) << ".\n";
+        return static_cast<int>(domain::ExitCode::UNSUPPORTED_CPP_STANDARD);
       }
 
       std::unique_ptr<domain::ports::IArchiveExtractor> extractor;
@@ -329,7 +355,9 @@ int main(int argc, char** argv) {
       auto http_client = std::make_unique<infrastructure::CurlHttpClient>(shell.get());
 
       application::InstallToolchainOptions opts;
+      opts.compiler_ = compiler;
       opts.version_ = version;
+      opts.cpp_standard_ = cpp_standard;
       opts.install_prefix_ = prefix;
       opts.force_ = force;
       opts.dry_run_ = dry_run;
@@ -349,9 +377,9 @@ int main(int argc, char** argv) {
         return static_cast<int>(domain::ExitCode::TOOLCHAIN_INSTALL_ERROR);
       }
 
-      std::cout << "[INFO] GCC " << result.version_ << " installed at " << result.installed_path_
-                << "\n";
-      return static_cast<int>(domain::ExitCode::SUCCESS);
+      std::cout << "[INFO] " << compiler << " " << result.version_ << " (C++ "
+                << static_cast<int>(result.installed_cpp_standard_) << ")" << " installed at "
+                << result.installed_path_ << "\n";
     }
 
     app.show_help();

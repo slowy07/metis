@@ -19,6 +19,7 @@ enum class ExitCode : std::uint8_t {
   WORKFLOW_GENERATION_ERROR = 10,
   TOOLCHAIN_INSTALL_ERROR = 11,
   UNSUPPORTED_PLATFORM = 12,
+  UNSUPPORTED_CPP_STANDARD = 13,
 };
 
 }  // namespace sniffercommit::domain

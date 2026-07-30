@@ -18,6 +18,15 @@ InstallToolchainUseCase::InstallToolchainUseCase(
 InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOptions& opts) {
   InstallToolchainResult result;
 
+  if (!provider_->supports_cpp_standard(opts.cpp_standard_)) {
+    result.error_message_ = fmt::format(
+        "The requested C++{} standard is not supported by this compiler/version. "
+        "Maximum supported: C++{}.",
+        static_cast<int>(opts.cpp_standard_),
+        static_cast<int>(provider_->max_supported_standard()));
+    return result;
+  }
+
   if (provider_->is_installed() && !opts.force_) {
     auto ver = provider_->get_version();
     result.success_ = true;

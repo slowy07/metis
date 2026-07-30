@@ -36,6 +36,12 @@ struct MockProvider : domain::ports::IToolchainProvider {
             .version_ = "12.3.0",
             .error_message_ = ""};
   }
+  [[nodiscard]] bool supports_cpp_standard(domain::ports::CppStandard /*standard*/) const override {
+    return true;
+  }
+  [[nodiscard]] domain::ports::CppStandard max_supported_standard() const override {
+    return domain::ports::CppStandard::CPP_23;
+  }
   [[nodiscard]] std::string description() const override { return desc_; }
 };
 

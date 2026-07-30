@@ -18,6 +18,7 @@ struct InstallToolchainOptions {
   std::filesystem::path install_prefix_;
   bool force_ = false;
   bool dry_run_ = false;
+  domain::ports::CppStandard cpp_standard_ = domain::ports::CppStandard::CPP_20;
 };
 
 struct InstallToolchainResult {
@@ -26,6 +27,7 @@ struct InstallToolchainResult {
   std::string installed_path_;
   std::string version_;
   std::string error_message_;
+  domain::ports::CppStandard installed_cpp_standard_ = domain::ports::CppStandard::CPP_20;
 };
 
 class InstallToolchainUseCase {

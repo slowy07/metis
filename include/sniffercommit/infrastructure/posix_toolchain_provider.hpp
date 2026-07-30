@@ -23,6 +23,9 @@ class PosixToolchainProvider : public domain::ports::IToolchainProvider {
       const std::filesystem::path& archive_path) override;
   [[nodiscard]] std::string description() const override;
 
+  [[nodiscard]] bool supports_cpp_standard(domain::ports::CppStandard standard) const override;
+  [[nodiscard]] domain::ports::CppStandard max_supported_standard() const override;
+
  private:
   domain::ports::IShellExecutor* shell_;
   std::string compiler_;
@@ -31,7 +34,6 @@ class PosixToolchainProvider : public domain::ports::IToolchainProvider {
   [[nodiscard]] bool is_macos() const;
   [[nodiscard]] bool has(std::string_view cmd) const;
 
-  // ponytail: three package-manager buckets: Debian/derivatives,
   // RPM-based (dnf, zypper), Arch (pacman), macOS (brew, port).
   // Enough for the >95% case; exotic distros go in the Unknown branch.
   enum class PkgMgr : std::uint8_t { Unknown, Apt, Dnf, Pacman, Zypper, Brew, Port };
@@ -39,6 +41,8 @@ class PosixToolchainProvider : public domain::ports::IToolchainProvider {
   [[nodiscard]] std::string install_cmd(PkgMgr pm) const;
   [[nodiscard]] std::string pkg_name(PkgMgr pm) const;
   [[nodiscard]] std::string bin_path(PkgMgr pm) const;
+
+  [[nodiscard]] int parse_major_version() const;
 };
 
 }  // namespace sniffercommit::infrastructure

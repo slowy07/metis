@@ -1,5 +1,5 @@
-#ifndef SNIFFERCOMMIT_DOMAIN_PORTS_HTPP_CLIENT_HPP
-#define SNIFFERCOMMIT_DOMAIN_PORTS_HTPP_CLIENT_HPP
+#ifndef SNIFFERCOMMIT_DOMAIN_PORTS_HTTP_CLIENT_HPP
+#define SNIFFERCOMMIT_DOMAIN_PORTS_HTTP_CLIENT_HPP
 
 #include <filesystem>
 #include <string>
@@ -20,4 +20,4 @@ struct IHttpClient {
 };
 }  // namespace sniffercommit::domain::ports
 
-#endif  // !SNIFFERCOMMIT_DOMAIN_PORTS_HTPP_CLIENT_HPP
+#endif  // !SNIFFERCOMMIT_DOMAIN_PORTS_HTTP_CLIENT_HPP

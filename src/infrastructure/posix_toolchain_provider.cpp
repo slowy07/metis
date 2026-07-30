@@ -35,7 +35,6 @@ domain::ports::ToolchainPackage PosixToolchainProvider::resolve_package() const 
   pkg.name_ = compiler_;
   pkg.version_ = version_.empty() ? "latest" : version_;
   pkg.install_dir_ = "/usr";
-  // ponytail: download_mode is only wired for LLVM/Clang where pre-built
   // binaries exist. GCC has no standard binary distribution on POSIX.
   if (compiler_ == "clang" && version_ != "latest" && !version_.empty()) {
     pkg.download_url_ = is_macos()
@@ -56,7 +55,6 @@ domain::ports::ToolchainInstallResult PosixToolchainProvider::install(
     const std::filesystem::path& archive_path) {
   domain::ports::ToolchainInstallResult result;
 
-  // ponytail: download-mode — archive was downloaded & extracted by
   // InstallToolchainUseCase. Find the compiler binary inside the tarball
   // root. This heuristic (bin/<compiler>) matches LLVM's official tarball
   // layout. Other layouts need a manifest file.
@@ -109,6 +107,38 @@ domain::ports::ToolchainInstallResult PosixToolchainProvider::install(
 
 std::string PosixToolchainProvider::description() const {
   return fmt::format("{} (POSIX)", compiler_);
+}
+
+bool PosixToolchainProvider::supports_cpp_standard(domain::ports::CppStandard standard) const {
+  return static_cast<int>(standard) <= static_cast<int>(max_supported_standard());
+}
+
+domain::ports::CppStandard PosixToolchainProvider::max_supported_standard() const {
+  auto major = parse_major_version();
+  if (major == 0) return domain::ports::CppStandard::CPP_23;
+  if (compiler_ == "gcc") {
+    if (major >= 14) return domain::ports::CppStandard::CPP_23;
+    if (major >= 11) return domain::ports::CppStandard::CPP_20;
+    return domain::ports::CppStandard::CPP_17;
+  }
+  if (major >= 17) return domain::ports::CppStandard::CPP_23;
+  if (major >= 14) return domain::ports::CppStandard::CPP_20;
+  return domain::ports::CppStandard::CPP_17;
+}
+
+int PosixToolchainProvider::parse_major_version() const {
+  if (version_.empty() || version_ == "latest") return 0;
+  try {
+    return std::stoi(version_);
+  } catch (...) {
+    auto dot = version_.find('.');
+    if (dot == std::string::npos) return 0;
+    try {
+      return std::stoi(version_.substr(0, dot));
+    } catch (...) {
+      return 0;
+    }
+  }
 }
 
 bool PosixToolchainProvider::is_macos() const {
@@ -168,7 +198,6 @@ std::string PosixToolchainProvider::install_cmd(PkgMgr pm) const {
 }
 
 std::string PosixToolchainProvider::pkg_name(PkgMgr pm) const {
-  // ponytail: brew uses 'llvm' for clang (it provides the llvm formula);
   // port uses 'clang'. Linux package names are uniformly 'gcc' or 'clang'.
   if (pm == PkgMgr::Brew) {
     return "llvm";

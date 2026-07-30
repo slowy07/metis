@@ -21,6 +21,9 @@ class WindowsGccProvider : public domain::ports::IToolchainProvider {
       const std::filesystem::path& archive_path) override;
   [[nodiscard]] std::string description() const override;
 
+  [[nodiscard]] bool supports_cpp_standard(domain::ports::CppStandard standard) const override;
+  [[nodiscard]] domain::ports::CppStandard max_supported_standard() const override;
+
  private:
   domain::ports::IShellExecutor* shell_;
   domain::ports::IFileSystem* fs_;
@@ -29,6 +32,7 @@ class WindowsGccProvider : public domain::ports::IToolchainProvider {
 
   [[nodiscard]] std::filesystem::path default_install_prefix() const;
   [[nodiscard]] std::string build_download_url() const;
+  [[nodiscard]] int parse_major_version() const;
 };
 }  // namespace sniffercommit::infrastructure
 
