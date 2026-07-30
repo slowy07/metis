@@ -40,7 +40,6 @@ target_compile_features(sniffercommit_tests PRIVATE cxx_std_20)
 # Make sure tests can find the generated config header
 target_include_directories(sniffercommit_tests PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
-# ponytail: single compile definition instead of a runtime search loop
 target_compile_definitions(sniffercommit_tests PRIVATE
     SNIFFERCOMMIT_BINARY_PATH="${CMAKE_BINARY_DIR}/bin/sniffercommit"
 )

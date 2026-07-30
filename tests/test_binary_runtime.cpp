@@ -2,7 +2,6 @@
 
 #include <cstdlib>
 
-// ponytail: exit-code-only smoke tests. Verifies the binary links, loads,
 // and parses CLI args. Output content assertions add complexity without
 // catching more integration bugs — if --help silently became --hel, the
 // exit code would change or the parser would crash.
