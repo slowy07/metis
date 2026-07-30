@@ -6,10 +6,12 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
 #include "sniffercommit/application/init_use_case.hpp"
+#include "sniffercommit/application/install_toolchain_use_case.hpp"
 #include "sniffercommit/application/install_use_case.hpp"
 #include "sniffercommit/application/run_checks_use_case.hpp"
 #include "sniffercommit/argparse.hpp"
@@ -20,6 +22,13 @@
 #include "sniffercommit/infrastructure/os_file_system.hpp"
 #include "sniffercommit/infrastructure/process_shell_executor.hpp"
 #include "sniffercommit/infrastructure/toml_config_repository.hpp"
+#include "sniffercommit/infrastructure/toolchain_factory.hpp"
+#ifdef _WIN32
+#include "sniffercommit/infrastructure/zip_archive_extractor.hpp"
+#endif  // _WIN32
+#include "sniffercommit/domain/ports/archive_extractor.hpp"
+#include "sniffercommit/infrastructure/curl_http_client.hpp"
+#include "sniffercommit/infrastructure/tar_archive_extractor.hpp"
 #include "sniffercommit/presentation/interactive_init.hpp"
 
 namespace {
@@ -254,7 +263,7 @@ int main(int argc, char** argv) {
         if (arg == "run") continue;
         if (arg == "--all-files")
           all_files = true;
-        else if (arg == "--verbose" || arg == "-V")
+        else if (arg == "--verbose" || arg == "-V" || arg == "--detail")
           verbose = true;
         else if (arg == "--dry-run" || arg == "-n")
           dry_run = true;
@@ -281,6 +290,68 @@ int main(int argc, char** argv) {
       application::RunChecksUseCase run_use_case(std::move(shell), std::move(git_repo),
                                                  std::move(fs));
       return run_use_case.execute(cfg, opts);
+    }
+
+    if (subcmd == "install-gcc") {
+      std::string version;
+      std::string prefix;
+      bool force = false;
+      bool dry_run = false;
+
+      for (size_t i = 0; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+
+        if (arg == "--version" && i + 1 < args.size()) {
+          version = args[++i];
+        } else if (arg == "--prefix" && i + 1 < args.size()) {
+          prefix = args[++i];
+        } else if (arg == "--force") {
+          force = true;
+        } else if (arg == "--dry-run" || arg == "-n") {
+          dry_run = true;
+        }
+      }
+
+      auto provider =
+          infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
+
+      if (!provider) {
+        std::cerr << "[ERROR] GCC installation is not supported on this platform\n";
+        return static_cast<int>(domain::ExitCode::UNSUPPORTED_PLATFORM);
+      }
+
+      std::unique_ptr<domain::ports::IArchiveExtractor> extractor;
+#ifdef _WIN32
+      extractor = std::make_unique<infrastructure::ZipArchiveExtractor>(shell.get());
+#else
+      extractor = std::make_unique<infrastructure::TarArchiveExtractor>(shell.get());
+#endif  // _WIN32
+      auto http_client = std::make_unique<infrastructure::CurlHttpClient>(shell.get());
+
+      application::InstallToolchainOptions opts;
+      opts.version_ = version;
+      opts.install_prefix_ = prefix;
+      opts.force_ = force;
+      opts.dry_run_ = dry_run;
+
+      application::InstallToolchainUseCase use_case(std::move(provider), std::move(http_client),
+                                                    std::move(extractor), std::move(fs));
+
+      auto result = use_case.execute(opts);
+
+      if (result.was_already_installed_) {
+        std::cout << "[INFO] " << result.error_message_ << "\n";
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
+
+      if (!result.success_) {
+        std::cerr << "[ERROR] " << result.error_message_ << "\n";
+        return static_cast<int>(domain::ExitCode::TOOLCHAIN_INSTALL_ERROR);
+      }
+
+      std::cout << "[INFO] GCC " << result.version_ << " installed at " << result.installed_path_
+                << "\n";
+      return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 
     app.show_help();

@@ -270,11 +270,11 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     }
 
     auto result = shell->exec_captured(full_cmd);
-    int code = interpret_exit_code(result.exit_code, check.command);
+    int code = interpret_exit_code(result.exit_code_, check.command);
 
     if (is_interpreter_failure(code)) {
       overall_exit = code;
-      accumulated_output = result.output;
+      accumulated_output = result.output_;
     }
   } else {
     for (const auto& file_name : matched_files) {
@@ -283,11 +283,11 @@ CheckResult run_check_for_files(const domain::config::Check& check,
         printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
       }
       auto res = shell->exec_captured(full_cmd);
-      int code = interpret_exit_code(res.exit_code, check.command);
+      int code = interpret_exit_code(res.exit_code_, check.command);
       if (is_interpreter_failure(code)) {
         overall_exit = code;
-        if (!res.output.empty()) {
-          accumulated_output += res.output;
+        if (!res.output_.empty()) {
+          accumulated_output += res.output_;
           if (!accumulated_output.empty() && accumulated_output.back() != '\n') {
             accumulated_output += '\n';
           }
@@ -567,7 +567,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
 
     auto fmt_result = shell_->exec_captured(cmd);
 
-    if (fmt_result.exit_code != 0) {
+    if (fmt_result.exit_code_ != 0) {
       exit_code = 1;
       printer.print_file_result(file, "Failed");
       continue;
@@ -576,7 +576,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
     // git diff --quiet returns 0 if no changes, non-zero if file was modified.
     // This tells us whether clang-format actually changed anything.
     auto diff_result = shell_->exec_captured("git diff --quiet " + util::shell_escape(file));
-    if (diff_result.exit_code != 0) {
+    if (diff_result.exit_code_ != 0) {
       ++formatted_count;
       printer.print_file_result(file, "Formatted");
     } else {

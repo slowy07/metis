@@ -23,7 +23,7 @@ struct IFileSystem {
                                              std::filesystem::perms perms,
                                              std::filesystem::perm_options opts) = 0;
   [[nodiscard]] virtual std::filesystem::path current_path() = 0;
-  [[nodiscard]] virtual std::filesystem::path absolute(const std::filesystem::path& p) = 0;
+  [[nodiscard]] virtual std::filesystem::path absolute(const std::filesystem::path& path) = 0;
 };
 
 }  // namespace sniffercommit::domain::ports
