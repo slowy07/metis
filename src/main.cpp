@@ -302,7 +302,7 @@ int main(int argc, char** argv) {
         std::string_view arg = args[i];
 
         if (arg == "--version" && i + 1 < args.size()) {
-          prefix = args[++i];
+          version = args[++i];
         } else if (arg == "--prefix" && i + 1 < args.size()) {
           prefix = args[++i];
         } else if (arg == "--force") {
@@ -312,7 +312,7 @@ int main(int argc, char** argv) {
         }
       }
 
-      auto provider = infrastructure::ToolchainFactory::create("gcc", version, *shell, *fs);
+      auto provider = infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
 
       if (!provider) {
         std::cerr << "[ERROR] GCC installation is not supported on this platform\n";

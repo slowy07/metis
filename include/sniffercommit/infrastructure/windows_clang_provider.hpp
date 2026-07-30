@@ -1,8 +1,8 @@
-#ifndef SNIFFERCOMMIT_INFRASTRUCTURE_LINUX_GCC_PROVIDER_HPP
-#define SNIFFERCOMMIT_INFRASTRUCTURE_LINUX_GCC_PROVIDER_HPP
+#ifndef SNIFFERCOMMIT_INFRASTRUCTURE_WINDOWS_CLANG_PROVIDER_HPP
+#define SNIFFERCOMMIT_INFRASTRUCTURE_WINDOWS_CLANG_PROVIDER_HPP
 
-#include <cstdint>
-#include <memory>
+#include <filesystem>
+#include <optional>
 #include <string>
 
 #include "sniffercommit/domain/ports/file_system.hpp"
@@ -10,11 +10,10 @@
 #include "sniffercommit/domain/ports/toolchain_provider.hpp"
 
 namespace sniffercommit::infrastructure {
-
-class LinuxGccProvider : public domain::ports::IToolchainProvider {
+class WindowsClangProvider : public domain::ports::IToolchainProvider {
  public:
-  LinuxGccProvider(domain::ports::IShellExecutor* shell, std::string compiler,
-                   std::string version = "");
+  WindowsClangProvider(domain::ports::IShellExecutor* shell, domain::ports::IFileSystem* fs,
+                       std::string version = "");
 
   [[nodiscard]] bool is_installed() const override;
   [[nodiscard]] std::optional<std::string> get_version() const override;
@@ -25,15 +24,13 @@ class LinuxGccProvider : public domain::ports::IToolchainProvider {
 
  private:
   domain::ports::IShellExecutor* shell_;
-  std::string compiler_;
+  domain::ports::IFileSystem* fs_;
   std::string version_;
+  std::filesystem::path install_prefix_;
 
-  enum class PackageManager : std::uint8_t { Unknown, Apt, Dnf, Pacman, Zypper };
-
-  [[nodiscard]] PackageManager detect_package_manager() const;
-  [[nodiscard]] std::string install_command(PackageManager pm) const;
-  [[nodiscard]] std::string package_name(PackageManager pm) const;
+  [[nodiscard]] std::filesystem::path default_install_prefix() const;
+  [[nodiscard]] std::string build_download_url() const;
 };
 }  // namespace sniffercommit::infrastructure
 
-#endif  // !SNIFFERCOMMIT_INFRASTRUCTURE_LINUX_GCC_PROVIDER_HPP
+#endif  // !SNIFFERCOMMIT_INFRASTRUCTURE_WINDOWS_CLANG_PROVIDER_HPP

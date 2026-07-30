@@ -141,6 +141,9 @@ set(SNIFFERCOMMIT_SOURCES
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp
+  # ponytail: platform guards — only compile providers for their native OS
+  $<$<PLATFORM_ID:Darwin>:src/infrastructure/macos_clang_provider.cpp>
+  $<$<PLATFORM_ID:Windows>:src/infrastructure/windows_clang_provider.cpp>
 )
 
 set(SNIFFERCOMMIT_HEADERS
@@ -166,8 +169,10 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/infrastructure/cli_git_repository.hpp
   include/sniffercommit/infrastructure/curl_http_client.hpp
   include/sniffercommit/infrastructure/linux_gcc_provider.hpp
+  include/sniffercommit/infrastructure/macos_clang_provider.hpp
   include/sniffercommit/infrastructure/tar_archive_extractor.hpp
   include/sniffercommit/infrastructure/toolchain_factory.hpp
+  include/sniffercommit/infrastructure/windows_clang_provider.hpp
   include/sniffercommit/infrastructure/windows_gcc_provider.hpp
   include/sniffercommit/infrastructure/zip_archive_extractor.hpp
   include/sniffercommit/generators/clang_format_generator.hpp
