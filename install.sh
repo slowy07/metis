@@ -3,7 +3,7 @@
 #
 # Usage:
 #   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
-#   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.20
+#   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.26
 #   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- --force
 set -eu
 
@@ -48,7 +48,7 @@ sniffercommit install script
 Usage:
   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- --force
-  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.20
+  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.26
 
 Options:
   -h, --help              Print this help and exit
@@ -58,7 +58,7 @@ Options:
       --force-build       Rebuild from source even if a prebuilt binary exists
   --no-modify-path        Don't attempt to add the install dir to PATH
   --uninstall             Remove a previously installed sniffercommit
-  <version>               Install a specific tag, e.g. v0.3.20 (default: latest)
+  <version>               Install a specific tag, e.g. v0.3.26 (default: latest)
 
 Environment variables:
   SNIFFERCOMMIT_INSTALL_DIR   Override the install directory
@@ -67,7 +67,7 @@ EOF
     exit 0
     ;;
   --version)
-    echo "sniffercommit installer 0.3.20"
+    echo "sniffercommit installer 0.3.26"
     exit 0
     ;;
   --verbose) VERBOSE=true ;;
