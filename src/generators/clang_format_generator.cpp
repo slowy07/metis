@@ -15,13 +15,28 @@ std::string generate_clang_format_style(std::string_view style) {
     lower += static_cast<char>(std::tolower(static_cast<unsigned char>(chr)));
   }
 
-  if (lower == "google") return "Google";
-  if (lower == "llvm") return "LLVM";
-  if (lower == "chromium") return "Chromium";
-  if (lower == "mozilla") return "Mozilla";
-  if (lower == "webkit") return "WebKit";
-  if (lower == "microsoft") return "Microsoft";
-  if (lower == "gnu") return "GNU";
+  if (lower == "google") {
+    return "Google";
+  }
+  if (lower == "llvm") {
+    return "LLVM";
+  }
+  if (lower == "chromium") {
+    return "Chromium";
+  }
+  if (lower == "mozilla") {
+    return "Mozilla";
+  }
+  if (lower == "webkit") {
+    return "WebKit";
+  }
+  if (lower == "microsoft") {
+    return "Microsoft";
+  }
+  if (lower == "gnu") {
+    return "GNU";
+  }
+
   throw std::runtime_error("Unknown formatter style: " + std::string(style));
 }
 
@@ -46,7 +61,7 @@ ColumnLimit: {}
 PointerAlignment: {}
 BreakBeforeBraces: {}
 
-Standard: Cpp11
+Standard: Cpp20
 
 SortIncludes: true
 ReflowComments: true

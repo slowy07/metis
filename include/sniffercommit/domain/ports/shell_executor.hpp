@@ -5,11 +5,15 @@
 
 namespace sniffercommit::domain::ports {
 
+// Result of a command execution that captures both output and exit code.
 struct CapturedResult {
-  int exit_code;
-  std::string output;
+  int exit_code_;
+  std::string output_;
 };
 
+// Interface for executing shell commands.
+// lazy: only one implementation (ProcessShellExecutor). Same reasoning
+// as IConfigRepository — interface for potential test mocking.
 struct IShellExecutor {
   virtual ~IShellExecutor() = default;
 

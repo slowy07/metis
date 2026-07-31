@@ -2,14 +2,13 @@
 
 #include <fmt/format.h>
 
-#include <memory>
-#include <stdexcept>
 #include <string>
 
 #include "sniffercommit/domain/config.hpp"
 
 namespace sniffercommit::domain::workflow {
 
+// Checks if the project config includes clang-format checks.
 bool requires_clang_format(const config::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-format");
 }
@@ -18,17 +17,62 @@ bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept {
   return cfg.has_command("clang-tidy");
 }
 
-class GithubActionsGenerator : public IWorkflowGenerator {
- public:
-  [[nodiscard]] std::string generate(const config::ProjectConfig& cfg,
-                                     const WorkflowConfig& wf_cfg) const override {
-    bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
-    bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
+namespace {
 
-    std::string setup_step = generate_setup_step(need_clang_format, need_clang_tidy);
+// Generates the GitHub Actions setup step that installs clang-format/clang-tidy.
+// Only added if the config uses these tools.
+std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy) {
+  if (!need_clang_format && !need_clang_tidy) {
+    return "";
+  }
 
-    return fmt::format(
-        R"yaml(name: sniffercommit
+  std::string packages;
+  if (need_clang_format) packages += "clang-format";
+  if (need_clang_tidy) packages += (packages.empty() ? "" : " ") + std::string("clang-tidy");
+
+  return fmt::format(
+      R"yaml(      - name: Install LLVM tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y {packages}
+)yaml",
+      fmt::arg("packages", packages));
+}
+
+// Generates the GitLab CI before_script that installs clang-format/clang-tidy.
+// lazy: same logic as generate_gha_setup_step but different YAML format.
+// Could be unified, but the YAML templates are different enough that
+// keeping them separate is clearer.
+std::string generate_gitlab_before_script(bool need_clang_format, bool need_clang_tidy) {
+  if (!need_clang_format && !need_clang_tidy) {
+    return "";
+  }
+
+  std::string pkgs;
+  if (need_clang_format) pkgs += " clang-format";
+  if (need_clang_tidy) pkgs += " clang-tidy";
+
+  return fmt::format(
+      R"yaml(  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq{packages}
+)yaml",
+      fmt::arg("packages", pkgs));
+}
+
+}  // namespace
+
+// Generates a GitHub Actions workflow YAML.
+// Triggers on push and PR to all branches, with concurrency control.
+// The workflow checks out the repo, optionally installs LLVM tools,
+// then runs sniffercommit on all files.
+std::string generate_github_actions(const config::ProjectConfig& cfg,
+                                    const WorkflowConfig& wf_cfg) {
+  bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
+  bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
+
+  return fmt::format(
+      R"yaml(name: sniffercommit
 
 on:
   push:
@@ -65,54 +109,20 @@ jobs:
           set -euo pipefail
           {binary_path} run --all-files --verbose
 )yaml",
-        fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
-        fmt::arg("binary_path", wf_cfg.binary_path), fmt::arg("setup_step", setup_step));
-  }
+      fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
+      fmt::arg("binary_path", wf_cfg.binary_path),
+      fmt::arg("setup_step", generate_gha_setup_step(need_clang_format, need_clang_tidy)));
+}
 
- private:
-  [[nodiscard]] std::string generate_setup_step(bool need_clang_format,
-                                                bool need_clang_tidy) const {
-    if (!need_clang_format && !need_clang_tidy) {
-      return "";
-    }
+// Generates a GitLab CI pipeline YAML.
+// Single-stage pipeline that runs sniffercommit on all files.
+// Uses ubuntu:latest image, installs LLVM tools if needed.
+std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
+  bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
+  bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
 
-    std::vector<std::string> packages;
-    if (need_clang_format) {
-      packages.emplace_back("clang-format");
-    }
-    if (need_clang_tidy) {
-      packages.emplace_back("clang-tidy");
-    }
-
-    std::string package_list;
-    for (size_t i = 0; i < packages.size(); ++i) {
-      if (i > 0) {
-        package_list += " ";
-      }
-      package_list += packages[i];
-    }
-
-    return fmt::format(
-        R"yaml(      - name: Install LLVM tooling
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y {packages}
-)yaml",
-        fmt::arg("packages", package_list));
-  }
-};
-
-class GitLabCIGenerator : public IWorkflowGenerator {
- public:
-  [[nodiscard]] std::string generate(const config::ProjectConfig& cfg,
-                                     const WorkflowConfig& wf_cfg) const override {
-    bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
-    bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
-
-    std::string before_script = generate_before_script(need_clang_format, need_clang_tidy);
-
-    return fmt::format(
-        R"yaml(stages:
+  return fmt::format(
+      R"yaml(stages:
   - check
 
 {job_name}:
@@ -127,67 +137,21 @@ class GitLabCIGenerator : public IWorkflowGenerator {
     - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 )yaml",
-        fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
-        fmt::arg("binary_path", wf_cfg.binary_path), fmt::arg("before_script", before_script));
-  }
-
- private:
-  [[nodiscard]] static std::string generate_before_script(bool need_clang_format,
-                                                          bool need_clang_tidy) {
-    if (!need_clang_format && !need_clang_tidy) {
-      return "";
-    }
-
-    std::string pkgs;
-    if (need_clang_format) pkgs += " clang-format";
-    if (need_clang_tidy) pkgs += " clang-tidy";
-
-    return fmt::format(
-        R"yaml(  before_script:
-    - apt-get update -qq
-    - apt-get install -y -qq{packages}
-)yaml",
-        fmt::arg("packages", pkgs));
-  }
-};
-
-std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform) {
-  switch (platform) {
-    default:
-    case Platform::GithubAction:
-      return std::make_unique<GithubActionsGenerator>();
-    case Platform::GitLabCI:
-      return std::make_unique<GitLabCIGenerator>();
-    case Platform::AzureDevOps:
-      throw std::runtime_error("Azure DevOps generator is not yet implemented");
-    case Platform::Generic:
-      throw std::runtime_error(
-          "Generic platform requires explicit CI/CD target (e.g GithubAction)");
-      break;
-  }
-
-  throw std::runtime_error("Unknown workflow platform detected");
+      fmt::arg("job_name", wf_cfg.job_name), fmt::arg("timeout", wf_cfg.timeout_minutes),
+      fmt::arg("binary_path", wf_cfg.binary_path),
+      fmt::arg("before_script", generate_gitlab_before_script(need_clang_format, need_clang_tidy)));
 }
 
-std::string generate_github_actions(const config::ProjectConfig& cfg,
-                                    const WorkflowConfig& wf_cfg) {
-  return GithubActionsGenerator().generate(cfg, wf_cfg);
-}
-
-std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
-  return GitLabCIGenerator().generate(cfg, wf_cfg);
-}
-
+// Dispatches to the appropriate platform-specific generator.
+// lazy: switch with __builtin_unreachable() for GCC/Clang to suppress
+// "not all control paths return a value" warning. MSVC path returns
+// a default as fallback.
 std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
   switch (wf_cfg.platform) {
     case Platform::GithubAction:
       return generate_github_actions(cfg, wf_cfg);
     case Platform::GitLabCI:
       return generate_gitlab_ci(cfg, wf_cfg);
-    case Platform::AzureDevOps:
-      throw std::runtime_error("Azure DevOps not yet implemented");
-    case Platform::Generic:
-      return generate_github_actions(cfg, wf_cfg);
   }
 #if defined(__GNUC__) || defined(__clang__)
   __builtin_unreachable();

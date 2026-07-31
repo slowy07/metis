@@ -11,13 +11,29 @@
 #include "sniffercommit/generators/clang_format_generator.hpp"
 #include "sniffercommit/generators/clang_tidy_generator.hpp"
 #include "sniffercommit/generators/cmake_generator.hpp"
+#include "sniffercommit/generators/conan_generator.hpp"
 
 namespace sniffercommit::application {
 
+// Creates an InitUseCase with ownership of its dependencies.
+// config_repo is used for find_git_root() to resolve relative paths.
+// file_system is used for all file writes (config, .clang-format, etc.)
 InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> config_repo,
                          std::unique_ptr<domain::ports::IFileSystem> file_system)
     : config_repo_(std::move(config_repo)), file_system_(std::move(file_system)) {}
 
+// Main entry point for project initialization.
+//
+// Generates configuration files based on InitOptions:
+//   1. .sniffercommit.toml  — always (main config)
+//   2. .clang-format        — always (formatter config)
+//   3. .clang-tidy          — if --enable-clang-tidy
+//   4. src/main.cpp         — if --generate-src (default with --enable-cmake)
+//   5. CMakeLists.txt       — if --enable-cmake
+//   6. conanfile.py         — if --enable-conan (requires --enable-cmake)
+//
+// Each file write is independent; failure on one doesn't prevent others.
+// The result struct accumulates paths and any error messages.
 InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOptions& opts) {
   InitResult result;
   std::string project_name =
@@ -26,6 +42,9 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
   // Write .sniffercommit.toml
   auto config_path = cwd / ".sniffercommit.toml";
   std::string config_content;
+  // Resolve repo root for relative path references in config.
+  // e.g. .clang-tidy path in the clang-tidy check args.
+  // Falls back to cwd if not in a git repo.
   std::filesystem::path repo_root = cwd;
 
   try {
@@ -115,7 +134,7 @@ int main() {
       auto cmake_content = generators::generate_cmake_lists(
           project_name, opts.cmake_cpp_standard, opts.cmake_target_type, opts.cmake_enable_testing,
           opts.cmake_enable_sanitizers, opts.cmake_enable_warnings, opts.enable_clang_tidy,
-          opts.dependencies);
+          opts.enable_conan, opts.dependencies);
       if (!file_system_->write_file(cmake_path, cmake_content)) {
         result.error_message = "Failed to create " + cmake_path.string();
         return result;
@@ -125,6 +144,23 @@ int main() {
       return result;
     }
     result.cmake_config_path = cmake_path.string();
+  }
+
+  // Write conanfile.py
+  if (opts.enable_conan) {
+    auto conan_path = cwd / "conanfile.py";
+    try {
+      auto conan_content = generators::generate_conanfile(project_name, opts.cmake_enable_testing,
+                                                          opts.dependencies);
+      if (!file_system_->write_file(conan_path, conan_content)) {
+        result.error_message = "Failed to create " + conan_path.string();
+        return result;
+      }
+    } catch (const std::exception& e) {
+      result.error_message = std::string("Failed to generate conanfile.py: ") + e.what();
+      return result;
+    }
+    result.conan_config_path = conan_path.string();
   }
 
   result.success = true;

@@ -6,49 +6,58 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
 #include "sniffercommit/application/init_use_case.hpp"
+#include "sniffercommit/application/install_toolchain_use_case.hpp"
 #include "sniffercommit/application/install_use_case.hpp"
 #include "sniffercommit/application/run_checks_use_case.hpp"
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
+#include "sniffercommit/domain/ports/toolchain_provider.hpp"
 #include "sniffercommit/domain/workflow.hpp"
 #include "sniffercommit/infrastructure/cli_git_repository.hpp"
 #include "sniffercommit/infrastructure/os_file_system.hpp"
 #include "sniffercommit/infrastructure/process_shell_executor.hpp"
 #include "sniffercommit/infrastructure/toml_config_repository.hpp"
+#include "sniffercommit/infrastructure/toolchain_factory.hpp"
+#ifdef _WIN32
+#include "sniffercommit/infrastructure/zip_archive_extractor.hpp"
+#endif  // _WIN32
+#include "sniffercommit/domain/ports/archive_extractor.hpp"
+#include "sniffercommit/infrastructure/curl_http_client.hpp"
+#include "sniffercommit/infrastructure/tar_archive_extractor.hpp"
 #include "sniffercommit/presentation/interactive_init.hpp"
 
 namespace {
 
-struct SafeArgs {
-  std::span<char*> inner;
-
-  char*& at(size_t i) {
-    if (i >= inner.size()) {
-      throw std::runtime_error("BUG: args index out of range");
-    }
-    return inner.data()[i];
-  }
-  [[nodiscard]] size_t size() const { return inner.size(); }
-};
-
-std::string preparse_config_path(SafeArgs& args) {
+// Pre-parses --config/-c from argv before ArgParser runs.
+// This is needed because the config path must be known before loading
+// the config file, but ArgParser processes it as a regular option.
+// lazy: duplicated parsing — ArgParser could support pre-parse hooks,
+// but that's more code for a one-off need.
+std::string preparse_config_path(std::span<char*> args) {
   std::string config_path = ".sniffercommit.toml";
   for (size_t i = 1; i + 1 < args.size(); ++i) {
-    std::string_view arg = args.at(i);
+    std::string_view arg = args[i];
     if ((arg == "-c" || arg == "--config") && i + 1 < args.size()) {
-      config_path = args.at(i + 1);
+      config_path = args[i + 1];
       break;
     }
   }
   return config_path;
 }
 
-bool parse_init_flags(SafeArgs& args, sniffercommit::application::InitOptions& opts) {
+// Manually parses init-specific flags from argv.
+// lazy: ArgParser handles subcommands but not value-bearing options for init.
+// This is a second parser that runs after ArgParser identifies the subcommand.
+// The two parsers could be unified, but ArgParser's add_option template
+// doesn't support all the init flags cleanly.
+bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOptions& opts) {
   auto to_lower = [](std::string s) {
     for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
@@ -67,40 +76,42 @@ bool parse_init_flags(SafeArgs& args, sniffercommit::application::InitOptions& o
   };
 
   for (size_t i = 1; i < args.size(); ++i) {
-    std::string arg = args.at(i);
+    std::string arg = args[i];
     if (arg == "--style" && i + 1 < args.size()) {
-      opts.style = to_lower(args.at(++i));
+      opts.style = to_lower(args[++i]);
     } else if (arg == "--name" && i + 1 < args.size()) {
-      opts.project_name = args.at(++i);
+      opts.project_name = args[++i];
     } else if (arg == "--indent-width" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.indent_width);
+      safe_stoi(args[++i], opts.indent_width);
     } else if (arg == "--column-limit" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.column_limit);
+      safe_stoi(args[++i], opts.column_limit);
     } else if (arg == "--pointer-alignment" && i + 1 < args.size()) {
-      opts.pointer_alignment = args.at(++i);
+      opts.pointer_alignment = args[++i];
     } else if (arg == "--brace-style" && i + 1 < args.size()) {
-      opts.brace_style = args.at(++i);
+      opts.brace_style = args[++i];
     } else if (arg == "--enable-clang-tidy" || arg == "--tidy") {
       opts.enable_clang_tidy = true;
     } else if (arg == "--tidy-preset" && i + 1 < args.size()) {
-      opts.tidy_preset = to_lower(args.at(++i));
+      opts.tidy_preset = to_lower(args[++i]);
     } else if (arg == "--tidy-severity" && i + 1 < args.size()) {
-      opts.tidy_severity = to_lower(args.at(++i));
+      opts.tidy_severity = to_lower(args[++i]);
     } else if (arg == "--tidy-header-filter" && i + 1 < args.size()) {
-      safe_stoi(args.at(++i), opts.tidy_header_filter);
+      safe_stoi(args[++i], opts.tidy_header_filter);
     } else if (arg == "--enable-cmake" || arg == "--cmake") {
       opts.enable_cmake = true;
       opts.generate_source = true;
+    } else if (arg == "--enable-conan") {
+      opts.enable_conan = true;
     } else if (arg == "--cmake-cpp-standard" && i + 1 < args.size()) {
-      opts.cmake_cpp_standard = to_lower(args.at(++i));
+      opts.cmake_cpp_standard = to_lower(args[++i]);
     } else if (arg == "--cmake-target-type" && i + 1 < args.size()) {
-      opts.cmake_target_type = to_lower(args.at(++i));
+      opts.cmake_target_type = to_lower(args[++i]);
     } else if (arg == "--cmake-enable-testing") {
       opts.cmake_enable_testing = true;
     } else if (arg == "--cmake-enable-sanitizers") {
       opts.cmake_enable_sanitizers = true;
     } else if (arg == "--add-dep" && i + 1 < args.size()) {
-      opts.dependencies.emplace_back(args.at(++i));
+      opts.dependencies.emplace_back(args[++i]);
     } else if (arg == "--generate-src") {
       opts.generate_source = true;
     }
@@ -114,8 +125,7 @@ int main(int argc, char** argv) {
   using namespace sniffercommit;
 
   auto argc_sz = static_cast<size_t>(argc);
-  std::span raw_args(argv, argc_sz);
-  SafeArgs args{raw_args};
+  std::span<char*> args(argv, argc_sz);
   std::string config_path = preparse_config_path(args);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
@@ -124,6 +134,7 @@ int main(int argc, char** argv) {
       .add_subcommand("init", "Create default .sniffercommit.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
+      .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
       .add_subcommand("run", "Execute checks on files");
 
   if (!app.parse(argc, argv)) {
@@ -134,6 +145,8 @@ int main(int argc, char** argv) {
     auto subcmd = app.get_subcommand();
 
     if (subcmd == "init") {
+      // Init needs its own filesystem and config repo instances because
+      // it creates files (config, .clang-format, etc.) from templates.
       auto fs = std::make_unique<infrastructure::OsFileSystem>();
       auto config_repo = std::make_unique<infrastructure::TomlConfigRepository>(
           std::make_unique<infrastructure::OsFileSystem>(),
@@ -142,9 +155,13 @@ int main(int argc, char** argv) {
       application::InitOptions opts;
       opts.project_name = fs->current_path().filename().string();
 
+      // Determine if we should run interactive mode:
+      //   - Explicit --interactive/-i flag → interactive
+      //   - No flags at all → interactive (sensible default for new users)
+      //   - Any flags present → CLI-only mode
       bool interactive = false;
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg == "--interactive" || arg == "-i") {
           interactive = true;
           break;
@@ -153,7 +170,7 @@ int main(int argc, char** argv) {
 
       bool has_flags = false;
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg.starts_with("--") || arg.starts_with('-')) {
           has_flags = true;
           break;
@@ -222,7 +239,21 @@ int main(int argc, char** argv) {
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 
+    if (subcmd == "generate-gitlab") {
+      application::GenerateWorkflowUseCase gen_use_case(std::move(fs));
+      if (!gen_use_case.execute(cfg, repo_root, domain::workflow::Platform::GitLabCI)) {
+        std::cerr << "[ERROR] Failed to write GitLab CI workflow\n";
+        return static_cast<int>(domain::ExitCode::WORKFLOW_GENERATION_ERROR);
+      }
+      std::cout << "[INFO] GitLab CI workflow generated at "
+                << (repo_root / ".gitlab-ci.yml").string() << "\n";
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
     if (subcmd == "run") {
+      // Run subcommand: executes checks against files.
+      // Parses its own flags (--all-files, --verbose, --dry-run, --format)
+      // and builds a RunOptions struct for the use case.
       bool all_files = false;
       bool verbose = false;
       bool dry_run = false;
@@ -230,11 +261,11 @@ int main(int argc, char** argv) {
       std::vector<std::string> run_files;
 
       for (size_t i = 1; i < args.size(); ++i) {
-        std::string_view arg = args.at(i);
+        std::string_view arg = args[i];
         if (arg == "run") continue;
         if (arg == "--all-files")
           all_files = true;
-        else if (arg == "--verbose" || arg == "-V")
+        else if (arg == "--verbose" || arg == "-V" || arg == "--detail")
           verbose = true;
         else if (arg == "--dry-run" || arg == "-n")
           dry_run = true;
@@ -261,6 +292,94 @@ int main(int argc, char** argv) {
       application::RunChecksUseCase run_use_case(std::move(shell), std::move(git_repo),
                                                  std::move(fs));
       return run_use_case.execute(cfg, opts);
+    }
+
+    if (subcmd == "install-compiler") {
+      std::string compiler = "gcc";
+      std::string version;
+      std::string cpp_standard_str = "20";
+      std::string prefix;
+      bool force = false;
+      bool dry_run = false;
+
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+        if (arg == "--compiler" && i + 1 < args.size()) {
+          compiler = args[++i];
+        } else if (arg == "--version" && i + 1 < args.size()) {
+          version = args[++i];
+        } else if (arg == "--cpp-standard" && i + 1 < args.size()) {
+          cpp_standard_str = args[++i];
+        } else if (arg == "--prefix" && i + 1 < args.size()) {
+          prefix = args[++i];
+        } else if (arg == "--force") {
+          force = true;
+        } else if (arg == "--dry-run" || arg == "-n") {
+          dry_run = true;
+        }
+      }
+
+      domain::ports::CppStandard cpp_standard = domain::ports::CppStandard::CPP_20;
+      if (cpp_standard_str == "20") {
+        cpp_standard = domain::ports::CppStandard::CPP_17;
+      } else if (cpp_standard_str == "20") {
+        cpp_standard = domain::ports::CppStandard::CPP_20;
+      } else if (cpp_standard_str == "23") {
+        cpp_standard = domain::ports::CppStandard::CPP_23;
+      } else {
+        std::cerr << "[ERROR] Invalid --cpp-standard. use 17, 20, or 23\n";
+        return static_cast<int>(domain::ExitCode::INVALID_ARGUMENTS);
+      }
+
+      auto provider =
+          infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
+
+      if (!provider) {
+        std::cerr << "[ERROR] GCC installation is not supported on this platform\n";
+        return static_cast<int>(domain::ExitCode::UNSUPPORTED_PLATFORM);
+      }
+
+      if (!provider->supports_cpp_standard(cpp_standard)) {
+        auto max_std = provider->max_supported_standard();
+        std::cerr << "[ERROR] C++ " << cpp_standard_str << " is not supported by this compiler "
+                  << "Max supported: C++ " << static_cast<int>(max_std) << ".\n";
+        return static_cast<int>(domain::ExitCode::UNSUPPORTED_CPP_STANDARD);
+      }
+
+      std::unique_ptr<domain::ports::IArchiveExtractor> extractor;
+#ifdef _WIN32
+      extractor = std::make_unique<infrastructure::ZipArchiveExtractor>(shell.get());
+#else
+      extractor = std::make_unique<infrastructure::TarArchiveExtractor>(shell.get());
+#endif  // _WIN32
+      auto http_client = std::make_unique<infrastructure::CurlHttpClient>(shell.get());
+
+      application::InstallToolchainOptions opts;
+      opts.compiler_ = compiler;
+      opts.version_ = version;
+      opts.cpp_standard_ = cpp_standard;
+      opts.install_prefix_ = prefix;
+      opts.force_ = force;
+      opts.dry_run_ = dry_run;
+
+      application::InstallToolchainUseCase use_case(std::move(provider), std::move(http_client),
+                                                    std::move(extractor), std::move(fs));
+
+      auto result = use_case.execute(opts);
+
+      if (result.was_already_installed_) {
+        std::cout << "[INFO] " << result.error_message_ << "\n";
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
+
+      if (!result.success_) {
+        std::cerr << "[ERROR] " << result.error_message_ << "\n";
+        return static_cast<int>(domain::ExitCode::TOOLCHAIN_INSTALL_ERROR);
+      }
+
+      std::cout << "[INFO] " << compiler << " " << result.version_ << " (C++ "
+                << static_cast<int>(result.installed_cpp_standard_) << ")" << " installed at "
+                << result.installed_path_ << "\n";
     }
 
     app.show_help();

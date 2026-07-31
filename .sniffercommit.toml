@@ -4,7 +4,11 @@ name = "sniffercommit"
 [[checks]]
 name = "clang-format"
 command = "clang-format"
-args = ["-i", "--fallback-style=Google", "-style=file"]
+args = [
+  "-i",
+  "--fallback-style=google",
+  "-style=file"
+]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]

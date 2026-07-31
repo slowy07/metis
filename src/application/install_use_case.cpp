@@ -20,6 +20,8 @@ namespace sniffercommit::application {
 
 namespace {
 
+// Escapes special regex characters in a string for use in grep patterns.
+// Used to convert exclude_paths (e.g. "build/") into safe grep patterns.
 std::string regex_escape(const std::string& str) {
   std::string out;
   out.reserve(str.size() * 2);
@@ -51,6 +53,16 @@ std::string regex_escape(const std::string& str) {
 
 constexpr std::string_view k_version = "0.3.20";
 
+// Generates the pre-commit hook bash script.
+// The hook:
+//   1. Checks for SKIP_SNIFFERCOMMIT env var (skip mechanism)
+//   2. Verifies sniffercommit is in PATH
+//   3. Gets staged files via git diff --cached
+//   4. Filters out excluded paths via grep -vE
+//   5. Runs sniffercommit run --staged on the filtered list
+//
+// The exclude pattern is built from config.exclude_paths and escaped
+// for grep's regex syntax.
 std::string generate_hook_content(const domain::config::ProjectConfig& cfg) {
   std::string exclude_pattern = "^.NO_MATCH$";
   if (!cfg.exclude_paths.empty()) {
@@ -111,6 +123,10 @@ exit $EXIT_CODE
       k_version, cfg.project_name, exclude_pattern);
 }
 
+// Validates bash script syntax using `bash -n` (no-exec mode).
+// Writes the content to a temp file, runs bash -n, then cleans up.
+// This prevents installing broken hooks that would fail silently.
+// On Windows, always returns true (bash validation not available).
 bool validate_bash_syntax(const std::string& content) {
 #ifndef _WIN32
   char tmp_template[] = "/tmp/sniffercommit_hook_XXXXXX";
@@ -159,6 +175,15 @@ InstallUseCase::InstallUseCase(std::unique_ptr<domain::ports::IFileSystem> file_
                                std::unique_ptr<domain::ports::IGitRepository> git_repo)
     : file_system_(std::move(file_system)), git_repo_(std::move(git_repo)) {}
 
+// Installs pre-commit hook and/or CI workflow files.
+//
+// Three independent install paths based on config:
+//   1. Local hook (.git/hooks/pre-commit) — if generate_local_hook
+//   2. GitHub Actions (.github/workflows/sniffercommit.yml) — if generate_gha
+//   3. GitLab CI (.gitlab-ci.yml) — if generate_gitlab_ci
+//
+// Each path: validate → create dirs → write file → set permissions (Unix only).
+// Hook permissions are 755 (rwxr-xr-x) so git can execute it.
 InstallResult InstallUseCase::execute(const std::filesystem::path& repo_root,
                                       const domain::config::ProjectConfig& cfg) {
   InstallResult result;
@@ -212,6 +237,21 @@ InstallResult InstallUseCase::execute(const std::filesystem::path& repo_root,
     auto wf_path = wf_dir / "sniffercommit.yml";
     if (!file_system_->write_file(wf_path, wf_content)) {
       result.error_message = "Failed to write Github Action workflow";
+      return result;
+    }
+
+    result.workflow_installed = true;
+    result.workflow_path = wf_path.string();
+  }
+
+  if (cfg.generate_gitlab_ci) {
+    domain::workflow::WorkflowConfig wf_cfg;
+    wf_cfg.platform = domain::workflow::Platform::GitLabCI;
+    auto wf_content = domain::workflow::generate_workflow(cfg, wf_cfg);
+
+    auto wf_path = repo_root / ".gitlab-ci.yml";
+    if (!file_system_->write_file(wf_path, wf_content)) {
+      result.error_message = "Failed to write GitLab CI workflow";
       return result;
     }
 

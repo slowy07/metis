@@ -15,6 +15,10 @@ namespace sniffercommit::infrastructure {
 
 namespace {
 
+// Helper wrappers around toml++ accessors.
+// lazy: these exist because toml++ returns raw pointers that need null checks.
+// toml++ 3.4+ has value_or() for simple cases, but nested table/array access
+// still needs manual null checking.
 toml::node* safe_get(toml::table& tbl, std::string_view key) { return tbl.get(key); }
 
 const toml::node* safe_get(const toml::table& tbl, std::string_view key) { return tbl.get(key); }
@@ -52,6 +56,19 @@ TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileS
                                            std::unique_ptr<domain::ports::IShellExecutor> shell)
     : fs_(std::move(fs)), shell_(std::move(shell)) {}
 
+// Parses a .sniffercommit.toml config file into a ProjectConfig struct.
+//
+// Config structure:
+//   [project]        - project name
+//   [[checks]]       - array of check definitions (name, command, args, patterns)
+//   [exclude]        - paths to exclude from checks
+//   [output]         - which CI workflows to generate
+//   [execution]      - parallel/sequential execution mode
+//
+// Throws std::runtime_error if:
+//   - File doesn't exist
+//   - TOML syntax is invalid
+//   - Config validation fails (empty project name, missing checks, etc.)
 domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::path& path) {
   if (!fs_->exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
@@ -105,9 +122,11 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   if (auto* output = as_table_safe(safe_get(tbl, "output"))) {
     cfg.generate_local_hook = get_bool_safe(*output, "local_hook", true);
     cfg.generate_gha = get_bool_safe(*output, "github_actions", false);
+    cfg.generate_gitlab_ci = get_bool_safe(*output, "gitlab_ci", false);
   } else {
     cfg.generate_local_hook = true;
     cfg.generate_gha = false;
+    cfg.generate_gitlab_ci = false;
   }
 
   if (auto* exec = as_table_safe(safe_get(tbl, "execution"))) {
@@ -123,6 +142,9 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   return cfg;
 }
 
+// Serializes a ProjectConfig back to TOML format.
+// lazy: never called by any code path. Could be used for config migration
+// or CLI-based config editing, but doesn't exist yet. Kept for future use.
 bool TomlConfigRepository::save(const std::filesystem::path& path,
                                 const domain::config::ProjectConfig& cfg) {
   auto fmt_str = [](const std::string& str) -> std::string { return fmt::format("\"{}\"", str); };
@@ -169,7 +191,8 @@ bool TomlConfigRepository::save(const std::filesystem::path& path,
 
   content += "[output]\n";
   content += "local_hook = " + std::string(cfg.generate_local_hook ? "true" : "false") + "\n";
-  content += "github_actions = " + std::string(cfg.generate_gha ? "true" : "false") + "\n\n";
+  content += "github_actions = " + std::string(cfg.generate_gha ? "true" : "false") + "\n";
+  content += "gitlab_ci = " + std::string(cfg.generate_gitlab_ci ? "true" : "false") + "\n\n";
 
   content += "[execution]\n";
   content += "parallel = " + std::string(cfg.parallel ? "true" : "false") + "\n";
@@ -177,6 +200,13 @@ bool TomlConfigRepository::save(const std::filesystem::path& path,
   return fs_->write_file(path, content);
 }
 
+// Finds the git repository root directory.
+// Strategy:
+//   1. Try `git rev-parse --show-toplevel` (fast, works everywhere)
+//   2. Fall back to walking up the directory tree looking for .git/
+//
+// The fallback handles cases where git isn't in PATH but .git exists.
+// lazy: duplicates CliGitRepository::find_repo_root() — one should be deleted.
 std::filesystem::path TomlConfigRepository::find_git_root() {
   try {
     std::string out = shell_->exec("git rev-parse --show-toplevel");

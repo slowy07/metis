@@ -15,6 +15,7 @@ namespace sniffercommit::presentation {
 
 namespace {
 
+// ANSI color codes for terminal output
 constexpr std::string_view bold = "\033[1m";
 constexpr std::string_view dim = "\033[2m";
 constexpr std::string_view green = "\033[32m";
@@ -25,6 +26,8 @@ constexpr std::string_view check = "✓";
 constexpr std::string_view arrow = "→";
 constexpr std::string_view bullet = "•";
 
+// Safe string-to-int conversion with error handling.
+// Returns false if the string isn't a valid integer.
 template <typename T>
 bool safe_stoi(const char* str, T& out) {
   try {
@@ -40,6 +43,8 @@ bool safe_stoi(const char* str, T& out) {
   }
 }
 
+// Prompts the user for a string value with a default.
+// Empty input returns the default value.
 std::string prompt_string(std::string_view label, std::string_view default_val) {
   std::cout << "  " << bold << label << reset << " " << dim << "[" << default_val << "]" << reset
             << ": ";
@@ -51,6 +56,8 @@ std::string prompt_string(std::string_view label, std::string_view default_val) 
   return input;
 }
 
+// Prompts for a boolean (y/n/yes/no/true/false/1/0).
+// Empty input returns the default.
 bool prompt_bool(std::string_view label, bool default_val) {
   std::cout << "  " << bold << label << reset << "  " << dim << "[" << (default_val ? "y" : "n")
             << "]" << reset << ": ";
@@ -66,6 +73,8 @@ bool prompt_bool(std::string_view label, bool default_val) {
   return lower == "y" || lower == "yes" || lower == "true" || lower == "1";
 }
 
+// Prompts for an integer within a valid range.
+// Repeats until valid input is received.
 template <typename T>
 T prompt_int(std::string_view label, T default_val, std::pair<T, T> range) {
   auto [min_val, max_val] = range;
@@ -91,6 +100,9 @@ T prompt_int(std::string_view label, T default_val, std::pair<T, T> range) {
   }
 }
 
+// Prompts for a choice from a list of valid options.
+// Shows options as (opt1|opt2|opt3). Empty input returns default.
+// lazy: doesn't validate against the choices list — any string is accepted.
 std::string prompt_choice(std::string_view label, std::string_view default_val,
                           std::span<const std::string_view> choices) {
   std::cout << "  " << bold << label << reset << " " << dim << "[" << default_val << "]" << reset
@@ -107,6 +119,9 @@ std::string prompt_choice(std::string_view label, std::string_view default_val,
   return input.empty() ? std::string(default_val) : input;
 }
 
+// Interactive dependency input loop.
+// Prompts for name, git URL, and tag for each dependency.
+// Dependencies are stored as "name:url:tag" strings.
 void prompt_dependencies(application::InitOptions& opts) {
   if (!prompt_bool("add dependencies", false)) {
     return;
@@ -127,6 +142,10 @@ void prompt_dependencies(application::InitOptions& opts) {
 
 }  // namespace
 
+// Main interactive init wizard.
+// Walks the user through all options step by step.
+// Press enter to accept defaults, type a value to override.
+// The flow is: project name → formatter → tidy → cmake → conan
 void run_interactive_init(application::InitOptions& opts) {
 #ifdef _WIN32
   enable_windows_ansi();
@@ -177,9 +196,13 @@ void run_interactive_init(application::InitOptions& opts) {
     prompt_dependencies(opts);
   }
 
+  opts.enable_conan = prompt_bool("generate conanfile.py", opts.enable_conan);
+
   std::cout << "\n";
 }
 
+// Prints a summary of what was created after init completes.
+// Shows project name, style, and which tooling files were generated.
 void print_init_summary(const application::InitOptions& opts,
                         const application::InitResult& result) {
   auto style_name = [](const std::string& s) -> std::string {
@@ -215,6 +238,10 @@ void print_init_summary(const application::InitOptions& opts,
   if (opts.enable_clang_tidy) {
     std::cout << "    " << green << check << reset << " .clang-tidy"
               << "  (preset: " << opts.tidy_preset << ", severity: " << opts.tidy_severity << ")\n";
+  }
+
+  if (!result.conan_config_path.empty()) {
+    std::cout << "    " << green << check << reset << " conanfile.py\n";
   }
 
   std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "sniffercommit install"

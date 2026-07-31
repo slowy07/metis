@@ -2,6 +2,14 @@
 
 #include <algorithm>
 
+// Simple glob pattern matching for file paths.
+// Supports three patterns:
+//   *.ext     — matches files with the given extension
+//   prefix/** — matches files under a directory
+//   **/suffix — matches files ending with the suffix
+//   exact     — exact string match
+//   prefix    — matches files starting with the prefix
+// lazy: doesn't support ? or [character classes]. Nobody has asked for them.
 [[nodiscard]] bool sniffercommit::util::glob_match(std::string_view file,
                                                    std::string_view pattern) noexcept {
   if (pattern == "") {
@@ -23,6 +31,8 @@
   return file == pattern || file.starts_with(pattern);
 }
 
+// Returns true if the file matches any of the given patterns.
+// Empty pattern list means "match everything".
 [[nodiscard]] bool sniffercommit::util::matches_any_pattern(
     const std::string& file, const std::vector<std::string>& patterns) {
   if (patterns.empty()) {

@@ -8,6 +8,10 @@
 
 namespace sniffercommit::domain::ports {
 
+// Interface for config file persistence.
+// lazy: only one implementation (TomlConfigRepository). The interface
+// exists for potential test mocking, but could be simplified to a
+// concrete class if testability isn't needed.
 struct IConfigRepository {
   virtual ~IConfigRepository() = default;
 

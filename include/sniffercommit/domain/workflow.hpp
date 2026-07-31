@@ -2,7 +2,6 @@
 #define SNIFFERCOMMIT_DOMAIN_WORKFLOW_HPP
 
 #include <cstdint>
-#include <memory>
 #include <string>
 
 namespace sniffercommit::domain::config {
@@ -11,8 +10,10 @@ struct ProjectConfig;
 
 namespace sniffercommit::domain::workflow {
 
-enum class Platform : std::uint8_t { GithubAction, GitLabCI, AzureDevOps, Generic };
+// Supported CI platforms for workflow generation.
+enum class Platform : std::uint8_t { GithubAction, GitLabCI };
 
+// Configuration for generated CI workflow files.
 struct WorkflowConfig {
   Platform platform = Platform::GithubAction;
   std::string job_name = "Run sniffercommit checks";
@@ -22,20 +23,15 @@ struct WorkflowConfig {
   std::string binary_path = "./sniffercommit";
 };
 
-class IWorkflowGenerator {
- public:
-  virtual ~IWorkflowGenerator() = default;
-  [[nodiscard]] virtual std::string generate(const config::ProjectConfig& cfg,
-                                             const WorkflowConfig& wf_cfg) const = 0;
-};
-
-[[nodiscard]] std::unique_ptr<IWorkflowGenerator> create_generator(Platform platform);
-
-// CI/CD generation — pure string generation, no I/O
+// Checks if the config requires clang-format/clang-tidy installation in CI.
 [[nodiscard]] bool requires_clang_format(const config::ProjectConfig& cfg) noexcept;
 [[nodiscard]] bool requires_clang_tidy(const config::ProjectConfig& cfg) noexcept;
+
+// Generates workflow content for the specified platform.
 [[nodiscard]] std::string generate_workflow(const config::ProjectConfig& cfg,
                                             const WorkflowConfig& wf_cfg);
+
+// Convenience wrappers that set platform and call generate_workflow.
 [[nodiscard]] std::string generate_github_actions(const config::ProjectConfig& cfg,
                                                   const WorkflowConfig& wf_cfg = {});
 [[nodiscard]] std::string generate_gitlab_ci(const config::ProjectConfig& cfg,

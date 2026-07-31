@@ -15,6 +15,8 @@ namespace sniffercommit::infrastructure {
 
 namespace {
 
+// Splits a newline-delimited string into a vector of lines.
+// Skips empty lines. Pre-allocates based on newline count.
 std::vector<std::string> split_lines(const std::string& output) {
   std::vector<std::string> lines;
   if (output.empty()) {
@@ -46,6 +48,8 @@ std::vector<std::string> split_lines(const std::string& output) {
 CliGitRepository::CliGitRepository(std::unique_ptr<domain::ports::IShellExecutor> shell)
     : shell_(std::move(shell)) {}
 
+// Lists files staged for commit (git diff --cached --name-only --diff-filter=ACM).
+// ACM = Added, Copied, Modified (excludes deleted files).
 std::vector<std::string> CliGitRepository::list_staged_files(
     const std::filesystem::path& repo_root) {
   std::string cmd = "git -C " + util::shell_escape(repo_root.string()) +
@@ -54,17 +58,17 @@ std::vector<std::string> CliGitRepository::list_staged_files(
   return split_lines(out);
 }
 
+// Lists all tracked files in the repository (git ls-files).
 std::vector<std::string> CliGitRepository::list_all_files(const std::filesystem::path& repo_root) {
   std::string cmd = "git -C " + util::shell_escape(repo_root.string()) + " ls-files";
   std::string out = shell_->exec(cmd);
   return split_lines(out);
 }
 
-bool CliGitRepository::is_file_modified(const std::filesystem::path& file) {
-  auto result = shell_->exec_captured("git diff --quiet " + file.string());
-  return result.exit_code != 0;
-}
-
+// Finds the git repository root.
+// Strategy: try `git rev-parse --show-toplevel` first, then walk up
+// the directory tree looking for .git/.
+// lazy: duplicates TomlConfigRepository::find_git_root() — one should be deleted.
 std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::path& start) {
   try {
     std::string cmd = "git -C " + util::shell_escape(start.string()) + " rev-parse --show-toplevel";

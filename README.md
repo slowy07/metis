@@ -10,10 +10,11 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 - **Parallel check execution** : run linters concurrently via Bash background jobs
 - **Pattern-aware filtering** : apply checks only to matching file extensions (`.cpp`, `.hpp`, etc.)
 - **Zero runtime dependencies** : single static binary; no Python/Node required
-- **Auto-generate CI workflow** : GitHub Actions workflow mirroring local hooks
+- **Auto-generate CI workflows** : GitHub Actions and GitLab CI workflows mirroring local hooks
 - **.clang-format scaffolding** : generate `.clang-format` with configurable style presets
 - **.clang-tidy** integration : static analysis with curated check preset (`minimal`, `standard`, `strict`)
 - **CMake scaffolding** : generate `CMakeLists.txt` with compiler warnings, sanitizers, clang-tidy/clang-format integration, and testing
+- **Conan support** : generate `conanfile.py` alongside CMakeLists.txt for Conan package manager integration
 - **Hook syntax validation** : generated bash hooks are validated with `bash -n` before install
 - **Git worktree support** : works in worktrees, submodules, and detached checkouts
 
@@ -60,6 +61,7 @@ sniffercommit run --all-files
 | `install` | Install pre-commit hook + optional CI workflow |
 | `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
 | `generate-gha` | Write GitHub Actions workflow to `.github/workflows/sniffercommit.yml` |
+| `generate-gitlab` | Write GitLab CI workflow to `.gitlab-ci.yml` |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 
@@ -73,6 +75,7 @@ Global flag: `--config <path>` — use a non-default config file path with any s
 | [fmt](https://github.com/fmtlib/fmt.git) | Modern formatting library | `v11.0.2` |
 
 Both are fetched automatically at configure time via CMake's `FetchContent`. No system installation required.
+
 Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
 
 ```bash
@@ -99,8 +102,6 @@ cmake --build build --parallel
 | Option | Default | Description |
 | ----- | ------- | ----------- |
 | `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | AddressSanitizer + UBSan (Debug only) |
-| `SNIFFERCOMMIT_ENABLE_STATIC_LINK` | `OFF` | Fully portable static binary (Linux only) |
-| `SNIFFERCOMMIT_VERBOSE_CONFIG` | `ON` | Print platform/compiler summary at configure |
 | `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `ON` | Use system `libfmt` instead of FetchContent |
 | `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system `tomlplusplus` instead of FetchContent |
 
@@ -197,6 +198,7 @@ sniffercommit install
 Installs:
 - `.git/hooks/pre-commit` — Bash hook with parallel execution
 - `.github/workflows/sniffercommit.yml` — GitHub Actions workflow (only if `github_actions = true` in config)
+- `.gitlab-ci.yml` — GitLab CI workflow (only if `gitlab_ci = true` in config)
 
 The hook is validated with `bash -n` before installation to prevent broken hooks.
 
@@ -205,6 +207,7 @@ The hook is validated with `bash -n` before installation to prevent broken hooks
 ```bash
 rm .git/hooks/pre-commit
 rm -rf .github/workflows/sniffercommit.yml
+rm -f .gitlab-ci.yml
 ```
 
 Or re-run `sniffercommit install` to regenerate both files from config.
@@ -241,6 +244,16 @@ sniffercommit generate-gha
 ```
 
 Always writes `.github/workflows/sniffercommit.yml` regardless of the `github_actions` config setting.
+
+---
+
+### generate-gitlab — GitLab CI Workflow Only
+
+```bash
+sniffercommit generate-gitlab
+```
+
+Always writes `.gitlab-ci.yml` regardless of the `gitlab_ci` config setting.
 
 ---
 
@@ -287,6 +300,7 @@ Creates:
 | `--cmake-target-type` | `executable`, `static`, `shared`, `header-only` | `executable` | Build target type |
 | `--cmake-enable-testing` | (flag) | off | Add `enable_testing()` + `add_subdirectory(tests)` |
 | `--cmake-enable-sanitizers` | (flag) | off | AddressSanitizer + UBSan (Debug only) |
+| `--enable-conan` | (flag) | off | Generate `conanfile.py` alongside CMakeLists.txt for Conan package manager |
 
 **What the generated CMakeLists.txt includes:**
 
@@ -323,6 +337,19 @@ sniffercommit init \
 
 # Header-only library (no src/main.cpp generated)
 sniffercommit init --enable-cmake --cmake-target-type header-only
+
+# Project with Conan package manager support
+sniffercommit init --enable-cmake --enable-conan
+
+# Full-featured project with Conan + clang-tidy + testing
+sniffercommit init \
+  --enable-cmake \
+  --enable-conan \
+  --cmake-cpp-standard 20 \
+  --cmake-enable-testing \
+  --enable-clang-tidy \
+  --tidy-preset strict \
+  --style google
 ```
 
 **Generate `src/main.cpp` without CMake:**
@@ -333,6 +360,38 @@ sniffercommit init --generate-src
 
 Creates only `src/main.cpp`, no `CMakeLists.txt`.
 
+---
+
+### Conan Package Manager Integration
+
+When `--enable-conan` is passed with `--enable-cmake`, sniffercommit generates:
+
+- `conanfile.py` — Conan package definition with CMakeToolchain/CMakeDeps
+- `CMakeLists.txt` — Updated to use `find_package()` instead of FetchContent
+
+The generated `conanfile.py` includes:
+- Python class-based Conan recipe
+- CMakeToolchain and CMakeDeps generators
+- Proper dependency resolution from `.sniffercommit.toml`
+
+**What the generated CMakeLists.txt includes (with Conan):**
+
+- Uses `find_package(fmt REQUIRED)` instead of FetchContent
+- Uses `find_package(tomlplusplus REQUIRED)` instead of FetchContent
+- Links against imported targets (`fmt::fmt`, `tomlplusplus::tomlplusplus`)
+
+**Usage example:**
+
+```bash
+# Generate with Conan support
+sniffercommit init --enable-cmake --enable-conan
+
+# Build with Conan
+conan install . --output-folder=build --build=missing
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -342,6 +401,7 @@ Creates only `src/main.cpp`, no `CMakeLists.txt`.
 | Hook exits immediately with no output | File patterns don't match staged files | Run `sniffercommit run --all-files` to test outside hook |
 | `git commit` but hook doesn't run | Staged files don't match config checks | Check `[checks.*.files]` patterns in `.sniffercommit.toml` |
 | CI workflow not created | `github_actions` is `false` in config | `sniffercommit generate-gha` (bypasses config) |
+| GitLab CI not created | `gitlab_ci` is `false` in config | `sniffercommit generate-gitlab` (bypasses config) |
 
 **Debug mode**: Run `sniffercommit run --verbose --all-files` to see the exact shell commands being executed.
 
