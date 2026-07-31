@@ -51,7 +51,7 @@ std::string regex_escape(const std::string& str) {
   return out;
 }
 
-constexpr std::string_view k_version = "0.3.20";
+constexpr std::string_view k_version = "0.3.26";
 
 // Generates the pre-commit hook bash script.
 // The hook:
