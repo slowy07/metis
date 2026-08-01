@@ -61,8 +61,6 @@ Data flow: `main.cpp` parses args → builds adapters → injects into a use cas
 - `snake_case` functions/vars, `PascalCase` types, `kConstant` constants,
   trailing `_` on members.
 - Dependencies: only `fmt` and `tomlplusplus`, fetched via FetchContent.
-- Changes that are deliberately minimal get a `// ponytail:` comment naming
-  what was skipped and when to add it.
 - Commit messages: Conventional Commits (`feat(scope): ...`).
 
 ## Adding a check

@@ -135,7 +135,8 @@ int main(int argc, char** argv) {
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
-      .add_subcommand("run", "Execute checks on files");
+      .add_subcommand("run", "Execute checks on files")
+      .add_subcommand("install-compiler", "Download and install a C++ toolchain");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -320,7 +321,7 @@ int main(int argc, char** argv) {
       }
 
       domain::ports::CppStandard cpp_standard = domain::ports::CppStandard::CPP_20;
-      if (cpp_standard_str == "20") {
+      if (cpp_standard_str == "17") {
         cpp_standard = domain::ports::CppStandard::CPP_17;
       } else if (cpp_standard_str == "20") {
         cpp_standard = domain::ports::CppStandard::CPP_20;
@@ -332,7 +333,7 @@ int main(int argc, char** argv) {
       }
 
       auto provider =
-          infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
+          infrastructure::ToolchainFactory::create(compiler, version, shell.get(), fs.get());
 
       if (!provider) {
         std::cerr << "[ERROR] GCC installation is not supported on this platform\n";

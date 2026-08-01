@@ -165,9 +165,7 @@ std::string validate_tool_config(const domain::config::Check& check,
                                  const std::filesystem::path& repo_root) {
   static const std::vector<ConfigRequirement> k_config_tools = {
       {.tool_name_ = "clang-tidy", .config_arg_ = "--config-file=", .default_file_ = ".clang-tidy"},
-      {.tool_name_ = "clang-format",
-       .config_arg_ = "-style=file",
-       .default_file_ = ".clang-format"},
+      {.tool_name_ = "clang-format", .config_arg_ = "", .default_file_ = ".clang-format"},
   };
 
   for (const auto& req : k_config_tools) {
@@ -177,6 +175,10 @@ std::string validate_tool_config(const domain::config::Check& check,
 
     bool has_explicit_config = false;
     for (const auto& arg : check.args) {
+      if (req.config_arg_.empty()) {
+        break;
+      }
+
       if (auto path = extract_config_path(arg, req.config_arg_)) {
         has_explicit_config = true;
         std::filesystem::path config_path(*path);
@@ -520,7 +522,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
   }
 
   auto orig_cwd = std::filesystem::current_path();
-  std::filesystem::current_path(repo_root);
+  util::CwdGuard cwd_guard(repo_root);
 
   // Check for .clang-format or _clang-format (LLVM convention).
   // Without a config, clang-format uses default style which is rarely wanted.
