@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
@@ -13,6 +14,72 @@
 #include "sniffercommit/domain/ports/toolchain_provider.hpp"
 
 namespace sniffercommit::infrastructure {
+
+namespace {
+std::optional<std::string> parse_sha256_token(const std::string& raw) {
+  auto end = raw.find_first_of(" \t\r\n");
+
+  if (end == std::string::npos) {
+    end = raw.find_first_not_of("0123456789abcdefABCDEF");
+
+    if (end == std::string::npos) {
+      end = raw.size();
+    }
+  }
+
+  if (end == 0 || end > 64) {
+    return std::nullopt;
+  }
+
+  return raw.substr(0, end);
+}
+
+std::optional<std::string> sha256_via_cerutil(domain::ports::IShellExecutor* shell,
+                                              const std::filesystem::path& path) {
+  auto res = shell->exec_captured(fmt::format(R"(certutil -hashfile "{}" SHA256)", path.string()));
+
+  if (res.exit_code_ != 0 || res.output_.empty()) {
+    return std::nullopt;
+  }
+
+  std::istringstream iss(res.output_);
+  std::string header, hash_line;
+
+  if (!std::getline(iss, header)) {
+    return std::nullopt;
+  }
+
+  if (!std::getline(iss, hash_line)) {
+    return std::nullopt;
+  }
+
+  hash_line.erase(std::remove_if(hash_line.begin(), hash_line.end(),
+                                 [](unsigned char chr) { return std::isspace(chr); }),
+                  hash_line.end());
+
+  return hash_line;
+}
+
+std::optional<std::string> fetch_expected_sha256(domain::ports::IShellExecutor* shell,
+                                                 const std::string& sha256_url) {
+  auto curl = shell->exec_captured(fmt::format(R"(curl -sLf "{}")", sha256_url));
+
+  if (curl.exit_code_ == 0 && !curl.output_.empty()) {
+    return parse_sha256_token(curl.output_);
+  }
+
+  auto pshell = shell->exec_captured(
+      fmt::format(R"(powershell -Command "(Invoke-WebRequest -Uri '{}' -UseBasicParsing).Content")",
+                  sha256_url));
+
+  if (pshell.exit_code_ == 0 && !pshell.output_.empty()) {
+    return parse_sha256_token(pshell.output_);
+  }
+
+  return std::nullopt;
+}
+}  // namespace
+
 WindowsGccProvider::WindowsGccProvider(domain::ports::IShellExecutor* shell,
                                        domain::ports::IFileSystem* fs, std::string version)
     : shell_(shell),
@@ -43,8 +110,6 @@ domain::ports::ToolchainPackage WindowsGccProvider::resolve_package() const {
   pkg.name_ = "mingw-w64";
   pkg.version_ = version_;
   pkg.download_url_ = build_download_url();
-
-  // TODO: add SHA-256 verification
   pkg.checksum_ = "";
   pkg.archive_type_ = "zip";
   pkg.install_dir_ = install_prefix_.string();
@@ -58,6 +123,33 @@ domain::ports::ToolchainInstallResult WindowsGccProvider::install(
   if (archive_path.empty()) {
     result.error_message_ = "No archive provided for extraction";
     return result;
+  }
+
+  auto sha256_url = build_download_url() + ".sha256";
+  auto expected = fetch_expected_sha256(shell_, sha256_url);
+
+  if (expected) {
+    auto actual = sha256_via_cerutil(shell_, archive_path);
+
+    if (!actual) {
+      result.error_message_ = "Failed to compute SHA-256 of download archive via certutil";
+      return result;
+    }
+
+    bool match = std::equal(expected->begin(), expected->end(), actual->begin(), actual->end(),
+                            [](unsigned char chra, unsigned char chrb) {
+                              return std::tolower(chra) == std::tolower(chrb);
+                            });
+
+    if (!match) {
+      result.error_message_ = fmt::format(
+          "SHA-256 verification failed.\n"
+          "Expected: {}\n"
+          "Actual:   {}\n"
+          "The archive may be corrupted or tampered with. Delete the file and retry.",
+          *expected, *actual);
+      return result;
+    }
   }
 
   if (!fs_->create_directories(install_prefix_)) {
@@ -106,4 +198,45 @@ std::string WindowsGccProvider::build_download_url() const {
       "winlibs-x86_64-posix-seh-gcc-{}-llvm-19.1.1-mingw-w64ucrt-12.0.0-r2.zip",
       version_, version_);
 }
+
+bool WindowsGccProvider::supports_cpp_standard(domain::ports::CppStandard standard) const {
+  return static_cast<int>(standard) <= static_cast<int>(max_supported_standard());
+}
+
+domain::ports::CppStandard WindowsGccProvider::max_supported_standard() const {
+  auto major = parse_major_version();
+  if (major == 0) {
+    return domain::ports::CppStandard::CPP_23;
+  }
+  if (major >= 14) {
+    return domain::ports::CppStandard::CPP_23;
+  }
+  if (major >= 11) {
+    return domain::ports::CppStandard::CPP_20;
+  }
+  return domain::ports::CppStandard::CPP_17;
+}
+
+int WindowsGccProvider::parse_major_version() const {
+  if (version_.empty() || version_ == "latest") {
+    return 0;
+  }
+
+  try {
+    return std::stoi(version_);
+  } catch (...) {
+    auto dot = version_.find('.');
+
+    if (dot == std::string::npos) {
+      return 0;
+    }
+
+    try {
+      return std::stoi(version_.substr(0, dot));
+    } catch (...) {
+      return 0;
+    }
+  }
+}
+
 }  // namespace sniffercommit::infrastructure
