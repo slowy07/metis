@@ -17,17 +17,15 @@ namespace sniffercommit::infrastructure {
 
 namespace {
 std::optional<std::string> parse_sha256_token(const std::string& raw) {
-  auto end = raw.find_first_of(" \t\r\n");
+  // A SHA-256 hex digest is exactly 64 hex chars, optionally followed by a
+  // filename/whitespace. Accept only that shape.
+  auto end = raw.find_first_not_of("0123456789abcdefABCDEF");
 
   if (end == std::string::npos) {
-    end = raw.find_first_not_of("0123456789abcdefABCDEF");
-
-    if (end == std::string::npos) {
-      end = raw.size();
-    }
+    end = raw.size();
   }
 
-  if (end == 0 || end > 64) {
+  if (end != 64) {
     return std::nullopt;
   }
 
@@ -128,28 +126,33 @@ domain::ports::ToolchainInstallResult WindowsGccProvider::install(
   auto sha256_url = build_download_url() + ".sha256";
   auto expected = fetch_expected_sha256(shell_, sha256_url);
 
-  if (expected) {
-    auto actual = sha256_via_cerutil(shell_, archive_path);
+  if (!expected) {
+    result.error_message_ = fmt::format(
+        "Could not fetch expected SHA-256 checksum from {}.\n"
+        "Refusing to install without integrity verification.",
+        sha256_url);
+    return result;
+  }
 
-    if (!actual) {
-      result.error_message_ = "Failed to compute SHA-256 of download archive via certutil";
-      return result;
-    }
+  auto actual = sha256_via_cerutil(shell_, archive_path);
 
-    bool match = std::equal(expected->begin(), expected->end(), actual->begin(), actual->end(),
-                            [](unsigned char chra, unsigned char chrb) {
-                              return std::tolower(chra) == std::tolower(chrb);
-                            });
+  if (!actual) {
+    result.error_message_ = "Failed to compute SHA-256 of download archive via certutil";
+    return result;
+  }
 
-    if (!match) {
-      result.error_message_ = fmt::format(
-          "SHA-256 verification failed.\n"
-          "Expected: {}\n"
-          "Actual:   {}\n"
-          "The archive may be corrupted or tampered with. Delete the file and retry.",
-          *expected, *actual);
-      return result;
-    }
+  if (expected->size() != actual->size() ||
+      !std::equal(expected->begin(), expected->end(), actual->begin(),
+                  [](unsigned char chra, unsigned char chrb) {
+                    return std::tolower(chra) == std::tolower(chrb);
+                  })) {
+    result.error_message_ = fmt::format(
+        "SHA-256 verification failed.\n"
+        "Expected: {}\n"
+        "Actual:   {}\n"
+        "The archive may be corrupted or tampered with. Delete the file and retry.",
+        *expected, *actual);
+    return result;
   }
 
   if (!fs_->create_directories(install_prefix_)) {
@@ -194,7 +197,7 @@ std::filesystem::path WindowsGccProvider::default_install_prefix() const {
 std::string WindowsGccProvider::build_download_url() const {
   return fmt::format(
       "https://github.com/brechtsanders/winlibs_mingw/releases/download/"
-      "{}posix-19.1.1-ucrt-r2/"
+      "{}posix-19.1.1-12.0.0-ucrt-r2/"
       "winlibs-x86_64-posix-seh-gcc-{}-llvm-19.1.1-mingw-w64ucrt-12.0.0-r2.zip",
       version_, version_);
 }
