@@ -294,9 +294,13 @@ name = "my-project"
 
 [[checks]]
 name = "clang-format"
+description = "Format C++ files"
+enabled = true
 command = "clang-format"
 args = ["-i", "--fallback-style=Google", "-style=file"]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+timeout = 30
+severity = "warning"
 
 [[checks]]
 name = "trailing-whitespace"
@@ -322,9 +326,13 @@ parallel = true
 |---------|-----|------|---------|-------------|
 | `[project]` | `name` | string | `"unnamed"` | Project name, embedded in generated scripts |
 | `[[checks]]` | `name` | string | _required_ | Human-readable check name |
+| `[[checks]]` | `description` | string | `""` | Free-text description of the check |
+| `[[checks]]` | `enabled` | bool | `true` | Set `false` to skip the check entirely |
 | `[[checks]]` | `command` | string | _required_ | Executable to run |
 | `[[checks]]` | `args` | string[] | `[]` | Static arguments passed before the file path |
 | `[[checks]]` | `patterns` | string[] | `[]` | Glob patterns to match files; `"*"` matches everything |
+| `[[checks]]` | `timeout` | int | `0` | Max seconds for the check (`0` = no limit) |
+| `[[checks]]` | `severity` | string | `"error"` | `error`, `warning`, or `info` |
 | `[exclude]` | `paths` | string[] | `[]` | Path prefixes to exclude from checks |
 | `[output]` | `local_hook` | bool | `true` | Generate `.git/hooks/pre-commit` during `install` |
 | `[output]` | `github_actions` | bool | `false` | Generate `.github/workflows/sniffercommit.yml` during `install` |
@@ -356,6 +364,8 @@ When loading a configuration file, `ProjectConfig::validate()` enforces these ru
 2. At least one `[[checks]]` entry is required.
 3. Every check must have a non-empty `command`.
 4. Duplicate check names are rejected.
+5. `timeout` cannot be negative.
+6. `severity` must be `error`, `warning`, or `info`.
 
 Validation errors return a descriptive error string. All validation is also available via `ProjectConfig::is_valid()`.
 

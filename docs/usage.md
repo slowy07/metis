@@ -98,8 +98,10 @@ github_actions = false   # also write .github/workflows on `install`
 parallel = true
 ```
 
-- `[[checks]]` — `name` (unique), `command`, `args`, `patterns` (glob matched
-  against file paths). Checks run in parallel; output is serialized.
+- `[[checks]]` — `name` (unique), `description`, `enabled` (`false` skips the
+  check), `command`, `args`, `patterns` (glob matched against file paths),
+  `timeout` (seconds), `severity` (`error`/`warning`/`info`). Checks run in
+  parallel; output is serialized.
 - `[exclude]` — `paths` are matched as prefix, exact, or `*.ext` glob.
 - `generate-gha` / `generate-gitlab` write workflows regardless of `[output]`.
 - grep/rg checks: exit code 1 (no match) counts as pass, so a

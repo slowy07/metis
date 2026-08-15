@@ -399,7 +399,7 @@ cmake --build build
 | `clang-tidy: cannot find ...` | `.clang-tidy` missing | `sniffercommit init --enable-clang-tidy` |
 | `bash: pre-commit: No such file or directory` | Hook not installed | `sniffercommit install` |
 | Hook exits immediately with no output | File patterns don't match staged files | Run `sniffercommit run --all-files` to test outside hook |
-| `git commit` but hook doesn't run | Staged files don't match config checks | Check `[checks.*.files]` patterns in `.sniffercommit.toml` |
+| `git commit` but hook doesn't run | Staged files don't match config checks | Check `patterns` in the `[[checks]]` sections of `.sniffercommit.toml` |
 | CI workflow not created | `github_actions` is `false` in config | `sniffercommit generate-gha` (bypasses config) |
 | GitLab CI not created | `gitlab_ci` is `false` in config | `sniffercommit generate-gitlab` (bypasses config) |
 

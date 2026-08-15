@@ -77,19 +77,18 @@ TEST(ConfigCheckTest, ParsesAllCheckFields) {
   std::filesystem::create_directories(cfg_dir);
   auto cfg_path = cfg_dir / ".sniffercommit.toml";
   infrastructure::OsFileSystem fs;
-  ASSERT_TRUE(fs.write_file(
-      cfg_path,
-      "[project]\n"
-      "name = \"demo\"\n\n"
-      "[[checks]]\n"
-      "name = \"clang-format\"\n"
-      "description = \"Format C++ files\"\n"
-      "enabled = false\n"
-      "command = \"clang-format\"\n"
-      "args = [\"-i\", \"-style=file\"]\n"
-      "patterns = [\"*.cpp\", \"*.hpp\"]\n"
-      "timeout = 30\n"
-      "severity = \"warning\"\n"));
+  ASSERT_TRUE(fs.write_file(cfg_path,
+                            "[project]\n"
+                            "name = \"demo\"\n\n"
+                            "[[checks]]\n"
+                            "name = \"clang-format\"\n"
+                            "description = \"Format C++ files\"\n"
+                            "enabled = false\n"
+                            "command = \"clang-format\"\n"
+                            "args = [\"-i\", \"-style=file\"]\n"
+                            "patterns = [\"*.cpp\", \"*.hpp\"]\n"
+                            "timeout = 30\n"
+                            "severity = \"warning\"\n"));
 
   infrastructure::TomlConfigRepository repo(
       std::make_unique<infrastructure::OsFileSystem>(),
