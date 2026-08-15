@@ -27,7 +27,7 @@ naming, temp dirs in fixtures for git/fs-dependent tests.
 
 ## Lint
 
-The project lints itself — `install.sh`-installed or built binary:
+The project lints itself: `install.sh`-installed or built binary:
 
 ```bash
 build/bin/sniffercommit init --style google --enable-clang-tidy
@@ -43,7 +43,8 @@ The pre-commit hook runs clang-format, clang-tidy, and trailing-whitespace.
 src/
   main.cpp                    CLI entry, arg parsing, DI wiring
   application/                use cases: init, install, run, install-toolchain, generate-workflow
-  domain/                     config, workflow models + defaults, exit codes
+  application/checks/         concrete checks: shell, clang-format, clang-tidy, compiler, build, git-diff
+  domain/                     config, check, workflow models + defaults, exit codes
   domain/ports/               interfaces: shell, fs, git, config, http, archive, toolchain
   generators/                 clang-format / clang-tidy / cmake / conan templates
   infrastructure/             concrete adapters: toml, shell, fs, git, curl, tar, toolchain providers
@@ -65,6 +66,29 @@ Data flow: `main.cpp` parses args → builds adapters → injects into a use cas
 
 ## Adding a check
 
-Checks are config-driven, not code — a user adds one via `[[checks]]` in
-`.sniffercommit.toml`. Code changes are only needed if a check needs new
-runtime behavior (e.g. batch mode, exit-code inversion).
+Config (`[[checks]]`) selects the runtime behavior by **command basename**
+through the `make_check` factory (`src/application/run_checks_use_case.cpp`).
+Known commands map to a subclass of `domain::check::Check`; everything else
+runs as `ShellCheck`.
+
+To add a new specialized check type:
+
+1. Subclass `Check` in `application/checks/` (e.g. `my_tool_check.hpp/cpp`).
+2. Implement `execute(files, shell, verbose, dry_run)` → `CheckResult`.
+3. Override `validate(repo_root)` if the tool needs a config file or other
+   precondition (see `ClangTidyCheck` for the pattern).
+4. Register the command basename in `make_check`.
+5. Add the new files to the `sniffercommit_lib` sources in `CMakeLists.txt`.
+
+```cpp
+class MyToolCheck final : public domain::check::Check {
+ public:
+  explicit MyToolCheck(const domain::config::Check& cfg) : Check(cfg) {}
+
+  [[nodiscard]] domain::check::CheckResult execute(
+      const std::vector<std::string>& files, domain::ports::IShellExecutor* shell,
+      bool verbose, bool dry_run) const override {
+    // use command_line(files) + shell->exec_captured(), return { exit_code, output }
+  }
+};
+```

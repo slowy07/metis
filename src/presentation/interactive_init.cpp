@@ -204,8 +204,7 @@ void run_interactive_init(application::InitOptions& opts) {
         std::to_array<std::string_view>({"g++", "clang++", "gcc", "clang"});
     opts.compiler = prompt_choice("compiler", "g++", compilers);
 
-    static constexpr auto standards =
-        std::to_array<std::string_view>({"17", "20", "23", "26"});
+    static constexpr auto standards = std::to_array<std::string_view>({"17", "20", "23", "26"});
     opts.compiler_cpp_standard = prompt_choice("C++ standard", "20", standards);
 
     opts.compiler_werror = prompt_bool("treat warnings as errors (-Werror)", opts.compiler_werror);

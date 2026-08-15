@@ -14,13 +14,13 @@ sniffercommit is a static binary that replaces Python/Node-based pre-commit fram
 - [Configuration Format](#configuration-format)
 - [CLI Interface](#cli-interface)
 - [Component Breakdown](#component-breakdown)
-  - [argparse.hpp — CLI Argument Parser](#argparsehpp--cli-argument-parser)
+  - [argparse.hpp: CLI Argument Parser](#argparsehpp-cli-argument-parser)
   - [Domain Layer](#domain-layer)
   - [Application Layer](#application-layer)
   - [Infrastructure Layer](#infrastructure-layer)
   - [Generators](#generators)
   - [Presentation Layer](#presentation-layer)
-  - [main.cpp — Entry Point & Command Dispatch](#maincpp--entry-point--command-dispatch)
+  - [main.cpp: Entry Point & Command Dispatch](#maincpp-entry-point--command-dispatch)
 - [Data Flow](#data-flow)
 - [Design Decisions & Trade-offs](#design-decisions--trade-offs)
 - [Build & Debug](#build--debug)
@@ -44,6 +44,7 @@ sniffercommit/
 │       ├── spinner.hpp           # Terminal spinner animation
 │       ├── util.hpp              # Shared utilities (shell_escape, etc.)
 │       ├── domain/
+│       │   ├── check.hpp         # Check base class, CheckResult
 │       │   ├── config.hpp        # ProjectConfig, Check structs
 │       │   ├── error_codes.hpp   # Typed exit codes
 │       │   ├── workflow.hpp      # Platform enum, WorkflowConfig, workflow generation
@@ -60,7 +61,14 @@ sniffercommit/
 │       │   ├── install_use_case.hpp         # InstallUseCase (install subcommand)
 │       │   ├── install_toolchain_use_case.hpp # InstallToolchainUseCase (install-gcc)
 │       │   ├── run_checks_use_case.hpp      # RunChecksUseCase (run subcommand)
-│       │   └── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
+│       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
+│       │   └── checks/                      # concrete Check implementations
+│       │       ├── shell_check.hpp          # ShellCheck (custom commands)
+│       │       ├── clang_format_check.hpp   # ClangFormatCheck
+│       │       ├── clang_tidy_check.hpp     # ClangTidyCheck
+│       │       ├── compiler_check.hpp       # CompilerCheck
+│       │       ├── build_check.hpp          # BuildCheck
+│       │       └── git_diff_check.hpp       # GitDiffCheck
 │       ├── generators/
 │       │   ├── clang_format_generator.hpp   # .clang-format content generation
 │       │   ├── clang_tidy_generator.hpp     # .clang-tidy content generation
@@ -86,6 +94,7 @@ sniffercommit/
 │   ├── util.cpp
 │   ├── argparse.cpp               # ArgParser implementation
 │   ├── domain/
+│   │   ├── check.cpp
 │   │   ├── config.cpp
 │   │   └── workflow.cpp
 │   ├── application/
@@ -93,7 +102,14 @@ sniffercommit/
 │   │   ├── install_use_case.cpp
 │   │   ├── install_toolchain_use_case.cpp
 │   │   ├── run_checks_use_case.cpp
-│   │   └── generate_workflow_use_case.cpp
+│   │   ├── generate_workflow_use_case.cpp
+│   │   └── checks/
+│   │       ├── shell_check.cpp
+│   │       ├── clang_format_check.cpp
+│   │       ├── clang_tidy_check.cpp
+│   │       ├── compiler_check.cpp
+│   │       ├── build_check.cpp
+│   │       └── git_diff_check.cpp
 │   ├── generators/
 │   │   ├── clang_format_generator.cpp
 │   │   ├── clang_tidy_generator.cpp
@@ -167,27 +183,30 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 
 ```
 sniffercommit
-├── domain::config      — ProjectConfig, Check, config string generation
-├── domain::workflow    — Platform, WorkflowConfig, workflow generation
-├── domain::ports       — IConfigRepository, IFileSystem, IGitRepository, IShellExecutor,
+├── domain::config     : ProjectConfig, Check, config string generation
+├── domain::check      : Check base class, CheckResult
+├── domain::workflow   : Platform, WorkflowConfig, workflow generation
+├── domain::ports      : IConfigRepository, IFileSystem, IGitRepository, IShellExecutor,
 │                         IToolchainProvider, IHttpClient, IArchiveExtractor
-├── application         — InitUseCase, InstallUseCase, RunChecksUseCase,
+├── application        : InitUseCase, InstallUseCase, RunChecksUseCase,
 │                         GenerateWorkflowUseCase, InstallToolchainUseCase
-├── generators          — clang_format, clang_tidy, cmake, conan generators (free functions)
-├── infrastructure      — TomlConfigRepository, OsFileSystem, CliGitRepository,
+├── application::checks: ShellCheck, ClangFormatCheck, ClangTidyCheck, CompilerCheck,
+│                         BuildCheck, GitDiffCheck
+├── generators         : clang_format, clang_tidy, cmake, conan generators (free functions)
+├── infrastructure     : TomlConfigRepository, OsFileSystem, CliGitRepository,
 │                         ProcessShellExecutor, CurlHttpClient, TarArchiveExtractor,
 │                         ZipArchiveExtractor, LinuxGccProvider, WindowsGccProvider,
 │                         ToolchainFactory
-├── presentation        — interactive_init
-└── (global)            — ArgParser, glob_match, spinner, util
+├── presentation       : interactive_init
+└── (global)           : ArgParser, glob_match, spinner, util
 ```
 
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| `0` | Success — all checks passed, or command completed normally |
-| `1` | Failure — one or more checks failed, or a CLI/config error occurred |
+| `0` | Success: all checks passed, or command completed normally |
+| `1` | Failure: one or more checks failed, or a CLI/config error occurred |
 | `2` | Unsupported platform error (e.g., `install-gcc` on unsupported OS) |
 | `3` | Toolchain install error (download, extraction, or PATH failure) |
 
@@ -250,7 +269,7 @@ In MSVC builds:
 
 | `CMAKE_SYSTEM_NAME` | `SNIFFERCOMMIT_PLATFORM` | Define |
 |---------------------|--------------------------|--------|
-| `Linux` (no WSL) | `linux` | — |
+| `Linux` (no WSL) | `linux` | - |
 | `Linux` (WSL) | `wsl` | `SNIFFERCOMMIT_PLATFORM_WSL` |
 | `Darwin` | `macos` | `SNIFFERCOMMIT_PLATFORM_MACOS` |
 | `Windows` | `windows` | `SNIFFERCOMMIT_PLATFORM_WINDOWS` |
@@ -347,14 +366,14 @@ sniffercommit supports a limited set of glob patterns in `glob_match.cpp`:
 |---------|-----------|
 | `*` | Matches every file |
 | `*.cpp` | Matches any file ending with `.cpp` |
-| `src/` | Prefix match — matches `src/foo.cpp`, `src/bar/baz.h` |
-| `include/**` | Directory prefix — matches any path under `include/` |
-| `**/suffix` | Suffix match — matches any path ending with `/suffix` |
+| `src/` | Prefix match: matches `src/foo.cpp`, `src/bar/baz.h` |
+| `include/**` | Directory prefix: matches any path under `include/` |
+| `**/suffix` | Suffix match: matches any path ending with `/suffix` |
 
 Exclusion patterns in `is_excluded()` follow similar rules:
-- `"build/"` — excludes any path starting with `build/` (trailing slash normalized)
-- `"*.log"` — excludes files ending with `.log`
-- `"third_party/"` — excludes the entire `third_party/` directory tree
+- `"build/"`: excludes any path starting with `build/` (trailing slash normalized)
+- `"*.log"`: excludes files ending with `.log`
+- `"third_party/"`: excludes the entire `third_party/` directory tree
 
 ### Validation Rules
 
@@ -410,6 +429,11 @@ Subcommands:
         --cmake-enable-testing
         --cmake-enable-sanitizers
         --generate-src
+        --enable-compiler-checks, --compiler-checks
+        --compiler <g++|clang++|gcc|clang>
+        --compiler-cpp-standard <17|20|23|26>
+        --compiler-werror / --compiler-no-werror
+        --compiler-debug-and-release
 
   install
       Generate and install:
@@ -518,15 +542,15 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 
 **File source selection (mutually exclusive, listed in priority order):**
 
-1. **Explicit files** — Positional arguments: `sniffercommit run src/main.cpp src/foo.cpp`
-2. **`--all-files`** — All git-tracked files
-3. **Default (no args)** — Staged files via `git diff --cached --name-only --diff-filter=ACM`
+1. **Explicit files**: Positional arguments: `sniffercommit run src/main.cpp src/foo.cpp`
+2. **`--all-files`**: All git-tracked files
+3. **Default (no args)**: Staged files via `git diff --cached --name-only --diff-filter=ACM`
 
 ---
 
 ## Component Breakdown
 
-### argparse.hpp — CLI Argument Parser
+### argparse.hpp: CLI Argument Parser
 
 **File:** `include/sniffercommit/argparse.hpp`
 
@@ -546,7 +570,7 @@ The `Parsable` concept requires `std::assignable_from<T&, T>` and `std::default_
 
 ### Domain Layer
 
-#### config.hpp — Project Configuration
+#### config.hpp: Project Configuration
 
 **File:** `include/sniffercommit/domain/config.hpp`
 
@@ -555,9 +579,13 @@ Namespace: `sniffercommit::domain::config`
 ```cpp
 struct Check {
   std::string name;
+  std::string description;
   std::string command;
   std::vector<std::string> args;
   std::vector<std::string> patterns;
+  bool enabled = true;
+  int timeout = 0;                     // seconds; 0 = no limit
+  std::string severity = "error";      // error | warning | info
   [[nodiscard]] std::string validate() const noexcept;
 };
 
@@ -578,11 +606,31 @@ struct ProjectConfig {
 ```
 
 Free functions for config string generation (no I/O):
-- `generate_default_config()` — basic TOML template
-- `generate_default_config_with_tidy()` — TOML with clang-tidy check
-- `generate_default_config_with_cmake()` — TOML with cmake check
+- `generate_default_config()`: basic TOML template
+- `generate_default_config_with_tidy()`: TOML with clang-tidy check
+- `generate_default_config_with_cmake()`: TOML with cmake check
+- `generate_compiler_checks()`: `[[checks]]` blocks that syntax-check files with a compiler
 
-#### workflow.hpp — CI/CD Workflow
+#### check.hpp: Generic Check Abstraction
+
+**File:** `include/sniffercommit/domain/check.hpp`
+
+Namespace: `sniffercommit::domain::check`
+
+All runnable checks derive from `Check`. The base holds the config-derived
+fields, provides getters, and defines the execution contract:
+
+- Fields: `name`, `description`, `enabled`, `file_patterns`, `command`,
+  `arguments`, `timeout`, `severity`.
+- `validate(repo_root)`: virtual; checks preconditions (config files,
+  toolchain) at build time. Default returns OK. A failure aborts the run with
+  `CONFIG_ERROR` before any file is processed.
+- `execute(files, shell, verbose, dry_run)`: pure virtual; performs the check
+  and returns a `CheckResult { exit_code, output }`.
+- `command_line(files)`: shared helper that assembles the shell command from
+  `command`, `arguments`, and the file list.
+
+#### workflow.hpp: CI/CD Workflow
 
 **File:** `include/sniffercommit/domain/workflow.hpp`
 
@@ -602,12 +650,12 @@ struct WorkflowConfig {
 ```
 
 Key functions:
-- `generate_workflow()` — dispatches to platform-specific generator
-- `generate_github_actions()` — produces GitHub Actions YAML
-- `generate_gitlab_ci()` — produces GitLab CI YAML
-- `requires_clang_format()` / `requires_clang_tidy()` — check detection
+- `generate_workflow()`: dispatches to platform-specific generator
+- `generate_github_actions()`: produces GitHub Actions YAML
+- `generate_gitlab_ci()`: produces GitLab CI YAML
+- `requires_clang_format()` / `requires_clang_tidy()`: check detection
 
-#### ports/ — Port Interfaces
+#### ports/: Port Interfaces
 
 Seven port interfaces define the contracts between layers:
 
@@ -621,7 +669,7 @@ Seven port interfaces define the contracts between layers:
 | `IHttpClient` | `http_client.hpp` | `download()` |
 | `IArchiveExtractor` | `archive_extractor.hpp` | `extract()` |
 
-#### error_codes.hpp — Typed Exit Codes
+#### error_codes.hpp: Typed Exit Codes
 
 **File:** `include/sniffercommit/domain/error_codes.hpp`
 
@@ -653,6 +701,12 @@ struct InitOptions {
   bool cmake_enable_warnings = true;
   bool generate_source = true;
   std::vector<std::string> dependencies;
+  bool enable_compiler_checks = false;
+  std::string compiler = "g++";
+  std::string compiler_cpp_standard = "20";
+  std::vector<std::string> compiler_warnings = {"Wall", "Wextra", "Wpedantic"};
+  bool compiler_werror = true;
+  bool compiler_debug_and_release = false;
 };
 
 class InitUseCase {
@@ -710,6 +764,32 @@ class RunChecksUseCase {
 ```
 
 Collects files from git, filters by patterns, and runs checks. Returns `0` if all pass, `1` otherwise.
+
+Each config `Check` is dispatched through the `make_check` factory to the
+matching concrete check (see below); checks run sequentially or in parallel
+via `std::async` (`[execution] parallel`).
+
+#### checks/: Check Implementations
+
+**Files:** `include/sniffercommit/application/checks/` + `src/application/checks/`
+
+Namespace: `sniffercommit::application::checks`
+
+Each concrete check subclasses `domain::Check`. The right class is selected by
+**command basename** in the `make_check` factory (`run_checks_use_case.cpp`);
+unknown commands fall back to `ShellCheck`.
+
+| Command basename | Class | Behavior |
+|---|---|---|
+| `clang-format` | `ClangFormatCheck` | In-place formatting; `Formatted`/`Clean` per file; exit `0` after fixing |
+| `clang-tidy` | `ClangTidyCheck` | Static analysis; requires `.clang-tidy` |
+| `gcc`, `g++`, `clang`, `clang++`, `cc`, `c++` (incl. versioned) | `CompilerCheck` | Per-file syntax compile; forces `-fsyntax-only` unless a mode flag is set |
+| `cmake` | `BuildCheck` | Runs once, no file args (e.g. `cmake --build`) |
+| `git` | `GitDiffCheck` | Runs once against the working tree (e.g. `git diff --check`) |
+| anything else | `ShellCheck` | Custom shell command; inverts `grep`/`rg` exit codes; batches multi-file tools |
+
+Runner flow: `make_check(config)` → `validate()` (build time) → `execute()`
+(run time).
 
 #### generate_workflow_use_case.hpp
 
@@ -779,7 +859,7 @@ Ten adapters implement the port interfaces:
 | `ZipArchiveExtractor` | `IArchiveExtractor` | `unzip` (Unix) or `powershell Expand-Archive` (Windows) |
 | `LinuxGccProvider` | `IToolchainProvider` | Detects package manager (apt/dnf/pacman/zypper) and installs GCC |
 | `WindowsGccProvider` | `IToolchainProvider` | Downloads MinGW-w64 from WinLibs, extracts, and installs |
-| `ToolchainFactory` | — | Static `create()` method returns the platform-appropriate provider |
+| `ToolchainFactory` | - | Static `create()` method returns the platform-appropriate provider |
 
 ### Generators
 
@@ -792,9 +872,9 @@ Stateless free functions in `sniffercommit::generators` namespace:
 | `cmake_generator` | `generate_cmake_lists(project_name, cpp_standard, target_type, enable_testing, enable_sanitizers, enable_warnings, enable_clang_tidy, enable_conan, dependencies)` |
 | `conan_generator` | `generate_conanfile(project_name, cpp_standard, enable_testing, dependencies)` |
 
-All return `std::string` — pure string generation, no I/O.
+All return `std::string`: pure string generation, no I/O.
 
-### main.cpp — Entry Point & Command Dispatch
+### main.cpp: Entry Point & Command Dispatch
 
 **File:** `src/main.cpp`
 
@@ -839,7 +919,7 @@ main()
     └── show_help()
 ```
 
-#### `preparse_config_path()` — Early Config Resolution
+#### `preparse_config_path()`: Early Config Resolution
 
 Scans `argv` for `-c` / `--config` before `ArgParser` processes arguments, avoiding the limitation where global options are not parsed when a subcommand is present.
 
@@ -898,7 +978,7 @@ main.cpp
 
 ### Why a generated Bash hook instead of invoking the binary in the hook?
 
-The generated Bash hook is self-contained — it does not require the sniffercommit binary to be installed on every developer machine or CI runner. A `git clone` + `sniffercommit install` is sufficient for setup. The trade-off is that the hook script contains generated logic that must be re-generated when the configuration changes.
+The generated Bash hook is self-contained: it does not require the sniffercommit binary to be installed on every developer machine or CI runner. A `git clone` + `sniffercommit install` is sufficient for setup. The trade-off is that the hook script contains generated logic that must be re-generated when the configuration changes.
 
 ### Why hexagonal architecture?
 
@@ -988,10 +1068,10 @@ Tests are located in the `tests/` directory and are executed as:
 
 A GitHub Actions workflow (generated by `sniffercommit generate-gha`) runs on every push and pull request:
 
-1. **Build** — cmake configure + build (Release and Debug)
-2. **Lint** — `clang-tidy` with the project's own `.clang-tidy` config
-3. **Test** — Integration test suite
-4. **Package** — CPack DEB generation (Linux only)
+1. **Build**: cmake configure + build (Release and Debug)
+2. **Lint**: `clang-tidy` with the project's own `.clang-tidy` config
+3. **Test**: Integration test suite
+4. **Package**: CPack DEB generation (Linux only)
 
 ---
 
