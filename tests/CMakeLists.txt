@@ -22,6 +22,7 @@ set(TEST_SOURCES
   test_format_mode.cpp
   test_glob_match.cpp
   test_precommit_domain.cpp
+  test_sha256_verification.cpp
   test_toolchain_install.cpp
   test_tooling_config.cpp
 )
