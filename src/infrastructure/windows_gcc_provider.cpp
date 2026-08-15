@@ -211,6 +211,9 @@ domain::ports::CppStandard WindowsGccProvider::max_supported_standard() const {
   if (major == 0) {
     return domain::ports::CppStandard::CPP_23;
   }
+  if (major == 15) {
+    return domain::ports::CppStandard::CPP_26;
+  }
   if (major >= 14) {
     return domain::ports::CppStandard::CPP_23;
   }

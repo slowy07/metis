@@ -41,7 +41,9 @@ struct MockFileSystem : domain::ports::IFileSystem {
   }
 };
 
-domain::ports::CapturedResult ok(std::string output) { return {.exit_code_ = 0, .output_ = std::move(output)}; }
+domain::ports::CapturedResult ok(std::string output) {
+  return {.exit_code_ = 0, .output_ = std::move(output)};
+}
 domain::ports::CapturedResult fail() { return {.exit_code_ = 1, .output_ = {}}; }
 
 std::string certutil_output() {

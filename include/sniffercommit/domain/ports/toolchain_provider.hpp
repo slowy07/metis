@@ -12,6 +12,7 @@ enum class CppStandard : std::uint8_t {
   CPP_17 = 17,
   CPP_20 = 20,
   CPP_23 = 23,
+  CPP_26 = 26,
 };
 
 struct ToolchainPackage {

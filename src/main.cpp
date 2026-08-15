@@ -114,6 +114,18 @@ bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOpt
       opts.dependencies.emplace_back(args[++i]);
     } else if (arg == "--generate-src") {
       opts.generate_source = true;
+    } else if (arg == "--enable-compiler-checks" || arg == "--compiler-checks") {
+      opts.enable_compiler_checks = true;
+    } else if (arg == "--compiler" && i + 1 < args.size()) {
+      opts.compiler = args[++i];
+    } else if (arg == "--compiler-cpp-standard" && i + 1 < args.size()) {
+      opts.compiler_cpp_standard = to_lower(args[++i]);
+    } else if (arg == "--compiler-werror") {
+      opts.compiler_werror = true;
+    } else if (arg == "--compiler-no-werror") {
+      opts.compiler_werror = false;
+    } else if (arg == "--compiler-debug-and-release") {
+      opts.compiler_debug_and_release = true;
     }
   }
   return true;
@@ -327,6 +339,8 @@ int main(int argc, char** argv) {
         cpp_standard = domain::ports::CppStandard::CPP_20;
       } else if (cpp_standard_str == "23") {
         cpp_standard = domain::ports::CppStandard::CPP_23;
+      } else if (cpp_standard_str == "26") {
+        cpp_standard = domain::ports::CppStandard::CPP_26;
       } else {
         std::cerr << "[ERROR] Invalid --cpp-standard. use 17, 20, or 23\n";
         return static_cast<int>(domain::ExitCode::INVALID_ARGUMENTS);

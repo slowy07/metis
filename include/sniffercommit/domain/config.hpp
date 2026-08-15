@@ -51,6 +51,10 @@ struct ProjectConfig {
     const std::string& tidy_preset = "standard", const std::filesystem::path& repo_root = ".");
 [[nodiscard]] std::string generate_default_config_with_cmake(
     const std::string& project_name, const std::string& fallback_style = "Google");
+[[nodiscard]] std::string generate_compiler_checks(
+    const std::string& compiler = "g++", const std::string& cpp_standard = "20",
+    const std::vector<std::string>& warnings = {"Wall", "Wextra", "Wpedantic"}, bool werror = true,
+    bool debug_and_release = false);
 
 }  // namespace sniffercommit::domain::config
 

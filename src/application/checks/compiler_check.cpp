@@ -3,7 +3,6 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -14,9 +13,12 @@ namespace sniffercommit::application::checks {
 CompilerCheck::CompilerCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
                     config.command, config.args, config.timeout, config.severity) {
-  // Syntax-only compile is the whole point of this check type. Inject the
-  // flag so a misconfigured check cannot emit object files into the repo.
-  if (std::ranges::find(arguments_, "-fsyntax-only") == arguments_.end()) {
+  // If the user already specified a compilation mode (-c, -S, -E, -fsyntax-only),
+  // respect it. Otherwise default to syntax-only (safe for pre-commit hooks).
+  bool has_mode = std::ranges::any_of(arguments_, [](const std::string& arg) {
+    return arg == "-c" || arg == "-S" || arg == "-E" || arg == "-fsyntax-only";
+  });
+  if (!has_mode) {
     arguments_.push_back("-fsyntax-only");
   }
 }

@@ -66,6 +66,60 @@ static std::string make_config_file_arg(const std::filesystem::path& repo_root,
   return "--config-file=" + abs_path.string();
 }
 
+std::string generate_compiler_checks(const std::string& compiler, const std::string& cpp_standard,
+                                     const std::vector<std::string>& warnings, bool werror,
+                                     bool debug_and_release) {
+  auto build_args = [&](const std::string& build_type) -> std::string {
+    std::string args;
+    args += fmt::format("    \"-std=c++{}\",\n", cpp_standard);
+
+    if (build_type == "debug") {
+      args += "    \"-O0\",\n    \"-g\",\n    \"-D_DEBUG\",\n";
+    } else if (build_type == "release") {
+      args += "    \"-O2\",\n    \"-DNDEBUG\",\n";
+    }
+
+    for (const auto& warn : warnings) {
+      args += fmt::format("    \"-{}\",\n", warn);
+    }
+    if (werror) {
+      args += "    \"-Werror\",\n";
+    }
+    return args;
+  };
+
+  auto make_check = [&](const std::string& name_suffix, const std::string& description,
+                        const std::string& build_type) -> std::string {
+    return fmt::format(
+        R"([[checks]]
+name = "compiler-{}-{}"
+description = "{}"
+enabled = true
+command = "{}"
+args = [
+{}
+]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc", "*.c"]
+timeout = 0
+severity = "error"
+
+)",
+        compiler, name_suffix, description, compiler, build_args(build_type));
+  };
+
+  std::string result;
+  if (debug_and_release) {
+    result += make_check("debug", "Compiler syntax check (debug configuration)", "debug");
+    result += make_check("release", "Compiler syntax check (release configuration)", "release");
+  } else {
+    result +=
+        make_check(cpp_standard,
+                   fmt::format("Compiler syntax check (C++{}, strict warnings)", cpp_standard), "");
+  }
+
+  return result;
+}
+
 // Generates a basic .sniffercommit.toml with clang-format and trailing-whitespace checks.
 // This is the default config when no special options are enabled.
 std::string generate_default_config(const std::string& project_name,
