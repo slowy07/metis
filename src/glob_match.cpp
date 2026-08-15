@@ -16,6 +16,10 @@
     return true;
   }
 
+  if (pattern == "*") {
+    return true;
+  }
+
   if (pattern.starts_with("*.") && file.ends_with(pattern.substr(1))) {
     return true;
   }

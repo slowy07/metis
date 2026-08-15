@@ -6,31 +6,20 @@
 
 namespace sniffercommit::application::checks {
 
-class ShellCheck : public domain::ICheck {
+// Custom-command check: runs `command arguments files...`.
+// Covers arbitrary linters and file/pattern validation (grep/rg exit codes
+// are inverted so "no match" = pass). Every command not claimed by a more
+// specific check type routes here.
+class ShellCheck : public domain::Check {
  public:
   explicit ShellCheck(const domain::config::Check& config);
 
-  [[nodiscard]] std::string name() const override;
-  [[nodiscard]] std::string description() const override;
-  [[nodiscard]] bool enabled() const override;
-  [[nodiscard]] std::vector<std::string> file_patterns() const override;
-  [[nodiscard]] int timeout() const override;
-  [[nodiscard]] std::string severity() const override;
-  [[nodiscard]] std::string validate(const std::filesystem::path& repo_root) const override;
   [[nodiscard]] domain::CheckResult execute(const std::vector<std::string>& files,
                                             domain::ports::IShellExecutor* shell, bool verbose,
                                             bool dry_run) override;
 
  private:
-  std::string name_;
-  std::string description_;
-  bool enabled_;
-  std::vector<std::string> patterns_;
-  std::string command_;
-  std::vector<std::string> args_;
-  int timeout_;
-  std::string severity_;
-  bool invert_exit_code_;
+  bool invert_exit_code_ = false;
 };
 }  // namespace sniffercommit::application::checks
 

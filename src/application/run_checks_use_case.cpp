@@ -3,21 +3,23 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <cstddef>
-#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <future>
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
+#include "sniffercommit/application/checks/build_check.hpp"
+#include "sniffercommit/application/checks/clang_format_check.hpp"
+#include "sniffercommit/application/checks/clang_tidy_check.hpp"
+#include "sniffercommit/application/checks/compiler_check.hpp"
+#include "sniffercommit/application/checks/git_diff_check.hpp"
+#include "sniffercommit/application/checks/shell_check.hpp"
+#include "sniffercommit/domain/check.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
 #include "sniffercommit/glob_match.hpp"
@@ -33,22 +35,42 @@ using domain::ExitCode;
 // Column width for dotted alignment in check result output
 constexpr size_t k_result_col = 68;
 
-// grep/rg exit codes are inverted from the normal convention:
-//   exit 0 = match found (but for a pre-commit hook, match = problem)
-//   exit 1 = no match (clean, success)
-// This flips them so 0 always means "all checks passed".
-// lazy: hardcodes grep/rg names; add a `invert_exit` flag to Check if
-// other tools need this.
-int interpret_exit_code(int raw, std::string_view cmd) {
-  auto basename = std::filesystem::path(cmd).filename().string();
-  if ((basename == "grep" || basename == "egrep" || basename == "rg") && (raw == 0 || raw == 1)) {
-    return raw == 0 ? 1 : 0;
+// Maps a config check to its concrete implementation by command basename.
+// Heuristic-based dispatch: clang-format/clang-tidy/compilers/cmake/git get
+// specialized behavior; everything else is a custom shell command.
+// config if the heuristics start misrouting checks.
+bool is_compiler(const std::string& basename) {
+  static const std::vector<std::string> k_prefixes = {"gcc",     "g++", "clang",
+                                                      "clang++", "cc",  "c++"};
+  for (const auto& prefix : k_prefixes) {
+    if (basename == prefix ||
+        (basename.size() > prefix.size() && basename.compare(0, prefix.size(), prefix) == 0 &&
+         basename[prefix.size()] == '-')) {
+      return true;
+    }
   }
-  return raw;
+  return false;
 }
 
-// Any non-zero exit code from the interpreted result means a check failed.
-bool is_interpreter_failure(int code) { return code != 0; }
+std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
+  auto basename = std::filesystem::path(config.command).filename().string();
+  if (basename == "clang-format") {
+    return std::make_unique<checks::ClangFormatCheck>(config);
+  }
+  if (basename == "clang-tidy") {
+    return std::make_unique<checks::ClangTidyCheck>(config);
+  }
+  if (is_compiler(basename)) {
+    return std::make_unique<checks::CompilerCheck>(config);
+  }
+  if (basename == "cmake") {
+    return std::make_unique<checks::BuildCheck>(config);
+  }
+  if (basename == "git") {
+    return std::make_unique<checks::GitDiffCheck>(config);
+  }
+  return std::make_unique<checks::ShellCheck>(config);
+}
 
 // Thread-safe printer for concurrent check output.
 // Checks run in parallel via std::async; without a mutex, output from
@@ -111,8 +133,38 @@ class SyncPrinter {
   std::mutex mutex_;
 };
 
-// Checks if a file extension is eligible for clang-format formatting.
-// Only C/C++ source and header files are included.
+// Result of running a single check against a set of matched files.
+struct CheckResult {
+  std::string check_name_{};
+  int exit_code_{0};
+  std::string output_{};
+  bool verbose_{false};
+};
+
+// Runs a single check against all matched files through the generic
+// Check abstraction. Each check's execute() decides batch vs per-file
+// invocation and handles tool presence + output collection.
+// than the dedicated MISSING_DEPENDENCY code; restore that code if anything
+// distinguishes the two.
+CheckResult run_check_for_files(std::unique_ptr<domain::Check> check,
+                                const std::vector<std::string>& matched_files,
+                                const RunOptions& opts, SyncPrinter& printer,
+                                domain::ports::IShellExecutor* shell) {
+  auto result = check->execute(matched_files, shell, opts.verbose, opts.dry_run);
+
+  if (result.exit_code == 0) {
+    printer.print_check_result(check->name(), "Passed");
+  } else {
+    printer.print_check_result(check->name(), "Failed", result.exit_code, result.output,
+                               opts.verbose);
+  }
+
+  return {.check_name_ = check->name(), .exit_code_ = result.exit_code, .output_ = {}};
+}
+
+// C/C++ source/header extensions eligible for clang-format.
+// Used by the --format mode. Duplicated from ClangFormatCheck because that
+// filter is per-file, not per-check, and lives in --format's reporting loop.
 // lazy: extension list is hardcoded; could be configurable, but nobody
 // has asked for it and this covers the standard set.
 bool is_format_eligible(const std::string& file) {
@@ -134,168 +186,6 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
     }
   }
   return result;
-}
-
-// Describes a tool that requires a config file to function correctly.
-// Used to validate that config files exist before running checks.
-struct ConfigRequirement {
-  std::string tool_name_;
-  std::string config_arg_;
-  std::string default_file_;
-};
-
-// Extracts a file path from a CLI argument that starts with a given prefix.
-// e.g. extract_config_path("--config-file=.clang-tidy", "--config-file=")
-//   returns ".clang-tidy"
-std::optional<std::string> extract_config_path(std::string_view arg, std::string_view prefix) {
-  if (arg.starts_with(prefix)) {
-    return std::string(arg.substr(prefix.length()));
-  }
-  return std::nullopt;
-}
-
-// Validates that required config files exist for tools like clang-tidy
-// and clang-format. Returns an error message if a config is missing,
-// or empty string if everything is OK.
-//
-// For each known tool, checks two things:
-// 1. If the check args explicitly specify a config path, verify it exists
-// 2. If no explicit config, check for the default config file in repo root
-std::string validate_tool_config(const domain::config::Check& check,
-                                 const std::filesystem::path& repo_root) {
-  static const std::vector<ConfigRequirement> k_config_tools = {
-      {.tool_name_ = "clang-tidy", .config_arg_ = "--config-file=", .default_file_ = ".clang-tidy"},
-      {.tool_name_ = "clang-format", .config_arg_ = "", .default_file_ = ".clang-format"},
-  };
-
-  for (const auto& req : k_config_tools) {
-    if (check.command != req.tool_name_) {
-      continue;
-    }
-
-    bool has_explicit_config = false;
-    for (const auto& arg : check.args) {
-      if (req.config_arg_.empty()) {
-        break;
-      }
-
-      if (auto path = extract_config_path(arg, req.config_arg_)) {
-        has_explicit_config = true;
-        std::filesystem::path config_path(*path);
-        if (config_path.is_relative()) {
-          config_path = repo_root / config_path;
-        }
-        if (!std::filesystem::exists(config_path)) {
-          return fmt::format(
-              "Config file not found for `{}`: {}\n"
-              " Run `sniffercommit init --enable-clang-tidy` to generate it.\n"
-              " or ensure the file exists at the expected location",
-              check.name, config_path.string());
-        }
-      }
-    }
-
-    if (!has_explicit_config && !req.default_file_.empty()) {
-      auto default_path = repo_root / req.default_file_;
-      if (!std::filesystem::exists(default_path)) {
-        return fmt::format(
-            "Default config file not found for `{}`: {}\n"
-            " Run `sniffercommit init` to generate it\n"
-            " or create {} manually in the repository root",
-            check.name, default_path.string(), req.default_file_);
-      }
-    }
-  }
-
-  return "";
-}
-
-// Result of running a single check against a set of matched files.
-struct CheckResult {
-  std::string check_name_{};
-  int exit_code_{0};
-  std::string output_{};
-  bool verbose_{false};
-};
-
-// Runs a single check against all matched files.
-//
-// Two execution strategies:
-//   - Batch mode: pass all files as args to one command invocation.
-//     Used for tools that accept multiple files (clang-format, grep, etc.)
-//   - Per-file mode: run the command once per file.
-//     Used for tools that only accept a single file.
-//
-// The batch vs per-file decision is based on k_multi_file_tools.
-// Exit code interpretation (grep inversion) happens here.
-CheckResult run_check_for_files(const domain::config::Check& check,
-                                const std::vector<std::string>& matched_files,
-                                const RunOptions& opts, SyncPrinter& printer,
-                                domain::ports::IShellExecutor* shell) {
-  if (!shell->command_exists(check.command)) {
-    printer.print_check_result(
-        check.name, "Missing", static_cast<int>(ExitCode::MISSING_DEPENDENCY),
-        fmt::format("'{}' not found in PATH. Install it or check your configuration.",
-                    check.command),
-        opts.verbose);
-    return {.check_name_ = check.name,
-            .exit_code_ = static_cast<int>(ExitCode::MISSING_DEPENDENCY),
-            .output_ = {}};
-  }
-
-  int overall_exit = 0;
-  std::string accumulated_output{};
-
-  // Tools that accept multiple file arguments in one invocation.
-  // These are faster in batch mode because they only parse config/args once.
-  static const std::unordered_set<std::string> k_multi_file_tools = {
-      "clang-format", "clang-tidy", "grep", "egrep", "rg", "cppcheck",
-  };
-  bool batch = matched_files.size() > 1 &&
-               k_multi_file_tools.count(std::filesystem::path(check.command).filename().string());
-
-  if (batch) {
-    std::string full_cmd = check.command_line(matched_files);
-
-    if (opts.verbose) {
-      printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
-    }
-
-    auto result = check.execute(*shell, matched_files);
-    int code = interpret_exit_code(result.exit_code_, check.command);
-
-    if (is_interpreter_failure(code)) {
-      overall_exit = code;
-      accumulated_output = result.output_;
-    }
-  } else {
-    for (const auto& file_name : matched_files) {
-      std::string full_cmd = check.command_line({file_name});
-      if (opts.verbose) {
-        printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
-      }
-      auto res = check.execute(*shell, {file_name});
-      int code = interpret_exit_code(res.exit_code_, check.command);
-      if (is_interpreter_failure(code)) {
-        overall_exit = code;
-        if (!res.output_.empty()) {
-          accumulated_output += res.output_;
-          if (!accumulated_output.empty() && accumulated_output.back() != '\n') {
-            accumulated_output += '\n';
-          }
-        }
-      }
-    }
-  }
-
-  if (overall_exit == 0) {
-    printer.print_check_result(check.name, "Passed");
-  } else {
-    printer.print_check_result(check.name, "Failed", overall_exit, accumulated_output,
-                               opts.verbose);
-  }
-
-  return {.check_name_ = check.name, .exit_code_ = overall_exit, .output_ = {}};
 }
 
 }  // namespace
@@ -398,10 +288,10 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
     return static_cast<int>(ExitCode::SUCCESS);
   }
 
-  // A work item pairs a check definition with its matched files.
+  // A work item pairs a concrete check with its matched files.
   // Config errors are pre-validated before any execution begins.
   struct WorkItem {
-    const domain::config::Check* check;
+    std::unique_ptr<domain::Check> check;
     std::vector<std::string> matched_files;
     std::string config_error;
   };
@@ -431,8 +321,9 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
       continue;
     }
 
-    std::string config_err = validate_tool_config(check, repo_root);
-    work_items.push_back({.check = &check,
+    auto impl = make_check(check);
+    std::string config_err = impl->validate(repo_root);
+    work_items.push_back({.check = std::move(impl),
                           .matched_files = std::move(matched),
                           .config_error = std::move(config_err)});
   }
@@ -463,9 +354,9 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   // Sequential is simpler and avoids thread overhead for trivial workloads.
   if (!cfg.parallel || work_items.size() == 1) {
     int exit_code = static_cast<int>(ExitCode::SUCCESS);
-    for (const auto& item : work_items) {
-      auto result =
-          run_check_for_files(*item.check, item.matched_files, opts, printer, shell_.get());
+    for (auto& item : work_items) {
+      auto result = run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
+                                        shell_.get());
       if (result.exit_code_ != 0) {
         exit_code = result.exit_code_;
       }
@@ -483,10 +374,12 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   std::vector<std::future<CheckResult>> futures;
   futures.reserve(work_items.size());
 
-  for (const auto& item : work_items) {
-    futures.push_back(std::async(std::launch::async, [item, &opts, &printer, this]() {
-      return run_check_for_files(*item.check, item.matched_files, opts, printer, shell_.get());
-    }));
+  for (auto& item : work_items) {
+    futures.push_back(
+        std::async(std::launch::async, [item = std::move(item), &opts, &printer, this]() mutable {
+          return run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
+                                     shell_.get());
+        }));
   }
 
   int exit_code = static_cast<int>(ExitCode::SUCCESS);

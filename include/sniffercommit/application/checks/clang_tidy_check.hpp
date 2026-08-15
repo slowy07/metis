@@ -1,16 +1,17 @@
-#ifndef SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_FORMAT_CHECK_HPP
-#define SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_FORMAT_CHECK_HPP
+#ifndef SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_TIDY_CHECK_HPP
+#define SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_TIDY_CHECK_HPP
 
 #include "sniffercommit/domain/check.hpp"
 #include "sniffercommit/domain/config.hpp"
 
 namespace sniffercommit::application::checks {
 
-// clang-format formatting check. Runs `clang-format -i` on C/C++ files,
-// then reports which files were actually modified (via git diff).
-class ClangFormatCheck : public domain::Check {
+// clang-tidy static-analysis check. Validates that the .clang-tidy config
+// (explicit or default) exists, then runs clang-tidy over all files in a
+// single batch invocation.
+class ClangTidyCheck : public domain::Check {
  public:
-  explicit ClangFormatCheck(const domain::config::Check& config);
+  explicit ClangTidyCheck(const domain::config::Check& config);
 
   [[nodiscard]] std::string validate(const std::filesystem::path& repo_root) const override;
   [[nodiscard]] domain::CheckResult execute(const std::vector<std::string>& files,
@@ -19,4 +20,4 @@ class ClangFormatCheck : public domain::Check {
 };
 }  // namespace sniffercommit::application::checks
 
-#endif  // !SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_FORMAT_CHECK_HPP
+#endif  // !SNIFFERCOMMIT_APPLICATION_CHECKS_CLANG_TIDY_CHECK_HPP

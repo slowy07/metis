@@ -23,12 +23,6 @@ struct Check {
   std::string severity = "error";
 
   [[nodiscard]] std::string validate() const noexcept;
-
-  // Builds the escaped shell command for this check against the given files.
-  [[nodiscard]] std::string command_line(const std::vector<std::string>& files) const;
-  // Runs this check against the given files in a single shell invocation.
-  [[nodiscard]] domain::ports::CapturedResult execute(domain::ports::IShellExecutor& shell,
-                                                      const std::vector<std::string>& files) const;
 };
 
 // Top-level project configuration loaded from .sniffercommit.toml.

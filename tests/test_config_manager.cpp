@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 
+#include "sniffercommit/application/checks/compiler_check.hpp"
+#include "sniffercommit/application/checks/shell_check.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/infrastructure/os_file_system.hpp"
 #include "sniffercommit/infrastructure/process_shell_executor.hpp"
@@ -109,15 +112,29 @@ TEST(ConfigCheckTest, ParsesAllCheckFields) {
   EXPECT_EQ(check.severity, "warning");
 }
 
-// Generic check abstraction: execute() runs command + args via the shell.
+// Generic check abstraction: ShellCheck (custom command) runs
+// command + args + files via the shell and surfaces failing output.
 TEST(ConfigCheckTest, ExecuteRunsCommand) {
-  domain::config::Check check;
-  check.command = "echo";
-  check.args = {"hello"};
+  domain::config::Check config;
+  config.command = "sh";
+  config.args = {"-c", "echo hello; exit 3"};
 
+  application::checks::ShellCheck check(config);
   infrastructure::ProcessShellExecutor shell;
-  auto result = check.execute(shell, {"a.cpp"});
+  auto result = check.execute({"a.cpp"}, &shell, false, false);
 
-  EXPECT_EQ(result.exit_code_, 0);
-  EXPECT_NE(result.output_.find("hello"), std::string::npos);
+  EXPECT_EQ(result.exit_code, 3);
+  EXPECT_NE(result.output.find("hello"), std::string::npos);
+}
+
+// CompilerCheck injects -fsyntax-only so a misconfigured check cannot emit
+// object files; the compiled command must contain the flag.
+TEST(ConfigCheckTest, CompilerCheckForcesSyntaxOnly) {
+  domain::config::Check config;
+  config.command = "g++";
+  config.args = {"-std=c++20", "-Iinclude"};
+
+  application::checks::CompilerCheck check(config);
+  std::vector<std::string> args = check.arguments();
+  EXPECT_NE(std::ranges::find(args, "-fsyntax-only"), args.end());
 }

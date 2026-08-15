@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/check.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
 #include "sniffercommit/util.hpp"
 
@@ -39,22 +38,12 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 }  // namespace
 
 ClangFormatCheck::ClangFormatCheck(const domain::config::Check& config)
-    : name_(config.name),
-      description_(config.description),
-      enabled_(config.enabled),
-      patterns_(config.patterns),
-      args_(config.args),
-      timeout_(config.timeout),
-      severity_(config.severity) {
-  std::erase(args_, "-i");
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {
+  // In-place formatting is the point of this check; strip a user-supplied -i
+  // so the batch command below can build it explicitly.
+  std::erase(arguments_, "-i");
 }
-
-std::string ClangFormatCheck::name() const { return name_; }
-std::string ClangFormatCheck::description() const { return description_; }
-bool ClangFormatCheck::enabled() const { return enabled_; }
-std::vector<std::string> ClangFormatCheck::file_patterns() const { return patterns_; }
-int ClangFormatCheck::timeout() const { return timeout_; }
-std::string ClangFormatCheck::severity() const { return severity_; }
 
 std::string ClangFormatCheck::validate(const std::filesystem::path& repo_root) const {
   bool has_config = std::filesystem::exists(repo_root / ".clang-format") ||
@@ -90,7 +79,7 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
   }
 
   std::string cmd_base = "clang-format -i";
-  for (const auto& arg : args_) {
+  for (const auto& arg : arguments_) {
     if (arg != "-i") {
       cmd_base += " ";
       cmd_base += util::shell_escape(arg);
@@ -102,9 +91,9 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
     batch_cmd += " " + util::shell_escape(f_file);
   }
 
+  std::string output;
   if (verbose) {
-    // INFO: builtin info output
-    // TODO: create verbose output
+    output += fmt::format("$ {}\n", batch_cmd);
   }
 
   auto fmt_res = shell->exec_captured(batch_cmd);
@@ -113,14 +102,8 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
     return {.exit_code = fmt_res.exit_code_, .output = fmt_res.output_};
   }
 
-  int exit_code = 0;
   int formatted_count = 0;
   int clean_count = 0;
-  std::string output;
-
-  if (verbose) {
-    output += fmt::format("$ {}\n", batch_cmd);
-  }
 
   for (const auto& file : format_files) {
     auto diff = shell->exec_captured("git diff --quiet " + util::shell_escape(file));
@@ -144,7 +127,7 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
         formatted_count, clean_count);
   }
 
-  return {.exit_code = exit_code, .output = output};
+  return {.exit_code = 0, .output = output};
 }
 
 }  // namespace sniffercommit::application::checks
