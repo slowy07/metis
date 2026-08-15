@@ -243,12 +243,6 @@ CheckResult run_check_for_files(const domain::config::Check& check,
             .output_ = {}};
   }
 
-  std::string cmd_base = util::shell_escape(check.command);
-  for (const auto& arg : check.args) {
-    cmd_base += " ";
-    cmd_base += util::shell_escape(arg);
-  }
-
   int overall_exit = 0;
   std::string accumulated_output{};
 
@@ -261,17 +255,13 @@ CheckResult run_check_for_files(const domain::config::Check& check,
                k_multi_file_tools.count(std::filesystem::path(check.command).filename().string());
 
   if (batch) {
-    std::string full_cmd = cmd_base;
-
-    for (const auto& file : matched_files) {
-      full_cmd += " " + util::shell_escape(file);
-    }
+    std::string full_cmd = check.command_line(matched_files);
 
     if (opts.verbose) {
       printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
     }
 
-    auto result = shell->exec_captured(full_cmd);
+    auto result = check.execute(*shell, matched_files);
     int code = interpret_exit_code(result.exit_code_, check.command);
 
     if (is_interpreter_failure(code)) {
@@ -280,11 +270,11 @@ CheckResult run_check_for_files(const domain::config::Check& check,
     }
   } else {
     for (const auto& file_name : matched_files) {
-      std::string full_cmd = fmt::format("{} {}", cmd_base, util::shell_escape(file_name));
+      std::string full_cmd = check.command_line({file_name});
       if (opts.verbose) {
         printer.print_verbose(fmt::format(" $ {}\n", full_cmd));
       }
-      auto res = shell->exec_captured(full_cmd);
+      auto res = check.execute(*shell, {file_name});
       int code = interpret_exit_code(res.exit_code_, check.command);
       if (is_interpreter_failure(code)) {
         overall_exit = code;
@@ -420,6 +410,13 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   work_items.reserve(cfg.checks.size());
 
   for (const auto& check : cfg.checks) {
+    if (!check.enabled) {
+      if (opts.verbose) {
+        printer.print_verbose(fmt::format("[sniffercommit] [SKIP] {} (disabled)\n", check.name));
+      }
+      continue;
+    }
+
     std::vector<std::string> matched;
     for (const auto& file_name : files) {
       if (util::matches_any_pattern(file_name, check.patterns)) {

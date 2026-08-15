@@ -6,17 +6,29 @@
 #include <string_view>
 #include <vector>
 
+#include "sniffercommit/domain/ports/shell_executor.hpp"
+
 namespace sniffercommit::domain::config {
 
 // A single check definition from the config file.
 // Each check specifies a command, its arguments, and file patterns to match.
 struct Check {
   std::string name;
+  std::string description;
+  bool enabled = true;
   std::string command;
   std::vector<std::string> args;
   std::vector<std::string> patterns;
+  int timeout = 0;
+  std::string severity = "error";
 
   [[nodiscard]] std::string validate() const noexcept;
+
+  // Builds the escaped shell command for this check against the given files.
+  [[nodiscard]] std::string command_line(const std::vector<std::string>& files) const;
+  // Runs this check against the given files in a single shell invocation.
+  [[nodiscard]] domain::ports::CapturedResult execute(
+      domain::ports::IShellExecutor& shell, const std::vector<std::string>& files) const;
 };
 
 // Top-level project configuration loaded from .sniffercommit.toml.

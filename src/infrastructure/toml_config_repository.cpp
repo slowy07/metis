@@ -50,6 +50,16 @@ bool get_bool_safe(const toml::table& tbl, std::string_view key, bool default_va
   return default_val;
 }
 
+int get_int_safe(const toml::table& tbl, std::string_view key, int default_val) {
+  if (const auto* node = safe_get(tbl, key)) {
+    if (const auto* val = node->as_integer()) {
+      return static_cast<int>(val->get());
+    }
+  }
+
+  return default_val;
+}
+
 }  // namespace
 
 TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileSystem> fs,
@@ -92,7 +102,11 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
       if (auto* check_tbl = item.as_table()) {
         domain::config::Check check;
         check.name = get_string_safe(*check_tbl, "name", "unnamed");
+        check.description = get_string_safe(*check_tbl, "description", "");
+        check.enabled = get_bool_safe(*check_tbl, "enabled", true);
         check.command = get_string_safe(*check_tbl, "command", "");
+        check.timeout = get_int_safe(*check_tbl, "timeout", 0);
+        check.severity = get_string_safe(*check_tbl, "severity", "error");
 
         if (auto* args = (*check_tbl)["args"].as_array()) {
           for (auto& arg : *args) {
@@ -171,6 +185,12 @@ bool TomlConfigRepository::save(const std::filesystem::path& path,
   for (const auto& check : cfg.checks) {
     content += "[[checks]]\n";
     content += "name = " + fmt_str(check.name) + "\n";
+
+    if (!check.description.empty()) {
+      content += "description = " + fmt_str(check.description) + "\n";
+    }
+
+    content += "enabled = " + std::string(check.enabled ? "true" : "false") + "\n";
     content += "command = " + fmt_str(check.command) + "\n";
 
     if (!check.args.empty()) {
@@ -179,6 +199,14 @@ bool TomlConfigRepository::save(const std::filesystem::path& path,
 
     if (!check.patterns.empty()) {
       content += "patterns = " + fmt_str_array(check.patterns) + "\n";
+    }
+
+    if (check.timeout != 0) {
+      content += "timeout = " + std::to_string(check.timeout) + "\n";
+    }
+
+    if (check.severity != "error") {
+      content += "severity = " + fmt_str(check.severity) + "\n";
     }
 
     content += "\n";

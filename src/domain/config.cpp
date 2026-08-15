@@ -7,6 +7,8 @@
 #include <string>
 #include <string_view>
 
+#include "sniffercommit/util.hpp"
+
 namespace sniffercommit::domain::config {
 
 // Validates a single check definition.
@@ -18,7 +20,36 @@ std::string Check::validate() const noexcept {
   if (command.empty()) {
     return fmt::format("Check `{}` missing require `command`", name);
   }
+  if (timeout < 0) {
+    return fmt::format("Check `{}` timeout cannot be negative", name);
+  }
+  if (severity != "error" && severity != "warning" && severity != "info") {
+    return fmt::format("Check `{}` severity must be 'error', 'warning', or 'info'", name);
+  }
   return "";
+}
+
+// Builds the escaped shell command: command + args + files.
+// Every check type (clang-format, grep, ...) uses the same shape,
+// so execution is generic instead of per-tool.
+std::string Check::command_line(const std::vector<std::string>& files) const {
+  std::string cmd = util::shell_escape(command);
+  for (const auto& arg : args) {
+    cmd += " ";
+    cmd += util::shell_escape(arg);
+  }
+  for (const auto& file : files) {
+    cmd += " ";
+    cmd += util::shell_escape(file);
+  }
+  return cmd;
+}
+
+// Runs the check against all given files in one shell invocation.
+// has no timeout support yet. Add when a check needs one.
+domain::ports::CapturedResult Check::execute(domain::ports::IShellExecutor& shell,
+                                             const std::vector<std::string>& files) const {
+  return shell.exec_captured(command_line(files));
 }
 
 // Validates the entire project config.
