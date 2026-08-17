@@ -167,7 +167,9 @@ void ArgParser::show_help() const {
   std::cout << "  " << app_name_ << " run src/main.cpp\n";
   std::cout << "  " << app_name_
             << " generate-gha > "
-               ".github/workflows/sniffercommit.yml\n\n";
+               ".github/workflows/sniffercommit.yml\n";
+  std::cout << "  " << app_name_ << " install-compiler --compiler gcc --cpp-standard 20\n";
+  std::cout << "  " << app_name_ << " test --coverage\n\n";
 
   print_section_title("Subcommands");
 
@@ -253,6 +255,40 @@ void ArgParser::show_help() const {
 
   std::cout << "      Generate production-grade "
                "GitHub Actions workflow.\n\n";
+
+  std::cout << "  generate-gitlab\n";
+
+  std::cout << "      Generate GitLab CI workflow.\n\n";
+
+  std::cout << "  install-compiler\n";
+
+  std::cout << "      Download and install a C++ toolchain.\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --compiler <gcc|clang>         [default: gcc]\n";
+
+  std::cout << "        --version <version>\n";
+
+  std::cout << "        --cpp-standard <17|20|23|26>   [default: 20]\n";
+
+  std::cout << "        --prefix <path>\n";
+
+  std::cout << "        --force\n";
+
+  std::cout << "        --dry-run, -n\n\n";
+
+  std::cout << "  test\n";
+
+  std::cout << "      Run ctest and optional coverage checks.\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --coverage\n";
+
+  std::cout << "        --verbose, -V\n";
+
+  std::cout << "        <build-dir>                   [default: build]\n\n";
 
   print_section_title("Global Options");
 

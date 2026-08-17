@@ -148,6 +148,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp
+  src/application/test_checks_use_case.cpp
   $<$<PLATFORM_ID:Windows>:src/infrastructure/windows_clang_provider.cpp>
 )
 
@@ -175,6 +176,8 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/application/checks/compiler_check.hpp
   include/sniffercommit/application/checks/build_check.hpp
   include/sniffercommit/application/checks/git_diff_check.hpp
+  include/sniffercommit/application/run_checks_use_case.hpp
+  include/sniffercommit/application/test_checks_use_case.hpp
   include/sniffercommit/infrastructure/toml_config_repository.hpp
   include/sniffercommit/infrastructure/process_shell_executor.hpp
   include/sniffercommit/infrastructure/os_file_system.hpp

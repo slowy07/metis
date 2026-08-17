@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
@@ -15,6 +16,7 @@
 #include "sniffercommit/application/install_toolchain_use_case.hpp"
 #include "sniffercommit/application/install_use_case.hpp"
 #include "sniffercommit/application/run_checks_use_case.hpp"
+#include "sniffercommit/application/test_checks_use_case.hpp"
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
@@ -148,7 +150,8 @@ int main(int argc, char** argv) {
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
       .add_subcommand("run", "Execute checks on files")
-      .add_subcommand("install-compiler", "Download and install a C++ toolchain");
+      .add_subcommand("install-compiler", "Download and install a C++ toolchain")
+      .add_subcommand("test", "Run test and optional coverage checks");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -260,6 +263,50 @@ int main(int argc, char** argv) {
       }
       std::cout << "[INFO] GitLab CI workflow generated at "
                 << (repo_root / ".gitlab-ci.yml").string() << "\n";
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
+    if (subcmd == "test") {
+      bool coverage = false;
+      bool verbose = false;
+      std::string build_dir_override;
+
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+        
+        if (arg == "test") {
+          continue;
+        }
+
+        if (arg == "--coverage") {
+          coverage = true;
+        } else if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        } else if (!arg.starts_with('-')) {
+          build_dir_override = std::string(arg);
+        }
+      }
+
+      if (!build_dir_override.empty()) {
+        cfg.test.build_dir = build_dir_override;
+      }
+
+      auto test_use_case = application::TestChecksUseCase(std::move(shell), std::move(fs));
+
+      auto result = test_use_case.execute(cfg, repo_root, coverage, verbose);
+
+      if (!result.output.empty()) {
+        std::cout << result.output;
+      }
+
+      if (!result.success) {
+        return static_cast<int>(domain::ExitCode::TEST_FAILURE);
+      }
+
+      if (coverage && !result.coverage_ok) {
+        return static_cast<int>(domain::ExitCode::COVERAGE_THRESHOLD_NOT_MET);
+      }
+
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 

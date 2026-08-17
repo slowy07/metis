@@ -20,6 +20,10 @@ enum class ExitCode : std::uint8_t {
   TOOLCHAIN_INSTALL_ERROR = 11,
   UNSUPPORTED_PLATFORM = 12,
   UNSUPPORTED_CPP_STANDARD = 13,
+  TEST_FAILURE = 14,
+  TEST_BUILD_FAILURE = 15,
+  TEST_TIMEOUT = 16,
+  COVERAGE_THRESHOLD_NOT_MET = 17,
 };
 
 }  // namespace sniffercommit::domain

@@ -36,6 +36,16 @@ struct ProjectConfig {
   bool generate_gitlab_ci = false;
   bool parallel = true;
 
+  struct TestConfig {
+    std::string build_dir = "build";
+    bool coverage = false;
+    double line_threshold = 80.0;
+    double branch_threshold = 70.0;
+    double function_threshold = 90.0;
+    int timeout = 0;
+  };
+  TestConfig test;
+
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept { return validate().empty(); }
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;
