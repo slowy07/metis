@@ -130,6 +130,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/application/checks/compiler_check.cpp
   src/application/checks/build_check.cpp
   src/application/checks/git_diff_check.cpp
+  src/application/sanitizer_checks_use_case.cpp
   src/infrastructure/toml_config_repository.cpp
   src/infrastructure/process_shell_executor.cpp
   src/infrastructure/os_file_system.cpp
@@ -177,6 +178,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/application/checks/build_check.hpp
   include/sniffercommit/application/checks/git_diff_check.hpp
   include/sniffercommit/application/run_checks_use_case.hpp
+  include/sniffercommit/application/sanitizer_checks_use_case.hpp
   include/sniffercommit/application/test_checks_use_case.hpp
   include/sniffercommit/infrastructure/toml_config_repository.hpp
   include/sniffercommit/infrastructure/process_shell_executor.hpp

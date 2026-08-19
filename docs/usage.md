@@ -24,6 +24,9 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `run` | Execute configured checks on files |
 | `generate-gha` | Write `.github/workflows/sniffercommit.yml` |
 | `generate-gitlab` | Write `.gitlab-ci.yml` |
+| `install-compiler` | Download and install a C++ toolchain |
+| `test` | Run ctest and optional coverage checks |
+| `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.sniffercommit.toml`).

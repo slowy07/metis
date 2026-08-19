@@ -16,6 +16,7 @@
 #include "sniffercommit/application/install_toolchain_use_case.hpp"
 #include "sniffercommit/application/install_use_case.hpp"
 #include "sniffercommit/application/run_checks_use_case.hpp"
+#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
 #include "sniffercommit/application/test_checks_use_case.hpp"
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/domain/config.hpp"
@@ -151,6 +152,7 @@ int main(int argc, char** argv) {
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
       .add_subcommand("run", "Execute checks on files")
       .add_subcommand("install-compiler", "Download and install a C++ toolchain")
+      .add_subcommand("sanitizer", "Run sanitizer checks (ASan, UBSan, TSan, LSan)")
       .add_subcommand("test", "Run test and optional coverage checks");
 
   if (!app.parse(argc, argv)) {
@@ -273,7 +275,7 @@ int main(int argc, char** argv) {
 
       for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
-        
+
         if (arg == "test") {
           continue;
         }
@@ -305,6 +307,36 @@ int main(int argc, char** argv) {
 
       if (coverage && !result.coverage_ok) {
         return static_cast<int>(domain::ExitCode::COVERAGE_THRESHOLD_NOT_MET);
+      }
+
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
+    if (subcmd == "sanitizer") {
+      bool verbose = false;
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+        if (arg == "sanitizer") {
+          continue;
+        }
+        if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        }
+      }
+
+      if (!cfg.sanitizer.enabled) {
+        std::cerr << "[WARN] Sanitizers not enabled in config.\n";
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
+
+      domain::config::ProjectConfig cfg_data = config_repo->load(config_path);
+
+      auto sanitizer_use_case =
+          application::SanitizerChecksUseCase(std::move(shell), std::move(fs));
+      bool ok = sanitizer_use_case.execute(cfg_data, repo_root, verbose);
+
+      if (!ok) {
+        return static_cast<int>(domain::ExitCode::SANITIZER_TEST_FAILURE);
       }
 
       return static_cast<int>(domain::ExitCode::SUCCESS);

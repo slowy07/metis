@@ -59,8 +59,10 @@ sniffercommit/
 │       ├── application/
 │       │   ├── init_use_case.hpp            # InitUseCase (init subcommand)
 │       │   ├── install_use_case.hpp         # InstallUseCase (install subcommand)
-│       │   ├── install_toolchain_use_case.hpp # InstallToolchainUseCase (install-gcc)
+│       │   ├── install_toolchain_use_case.hpp # InstallToolchainUseCase (install-compiler)
 │       │   ├── run_checks_use_case.hpp      # RunChecksUseCase (run subcommand)
+│       │   ├── test_checks_use_case.hpp     # TestChecksUseCase (test subcommand)
+│       │   ├── sanitizer_checks_use_case.hpp # SanitizerChecksUseCase (sanitizer subcommand)
 │       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
 │       │   └── checks/                      # concrete Check implementations
 │       │       ├── shell_check.hpp          # ShellCheck (custom commands)
@@ -82,8 +84,9 @@ sniffercommit/
 │       │   ├── curl_http_client.hpp         # curl/wget HTTP download adapter
 │       │   ├── tar_archive_extractor.hpp    # tar archive extraction adapter
 │       │   ├── zip_archive_extractor.hpp    # unzip/powershell extraction adapter
-│       │   ├── linux_gcc_provider.hpp       # GCC install via package manager
+│       │   ├── posix_toolchain_provider.hpp  # GCC install via package manager
 │       │   ├── windows_gcc_provider.hpp     # MinGW-w64 download + install
+│       │   ├── windows_clang_provider.hpp   # LLVM/Clang download + install
 │       │   └── toolchain_factory.hpp        # Platform-conditional provider factory
 │       └── presentation/
 │           └── interactive_init.hpp         # TUI prompts for init wizard
@@ -102,6 +105,8 @@ sniffercommit/
 │   │   ├── install_use_case.cpp
 │   │   ├── install_toolchain_use_case.cpp
 │   │   ├── run_checks_use_case.cpp
+│   │   ├── test_checks_use_case.cpp
+│   │   ├── sanitizer_checks_use_case.cpp
 │   │   ├── generate_workflow_use_case.cpp
 │   │   └── checks/
 │   │       ├── shell_check.cpp
@@ -123,8 +128,9 @@ sniffercommit/
 │   │   ├── curl_http_client.cpp
 │   │   ├── tar_archive_extractor.cpp
 │   │   ├── zip_archive_extractor.cpp
-│   │   ├── linux_gcc_provider.cpp
+│   │   ├── posix_toolchain_provider.cpp
 │   │   ├── windows_gcc_provider.cpp
+│   │   ├── windows_clang_provider.cpp
 │   │   └── toolchain_factory.cpp
 │   └── presentation/
 │       └── interactive_init.cpp
@@ -145,6 +151,7 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 ├─────────────────────────────────────────────────────┤
 │                  application/                        │
 │   InitUseCase · InstallUseCase · RunChecksUseCase   │
+│   TestChecksUseCase · SanitizerChecksUseCase        │
 │    GenerateWorkflowUseCase · InstallToolchainUseCase │
 ├─────────────────────────────────────────────────────┤
 │                   domain/                            │
@@ -158,8 +165,9 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 │  TomlConfigRepository · OsFileSystem                │
 │  CliGitRepository · ProcessShellExecutor            │
 │  CurlHttpClient · TarArchiveExtractor               │
-│  ZipArchiveExtractor · LinuxGccProvider             │
-│  WindowsGccProvider · ToolchainFactory              │
+│  ZipArchiveExtractor · PosixToolchainProvider      │
+│  WindowsGccProvider · WindowsClangProvider         │
+│  ToolchainFactory                                  │
 ├─────────────────────────────────────────────────────┤
 │                 generators/                          │
 │  clang_format · clang_tidy · cmake · conan          │
@@ -189,28 +197,43 @@ sniffercommit
 ├── domain::ports      : IConfigRepository, IFileSystem, IGitRepository, IShellExecutor,
 │                         IToolchainProvider, IHttpClient, IArchiveExtractor
 ├── application        : InitUseCase, InstallUseCase, RunChecksUseCase,
+│                         TestChecksUseCase, SanitizerChecksUseCase,
 │                         GenerateWorkflowUseCase, InstallToolchainUseCase
 ├── application::checks: ShellCheck, ClangFormatCheck, ClangTidyCheck, CompilerCheck,
 │                         BuildCheck, GitDiffCheck
 ├── generators         : clang_format, clang_tidy, cmake, conan generators (free functions)
 ├── infrastructure     : TomlConfigRepository, OsFileSystem, CliGitRepository,
 │                         ProcessShellExecutor, CurlHttpClient, TarArchiveExtractor,
-│                         ZipArchiveExtractor, LinuxGccProvider, WindowsGccProvider,
-│                         ToolchainFactory
+│                         ZipArchiveExtractor, PosixToolchainProvider, WindowsGccProvider,
+│                         WindowsClangProvider, ToolchainFactory
 ├── presentation       : interactive_init
 └── (global)           : ArgParser, glob_match, spinner, util
 ```
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success: all checks passed, or command completed normally |
-| `1` | Failure: one or more checks failed, or a CLI/config error occurred |
-| `2` | Unsupported platform error (e.g., `install-gcc` on unsupported OS) |
-| `3` | Toolchain install error (download, extraction, or PATH failure) |
-
-All `RunChecksUseCase::execute()` return values propagate directly as the process exit code.
+| Code | Enum | Meaning |
+|------|------|---------|
+| `0` | `SUCCESS` | All checks passed, or command completed normally |
+| `1` | `GENERAL_ERROR` | One or more checks failed, or a CLI/config error occurred |
+| `2` | `INVALID_ARGUMENTS` | Invalid CLI arguments |
+| `3` | `CONFIG_ERROR` | Configuration validation failed |
+| `4` | `CHECK_FAILURE` | One or more checks failed |
+| `5` | `FORMAT_FAILURE` | Formatter check failed |
+| `6` | `MISSING_DEPENDENCY` | Required tool not found |
+| `7` | `NOT_A_GIT_REPO` | Not inside a git repository |
+| `8` | `FILESYSTEM_ERROR` | Filesystem operation failed |
+| `9` | `HOOK_INSTALL_ERROR` | Failed to install pre-commit hook |
+| `10` | `WORKFLOW_GENERATION_ERROR` | Failed to generate CI workflow |
+| `11` | `TOOLCHAIN_INSTALL_ERROR` | Failed to install compiler toolchain |
+| `12` | `UNSUPPORTED_PLATFORM` | Compiler not available for this platform |
+| `13` | `UNSUPPORTED_CPP_STANDARD` | Compiler doesn't support requested C++ standard |
+| `14` | `TEST_FAILURE` | Test execution failed |
+| `15` | `TEST_BUILD_FAILURE` | Build before tests failed |
+| `16` | `TEST_TIMEOUT` | Tests timed out |
+| `17` | `COVERAGE_THRESHOLD_NOT_MET` | Coverage below configured threshold |
+| `18` | `SANITIZER_BUILD_FAILURE` | Build with sanitizer failed |
+| `19` | `SANITIZER_TEST_FAILURE` | Tests with sanitizer failed |
 
 ---
 
@@ -381,10 +404,11 @@ When loading a configuration file, `ProjectConfig::validate()` enforces these ru
 
 1. **Project name** cannot be empty.
 2. At least one `[[checks]]` entry is required.
-3. Every check must have a non-empty `command`.
-4. Duplicate check names are rejected.
-5. `timeout` cannot be negative.
-6. `severity` must be `error`, `warning`, or `info`.
+3. Every check must have a non-empty **name**.
+4. Every check must have a non-empty **command**.
+5. Duplicate check names are rejected.
+6. `timeout` cannot be negative.
+7. `severity` must be `error`, `warning`, or `info`.
 
 Validation errors return a descriptive error string. All validation is also available via `ProjectConfig::is_valid()`.
 
@@ -404,7 +428,9 @@ Core Workflow:
   generate-gha    Output GitHub Actions workflow
   generate-gitlab Output GitLab CI workflow
   run             Execute checks on files
-  install-gcc     Download & install GCC toolchain
+  install-compiler Download and install a C++ toolchain
+  test            Run test and optional coverage checks
+  sanitizer       Run sanitizer checks (ASan, UBSan, TSan, LSan)
 
 Subcommands:
   init
@@ -446,7 +472,6 @@ Subcommands:
 
       Modes:
         --all-files
-        --staged
         <explicit files>
 
   generate-gha
@@ -455,14 +480,30 @@ Subcommands:
   generate-gitlab
       Generate GitLab CI workflow.
 
-  install-gcc
-      Download and install GCC/MinGW toolchain.
+  install-compiler
+      Download and install a C++ toolchain.
 
       Options:
-        --version <version>    Compiler version string
-        --prefix <path>        Custom install prefix
-        --force                Reinstall even if already installed
-        --dry-run, -n          Show what would be installed
+        --compiler <gcc|clang>         [default: gcc]
+        --version <version>
+        --cpp-standard <17|20|23|26>   [default: 20]
+        --prefix <path>
+        --force
+        --dry-run, -n
+
+  test
+      Run ctest and optional coverage checks.
+
+      Options:
+        --coverage
+        --verbose, -V
+        <build-dir>                   [default: build]
+
+  sanitizer
+      Run sanitizer checks (ASan, UBSan, TSan, LSan).
+
+      Options:
+        --verbose, -V
 
 Global Options:
   -c, --config <value>  Config file path [default: .sniffercommit.toml]
@@ -480,6 +521,7 @@ Creates both `.sniffercommit.toml` and `.clang-format` with sensible defaults in
 
 | Flag | Description |
 |------|-------------|
+| `--interactive`, `-i` | Force interactive wizard (default when no flags) |
 | `--style <name>` | Formatter style: `google`, `llvm`, `chromium`, `mozilla`, `webkit`, `microsoft`, `gnu` (default: `google`) |
 | `--name <name>` | Project name (default: current directory name) |
 | `--indent-width <n>` | Indentation width for `.clang-format` (default: `2`) |
@@ -539,12 +581,13 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 | `--verbose`, `-V` | Print detailed per-file execution output |
 | `--detail` | Alias for `--verbose` |
 | `--dry-run`, `-n` | List files that would be checked without running checks |
+| `--format`, `-f` | Run clang-format in-place instead of checking |
 
 **File source selection (mutually exclusive, listed in priority order):**
 
 1. **Explicit files**: Positional arguments: `sniffercommit run src/main.cpp src/foo.cpp`
 2. **`--all-files`**: All git-tracked files
-3. **Default (no args)**: Staged files via `git diff --cached --name-only --diff-filter=ACM`
+3. **Default (no args)**: Staged files via `git diff --cached --name-only --diff-filter=ACM` (this is the implicit `--staged` mode)
 
 ---
 
@@ -598,10 +641,27 @@ struct ProjectConfig {
   bool generate_gitlab_ci = false;
   bool parallel = true;
 
+  struct TestConfig {
+    std::string build_dir = "build";
+    bool coverage = false;
+    double line_threshold = 80.0;
+    double branch_threshold = 70.0;
+    double function_threshold = 90.0;
+    int timeout = 0;
+  };
+  TestConfig test;
+
+  struct SanitizerConfig {
+    bool enabled = false;
+    std::vector<std::string> types;
+    std::string build_dir = "build";
+    int timeout = 0;
+  };
+  SanitizerConfig sanitizer;
+
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept;
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;
-  [[nodiscard]] bool has_matching_checks(const std::string& file) const noexcept;
 };
 ```
 
@@ -610,6 +670,7 @@ Free functions for config string generation (no I/O):
 - `generate_default_config_with_tidy()`: TOML with clang-tidy check
 - `generate_default_config_with_cmake()`: TOML with cmake check
 - `generate_compiler_checks()`: `[[checks]]` blocks that syntax-check files with a compiler
+- `generate_sanitizer_config()`: `[sanitizers]` section with enabled flag and types
 
 #### check.hpp: Generic Check Abstraction
 
@@ -665,7 +726,7 @@ Seven port interfaces define the contracts between layers:
 | `IFileSystem` | `file_system.hpp` | `exists()`, `create_directories()`, `write_file()`, `read_file()`, `remove()`, `set_permissions()`, `current_path()`, `absolute()` |
 | `IGitRepository` | `git_repository.hpp` | `list_staged_files()`, `list_all_files()`, `find_repo_root()` |
 | `IShellExecutor` | `shell_executor.hpp` | `exec()`, `exec_captured()`, `command_exists()` |
-| `IToolchainProvider` | `toolchain_provider.hpp` | `is_installed()`, `get_version()`, `resolve_package()`, `install()`, `description()` |
+| `IToolchainProvider` | `toolchain_provider.hpp` | `is_installed()`, `get_version()`, `supports_cpp_standard()`, `max_supported_standard()`, `resolve_package()`, `install()`, `description()` |
 | `IHttpClient` | `http_client.hpp` | `download()` |
 | `IArchiveExtractor` | `archive_extractor.hpp` | `extract()` |
 
@@ -673,7 +734,7 @@ Seven port interfaces define the contracts between layers:
 
 **File:** `include/sniffercommit/domain/error_codes.hpp`
 
-Provides a typed enum with 13 exit code values for consistent error reporting.
+Provides a typed enum with 20 exit code values for consistent error reporting.
 
 ### Application Layer
 
@@ -814,6 +875,7 @@ Single dependency: `IFileSystem`. Dispatches to platform-specific workflow gener
 struct InstallToolchainOptions {
   std::string compiler_ = "gcc";
   std::string version_;
+  domain::ports::CppStandard cpp_standard_ = domain::ports::CppStandard::CPP_20;
   std::filesystem::path install_prefix_;
   bool force_ = false;
   bool dry_run_ = false;
@@ -824,6 +886,7 @@ struct InstallToolchainResult {
   bool was_already_installed_ = false;
   std::string installed_path_;
   std::string version_;
+  domain::ports::CppStandard installed_cpp_standard_ = domain::ports::CppStandard::CPP_20;
   std::string error_message_;
 };
 
@@ -857,8 +920,9 @@ Ten adapters implement the port interfaces:
 | `CurlHttpClient` | `IHttpClient` | Shells out to `curl` or `wget` for downloads |
 | `TarArchiveExtractor` | `IArchiveExtractor` | `tar` command for `.tar.gz`/`.tar.xz`/`.tar.bz2` archives |
 | `ZipArchiveExtractor` | `IArchiveExtractor` | `unzip` (Unix) or `powershell Expand-Archive` (Windows) |
-| `LinuxGccProvider` | `IToolchainProvider` | Detects package manager (apt/dnf/pacman/zypper) and installs GCC |
+| `PosixToolchainProvider` | `IToolchainProvider` | Detects package manager (apt/dnf/pacman/zypper) and installs GCC |
 | `WindowsGccProvider` | `IToolchainProvider` | Downloads MinGW-w64 from WinLibs, extracts, and installs |
+| `WindowsClangProvider` | `IToolchainProvider` | Downloads LLVM/Clang for Windows, extracts, and installs |
 | `ToolchainFactory` | - | Static `create()` method returns the platform-appropriate provider |
 
 ### Generators
@@ -910,11 +974,20 @@ main()
 │   ├── Manual argv re-parse for run flags
 │   ├── Wire TomlConfigRepository + OsFileSystem + CliGitRepository + ProcessShellExecutor
 │   ├── RunChecksUseCase(shell, git, fs).execute(cfg, opts)
-├── subcommand == "install-gcc"
-│   ├── Manual argv loop for install-gcc flags
+├── subcommand == "install-compiler"
+│   ├── Manual argv loop for install-compiler flags
 │   ├── Wire ToolchainFactory → platform-appropriate provider
 │   ├── Wire CurlHttpClient + TarArchiveExtractor/ZipArchiveExtractor + OsFileSystem
 │   ├── InstallToolchainUseCase(provider, http, extractor, fs).execute(opts)
+├── subcommand == "test"
+│   ├── Manual argv loop for test flags
+│   ├── Wire TomlConfigRepository + OsFileSystem
+│   ├── Load config
+│   └── TestChecksUseCase(shell, fs).execute(cfg, repo_root, coverage, verbose)
+├── subcommand == "sanitizer"
+│   ├── Wire TomlConfigRepository + OsFileSystem + ProcessShellExecutor
+│   ├── Load config
+│   └── SanitizerChecksUseCase(shell, fs).execute(cfg, repo_root, verbose)
 └── fallback
     └── show_help()
 ```
@@ -1037,32 +1110,29 @@ try {
 
 ### Testing Approach
 
-sniffercommit uses **end-to-end integration tests** rather than unit tests. Each test runs the built binary with various flags, inspects stdout/stderr for expected output, and verifies generated files (`.sniffercommit.toml`, `.clang-format`, `.clang-tidy`, hook scripts, workflow YAML) for correctness.
-
-Tests are located in the `tests/` directory and are executed as:
+sniffercommit uses **GoogleTest** for unit testing. Tests are located in the `tests/` directory and are executed via CTest:
 
 ```bash
-# Run all integration tests
-./tests/run_tests.sh
+# Run all tests
+ctest --test-dir build --output-on-failure
 
-# Run a specific test
-./tests/run_tests.sh test_init_basic
+# Run specific test suite
+ctest --test-dir build --test-suite="SanitizerChecksTest"
 ```
 
 ### Test Coverage
 
-| Test | What it verifies |
-|------|-----------------|
-| `test_version` | `--version` outputs matching semver |
-| `test_init_basic` | `init` creates `.sniffercommit.toml` + `.clang-format` |
-| `test_init_with_tidy` | `init --enable-clang-tidy` also generates `.clang-tidy` |
-| `test_install_hook` | `install` writes valid Bash hook, validates with `bash -n` |
-| `test_generate_gha` | `generate-gha` writes `.github/workflows/sniffercommit.yml` |
-| `test_run_dry_run` | `run --dry-run` lists files without executing checks |
-| `test_run_explicit` | `run <file>` checks only the given file |
-| `test_run_verbose` | `run --verbose` prints shell commands |
-| `test_invalid_style` | `init --style invalid` exits non-zero with error message |
-| `test_git_commit_hook` | Full flow: init → install → git add → git commit triggers hook |
+| Test File | What it verifies |
+|-----------|-----------------|
+| `test_binary_runtime.cpp` | Binary version output and basic invocation |
+| `test_config_manager.cpp` | TOML config loading and validation |
+| `test_format_mode.cpp` | Format mode execution |
+| `test_glob_match.cpp` | Glob pattern matching |
+| `test_precommit_domain.cpp` | Pre-commit hook domain logic |
+| `test_sanitizer_checks.cpp` | Sanitizer checks use case (empty types, unknown type, missing build dir) |
+| `test_sha256_verification.cpp` | SHA-256 checksum verification for Windows installer |
+| `test_toolchain_install.cpp` | Toolchain installation flow |
+| `test_tooling_config.cpp` | Tooling configuration generation |
 
 ### CI Pipeline
 
@@ -1070,7 +1140,7 @@ A GitHub Actions workflow (generated by `sniffercommit generate-gha`) runs on ev
 
 1. **Build**: cmake configure + build (Release and Debug)
 2. **Lint**: `clang-tidy` with the project's own `.clang-tidy` config
-3. **Test**: Integration test suite
+3. **Test**: GoogleTest suite via CTest
 4. **Package**: CPack DEB generation (Linux only)
 
 ---

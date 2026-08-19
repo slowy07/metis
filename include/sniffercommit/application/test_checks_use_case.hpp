@@ -23,7 +23,7 @@ struct TestResult {
 class TestChecksUseCase {
  public:
   TestChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                   std::unique_ptr<domain::ports::IFileSystem> fs);
+                    std::unique_ptr<domain::ports::IFileSystem> fs);
   TestResult execute(const domain::config::ProjectConfig& cfg,
                      const std::filesystem::path& repo_root, bool coverage, bool verbose);
 

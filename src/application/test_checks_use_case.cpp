@@ -113,9 +113,7 @@ TestResult TestChecksUseCase::run_ctest(const std::filesystem::path& build_dir, 
   return result;
 }
 
-TestResult TestChecksUseCase::run_coverage(
-    const std::filesystem::path& build_dir,
-    bool verbose) {
+TestResult TestChecksUseCase::run_coverage(const std::filesystem::path& build_dir, bool verbose) {
   TestResult result;
 
   std::string cmd = "ctest --test-dir " + build_dir.string() + " -T Coverage";

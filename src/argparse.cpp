@@ -290,6 +290,16 @@ void ArgParser::show_help() const {
 
   std::cout << "        <build-dir>                   [default: build]\n\n";
 
+  std::cout << "  sanitizer\n";
+
+  std::cout << "      Run sanitizer checks (ASan, UBSan, TSan, LSan).\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit sanitizer\n";
+
+  std::cout << "        sniffercommit sanitizer --verbose\n\n";
+
   print_section_title("Global Options");
 
   for (const auto& opt : options_) {

@@ -42,7 +42,7 @@ The pre-commit hook runs clang-format, clang-tidy, and trailing-whitespace.
 ```
 src/
   main.cpp                    CLI entry, arg parsing, DI wiring
-  application/                use cases: init, install, run, install-toolchain, generate-workflow
+  application/                use cases: init, install, run, test, sanitizer, install-toolchain, generate-workflow
   application/checks/         concrete checks: shell, clang-format, clang-tidy, compiler, build, git-diff
   domain/                     config, check, workflow models + defaults, exit codes
   domain/ports/               interfaces: shell, fs, git, config, http, archive, toolchain

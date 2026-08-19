@@ -24,6 +24,8 @@ enum class ExitCode : std::uint8_t {
   TEST_BUILD_FAILURE = 15,
   TEST_TIMEOUT = 16,
   COVERAGE_THRESHOLD_NOT_MET = 17,
+  SANITIZER_BUILD_FAILURE = 18,
+  SANITIZER_TEST_FAILURE = 19,
 };
 
 }  // namespace sniffercommit::domain
