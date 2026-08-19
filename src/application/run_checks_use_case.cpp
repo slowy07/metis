@@ -19,6 +19,10 @@
 #include "sniffercommit/application/checks/compiler_check.hpp"
 #include "sniffercommit/application/checks/git_diff_check.hpp"
 #include "sniffercommit/application/checks/shell_check.hpp"
+#include "sniffercommit/application/checks/iwyu_check.hpp"
+#include "sniffercommit/application/checks/gcc_analyzer_check.hpp"
+#include "sniffercommit/application/checks/clang_static_analyzer_check.hpp"
+#include "sniffercommit/application/checks/cppcheck_check.hpp"
 #include "sniffercommit/domain/check.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
@@ -68,6 +72,18 @@ std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
   }
   if (basename == "git") {
     return std::make_unique<checks::GitDiffCheck>(config);
+  }
+  if (basename == "cppcheck") {
+    return std::make_unique<checks::CppcheckCheck>(config);
+  }
+  if (basename == "include-what-you-use") {
+    return std::make_unique<checks::IWYUCheck>(config);
+  }
+  if (basename == "scan-build") {
+    return std::make_unique<checks::ClangStaticAnalyzerCheck>(config);
+  }
+  if (basename == "gcc-analyzer") {
+    return std::make_unique<checks::GCCAnalyzerCheck>(config);
   }
   return std::make_unique<checks::ShellCheck>(config);
 }

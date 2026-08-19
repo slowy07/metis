@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <string>
 
-#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
+#include "sniffercommit/application/test_checks_use_case.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/ports/file_system.hpp"
 #include "sniffercommit/domain/ports/shell_executor.hpp"
@@ -14,7 +14,9 @@ using namespace sniffercommit;
 
 struct MockShell : domain::ports::IShellExecutor {
   std::string exec(const std::string&) override { return {}; }
-  domain::ports::CapturedResult exec_captured(const std::string&) override { return {0, ""}; }
+  domain::ports::CapturedResult exec_captured(const std::string&) override {
+    return {0, ""};
+  }
   bool command_exists(const std::string&) override { return true; }
 };
 
@@ -35,40 +37,20 @@ struct MockFs : domain::ports::IFileSystem {
   }
 };
 
-TEST(SanitizerChecksTest, EmptyTypesReturnsTrue) {
-  MockShell shell;
-  MockFs fs;
-  domain::config::ProjectConfig cfg;
-
-  application::SanitizerChecksUseCase use_case(std::make_unique<MockShell>(shell),
-                                               std::make_unique<MockFs>(fs));
-
-  EXPECT_TRUE(use_case.execute(cfg, "/mock", false));
-}
-
-TEST(SanitizerChecksTest, UnknownTypeReturnsFalse) {
-  MockShell shell;
-  MockFs fs;
-  domain::config::ProjectConfig cfg;
-  cfg.sanitizer.types = {"bogus"};
-
-  application::SanitizerChecksUseCase use_case(std::make_unique<MockShell>(shell),
-                                               std::make_unique<MockFs>(fs));
-
-  EXPECT_FALSE(use_case.execute(cfg, "/mock", false));
-}
-
-TEST(SanitizerChecksTest, BuildDirMissingReturnsFalse) {
+TEST(TestChecksUseCaseTest, MissingBuildDirReturnsError) {
   MockShell shell;
   MockFs fs;
   fs.dir_exists = false;
   domain::config::ProjectConfig cfg;
-  cfg.sanitizer.types = {"address"};
+  cfg.test.build_dir = "build";
 
-  application::SanitizerChecksUseCase use_case(std::make_unique<MockShell>(shell),
-                                               std::make_unique<MockFs>(fs));
+  application::TestChecksUseCase use_case(
+      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
 
-  EXPECT_FALSE(use_case.execute(cfg, "/mock", false));
+  auto result = use_case.execute(cfg, "/mock", false, false);
+
+  EXPECT_FALSE(result.success);
+  EXPECT_NE(result.output.find("does not exists"), std::string::npos);
 }
 
 }  // namespace

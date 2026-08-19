@@ -246,4 +246,24 @@ parallel = true
       project_name, fallback_style);
 }
 
+std::string generate_sanitizer_config(const std::vector<std::string>& types,
+                                      const std::string& build_dir, int timeout) {
+  std::string types_str;
+  for (size_t i = 0; i < types.size(); ++i) {
+    if (i > 0) {
+      types_str += ", ";
+    }
+    types_str += "\"" + types[i] + "\"";
+  }
+
+  return fmt::format(
+      R"([sanitizers]
+enabled = true
+types = [{}]
+build_dir = "{}"
+timeout = {}
+)",
+      types_str, build_dir, timeout);
+}
+
 }  // namespace sniffercommit::domain::config

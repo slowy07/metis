@@ -18,12 +18,14 @@ FetchContent_MakeAvailable(googletest)
 # Collect all test source files
 set(TEST_SOURCES
   test_binary_runtime.cpp
+  test_config_generators.cpp
   test_config_manager.cpp
   test_format_mode.cpp
   test_glob_match.cpp
   test_precommit_domain.cpp
   test_sanitizer_checks.cpp
   test_sha256_verification.cpp
+  test_test_checks_use_case.cpp
   test_toolchain_install.cpp
   test_tooling_config.cpp
 )

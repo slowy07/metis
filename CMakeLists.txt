@@ -131,6 +131,10 @@ set(SNIFFERCOMMIT_SOURCES
   src/application/checks/build_check.cpp
   src/application/checks/git_diff_check.cpp
   src/application/sanitizer_checks_use_case.cpp
+  src/application/checks/cppcheck_check.cpp
+  src/application/checks/iwyu_check.cpp
+  src/application/checks/clang_static_analyzer_check.cpp
+  src/application/checks/gcc_analyzer_check.cpp
   src/infrastructure/toml_config_repository.cpp
   src/infrastructure/process_shell_executor.cpp
   src/infrastructure/os_file_system.cpp
@@ -180,6 +184,10 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/application/run_checks_use_case.hpp
   include/sniffercommit/application/sanitizer_checks_use_case.hpp
   include/sniffercommit/application/test_checks_use_case.hpp
+  include/sniffercommit/application/checks/cppcheck_check.hpp
+  include/sniffercommit/application/checks/iwyu_check.hpp
+  include/sniffercommit/application/checks/clang_static_analyzer_check.hpp
+  include/sniffercommit/application/checks/gcc_analyzer_check.hpp
   include/sniffercommit/infrastructure/toml_config_repository.hpp
   include/sniffercommit/infrastructure/process_shell_executor.hpp
   include/sniffercommit/infrastructure/os_file_system.hpp

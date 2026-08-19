@@ -467,6 +467,9 @@ Subcommands:
         .github/workflows/sniffercommit.yml  (if github_actions = true)
         .gitlab-ci.yml                        (if gitlab_ci = true)
 
+      Usage:
+        sniffercommit install
+
   run
       Execute configured checks.
 
@@ -474,11 +477,24 @@ Subcommands:
         --all-files
         <explicit files>
 
+      Usage:
+        sniffercommit run --all-files
+        sniffercommit run src/main.cpp
+        sniffercommit run --format --all-files
+
   generate-gha
       Generate GitHub Actions workflow.
 
+      Usage:
+        sniffercommit generate-gha
+        sniffercommit generate-gha > .github/workflows/sniffercommit.yml
+
   generate-gitlab
       Generate GitLab CI workflow.
+
+      Usage:
+        sniffercommit generate-gitlab
+        sniffercommit generate-gitlab > .gitlab-ci.yml
 
   install-compiler
       Download and install a C++ toolchain.
@@ -491,6 +507,11 @@ Subcommands:
         --force
         --dry-run, -n
 
+      Usage:
+        sniffercommit install-compiler
+        sniffercommit install-compiler --compiler gcc --cpp-standard 20
+        sniffercommit install-compiler --compiler clang --dry-run
+
   test
       Run ctest and optional coverage checks.
 
@@ -499,11 +520,20 @@ Subcommands:
         --verbose, -V
         <build-dir>                   [default: build]
 
+      Usage:
+        sniffercommit test
+        sniffercommit test --coverage
+        sniffercommit test --verbose build/
+
   sanitizer
       Run sanitizer checks (ASan, UBSan, TSan, LSan).
 
       Options:
         --verbose, -V
+
+      Usage:
+        sniffercommit sanitizer
+        sniffercommit sanitizer --verbose
 
 Global Options:
   -c, --config <value>  Config file path [default: .sniffercommit.toml]
@@ -554,6 +584,10 @@ Project name is auto-detected from the current working directory name if `--name
 
 Requires a valid `.sniffercommit.toml` in the current directory.
 
+```bash
+sniffercommit install
+```
+
 #### `generate-gha`
 
 Generates only the GitHub Actions workflow file (`.github/workflows/sniffercommit.yml`). Always writes regardless of the config's `github_actions` setting.
@@ -567,9 +601,19 @@ The generated workflow includes:
 - Conditional `clang-format` installation step (only if any check uses clang-format)
 - Runs `./sniffercommit run --all-files --verbose` with `set -euo pipefail`
 
+```bash
+sniffercommit generate-gha
+sniffercommit generate-gha > .github/workflows/sniffercommit.yml
+```
+
 #### `generate-gitlab`
 
 Generates only the GitLab CI workflow file (`.gitlab-ci.yml`). Always writes regardless of the config's `gitlab_ci` setting.
+
+```bash
+sniffercommit generate-gitlab
+sniffercommit generate-gitlab > .gitlab-ci.yml
+```
 
 #### `run`
 
