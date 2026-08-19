@@ -14,9 +14,7 @@ using namespace sniffercommit;
 
 struct MockShell : domain::ports::IShellExecutor {
   std::string exec(const std::string&) override { return {}; }
-  domain::ports::CapturedResult exec_captured(const std::string&) override {
-    return {0, ""};
-  }
+  domain::ports::CapturedResult exec_captured(const std::string&) override { return {0, ""}; }
   bool command_exists(const std::string&) override { return true; }
 };
 
@@ -44,8 +42,8 @@ TEST(TestChecksUseCaseTest, MissingBuildDirReturnsError) {
   domain::config::ProjectConfig cfg;
   cfg.test.build_dir = "build";
 
-  application::TestChecksUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::TestChecksUseCase use_case(std::make_unique<MockShell>(shell),
+                                          std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute(cfg, "/mock", false, false);
 
