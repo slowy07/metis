@@ -34,6 +34,12 @@ struct InitOptions {
   bool cmake_enable_warnings = true;
   bool generate_source = true;
   std::vector<std::string> dependencies;
+  bool enable_compiler_checks = false;
+  std::string compiler = "g++";
+  std::string compiler_cpp_standard = "20";
+  std::vector<std::string> compiler_warnings = {"Wall", "Wextra", "Wpedantic"};
+  bool compiler_werror = true;
+  bool compiler_debug_and_release = false;
 };
 
 /**

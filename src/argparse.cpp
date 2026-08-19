@@ -167,7 +167,9 @@ void ArgParser::show_help() const {
   std::cout << "  " << app_name_ << " run src/main.cpp\n";
   std::cout << "  " << app_name_
             << " generate-gha > "
-               ".github/workflows/sniffercommit.yml\n\n";
+               ".github/workflows/sniffercommit.yml\n";
+  std::cout << "  " << app_name_ << " install-compiler --compiler gcc --cpp-standard 20\n";
+  std::cout << "  " << app_name_ << " test --coverage\n\n";
 
   print_section_title("Subcommands");
 
@@ -235,6 +237,10 @@ void ArgParser::show_help() const {
 
   std::cout << "        .git/hooks/pre-commit\n\n";
 
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit install\n\n";
+
   std::cout << "  run\n";
 
   std::cout << "      Execute configured checks.\n\n";
@@ -249,10 +255,88 @@ void ArgParser::show_help() const {
 
   std::cout << "        <explicit files>\n\n";
 
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit run --all-files\n";
+
+  std::cout << "        sniffercommit run src/main.cpp\n";
+
+  std::cout << "        sniffercommit run --format --all-files\n\n";
+
   std::cout << "  generate-gha\n";
 
   std::cout << "      Generate production-grade "
                "GitHub Actions workflow.\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit generate-gha\n";
+  std::cout << "        sniffercommit generate-gha > "
+               ".github/workflows/sniffercommit.yml\n\n";
+
+  std::cout << "  generate-gitlab\n";
+
+  std::cout << "      Generate GitLab CI workflow.\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit generate-gitlab\n";
+  std::cout << "        sniffercommit generate-gitlab > .gitlab-ci.yml\n\n";
+
+  std::cout << "  install-compiler\n";
+
+  std::cout << "      Download and install a C++ toolchain.\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --compiler <gcc|clang>         [default: gcc]\n";
+
+  std::cout << "        --version <version>\n";
+
+  std::cout << "        --cpp-standard <17|20|23|26>   [default: 20]\n";
+
+  std::cout << "        --prefix <path>\n";
+
+  std::cout << "        --force\n";
+
+  std::cout << "        --dry-run, -n\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit install-compiler\n";
+  std::cout << "        sniffercommit install-compiler --compiler gcc --cpp-standard 20\n";
+  std::cout << "        sniffercommit install-compiler --compiler clang --dry-run\n\n";
+
+  std::cout << "  test\n";
+
+  std::cout << "      Run ctest and optional coverage checks.\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --coverage\n";
+
+  std::cout << "        --verbose, -V\n";
+
+  std::cout << "        <build-dir>                   [default: build]\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit test\n";
+  std::cout << "        sniffercommit test --coverage\n";
+  std::cout << "        sniffercommit test --verbose build/\n\n";
+
+  std::cout << "  sanitizer\n";
+
+  std::cout << "      Run sanitizer checks (ASan, UBSan, TSan, LSan).\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --verbose, -V\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit sanitizer\n";
+  std::cout << "        sniffercommit sanitizer --verbose\n\n";
 
   print_section_title("Global Options");
 

@@ -3,7 +3,7 @@
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/sniffercommit/test_sniffercommit.yml?branch=develop&style=flat-square&label=GoogleTest)
 ](https://github.com/slowy07/sniffercommit/actions)
 
-Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies — a single static binary that replaces Python- and Node-based pre-commit frameworks.
+Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies: a single static binary that replaces Python- and Node-based pre-commit frameworks.
 
 ## Features
 
@@ -43,7 +43,7 @@ sniffercommit init --style google --enable-clang-tidy
 # Install the pre-commit hook (auto-runs on every `git commit`)
 sniffercommit install
 
-# Stage and commit — hook fires automatically
+# Stage and commit: hook fires automatically
 git add .
 git commit -m "initial"
 
@@ -65,7 +65,7 @@ sniffercommit run --all-files
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 
-Global flag: `--config <path>` — use a non-default config file path with any subcommand.
+Global flag: `--config <path>`: use a non-default config file path with any subcommand.
 
 ## Dependencies
 
@@ -119,7 +119,7 @@ sudo cmake --install build
 
 ## Usage
 
-### init — Generate Configuration
+### init: Generate Configuration
 
 **Interactive mode (default)**
 
@@ -149,9 +149,9 @@ sniffercommit init --enable-clang-tidy --tidy-severity warning # compiler warnin
 ```
 
 With `--enable-clang-tidy`, three files are created:
-- `.sniffercommit.toml` — includes `clang-tidy` check
-- `.clang-format` — formatter config
-- `.clang-tidy` — static analysis config with curated check preset
+- `.sniffercommit.toml`: includes `clang-tidy` check
+- `.clang-format`: formatter config
+- `.clang-tidy`: static analysis config with curated check preset
 
 **Formatter & Analyzer Options**
 
@@ -189,16 +189,16 @@ sniffercommit --config /path/to/.sniffercommit.toml init
 
 ---
 
-### install — Install Pre-commit Hook
+### install: Install Pre-commit Hook
 
 ```bash
 sniffercommit install
 ```
 
 Installs:
-- `.git/hooks/pre-commit` — Bash hook with parallel execution
-- `.github/workflows/sniffercommit.yml` — GitHub Actions workflow (only if `github_actions = true` in config)
-- `.gitlab-ci.yml` — GitLab CI workflow (only if `gitlab_ci = true` in config)
+- `.git/hooks/pre-commit`: Bash hook with parallel execution
+- `.github/workflows/sniffercommit.yml`: GitHub Actions workflow (only if `github_actions = true` in config)
+- `.gitlab-ci.yml`: GitLab CI workflow (only if `gitlab_ci = true` in config)
 
 The hook is validated with `bash -n` before installation to prevent broken hooks.
 
@@ -214,7 +214,7 @@ Or re-run `sniffercommit install` to regenerate both files from config.
 
 ---
 
-### run — Execute Checks Manually
+### run: Execute Checks Manually
 
 ```bash
 # staged files only (default)
@@ -237,7 +237,7 @@ Exit code: `0` if all checks pass, non-zero if any check fails.
 
 ---
 
-### generate-gha — CI Workflow Only
+### generate-gha: CI Workflow Only
 
 ```bash
 sniffercommit generate-gha
@@ -247,7 +247,7 @@ Always writes `.github/workflows/sniffercommit.yml` regardless of the `github_ac
 
 ---
 
-### generate-gitlab — GitLab CI Workflow Only
+### generate-gitlab: GitLab CI Workflow Only
 
 ```bash
 sniffercommit generate-gitlab
@@ -289,8 +289,8 @@ sniffercommit init --enable-cmake
 ```
 
 Creates:
-- `CMakeLists.txt` — full CMake project configuration
-- `src/main.cpp` — entry point with `main()` stub
+- `CMakeLists.txt`: full CMake project configuration
+- `src/main.cpp`: entry point with `main()` stub
 
 **CMake Options**
 
@@ -366,8 +366,8 @@ Creates only `src/main.cpp`, no `CMakeLists.txt`.
 
 When `--enable-conan` is passed with `--enable-cmake`, sniffercommit generates:
 
-- `conanfile.py` — Conan package definition with CMakeToolchain/CMakeDeps
-- `CMakeLists.txt` — Updated to use `find_package()` instead of FetchContent
+- `conanfile.py`: Conan package definition with CMakeToolchain/CMakeDeps
+- `CMakeLists.txt`: Updated to use `find_package()` instead of FetchContent
 
 The generated `conanfile.py` includes:
 - Python class-based Conan recipe
@@ -399,7 +399,7 @@ cmake --build build
 | `clang-tidy: cannot find ...` | `.clang-tidy` missing | `sniffercommit init --enable-clang-tidy` |
 | `bash: pre-commit: No such file or directory` | Hook not installed | `sniffercommit install` |
 | Hook exits immediately with no output | File patterns don't match staged files | Run `sniffercommit run --all-files` to test outside hook |
-| `git commit` but hook doesn't run | Staged files don't match config checks | Check `[checks.*.files]` patterns in `.sniffercommit.toml` |
+| `git commit` but hook doesn't run | Staged files don't match config checks | Check `patterns` in the `[[checks]]` sections of `.sniffercommit.toml` |
 | CI workflow not created | `github_actions` is `false` in config | `sniffercommit generate-gha` (bypasses config) |
 | GitLab CI not created | `gitlab_ci` is `false` in config | `sniffercommit generate-gitlab` (bypasses config) |
 
@@ -407,6 +407,6 @@ cmake --build build
 
 ## Acknowledgements
 
-- [pre-commit](https://pre-commit.com/) — inspiration for hook management workflow
+- [pre-commit](https://pre-commit.com/): inspiration for hook management workflow
 
 This project was inspired by an internal tool developed at a previous company for enforcing C/C++ naming conventions. Due to licensing constraints, sniffercommit was built from scratch with the same functionality but a distinct architecture and open-source ethos.

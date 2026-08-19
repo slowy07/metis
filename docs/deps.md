@@ -61,7 +61,7 @@ The `--add-dep` format is:
 --add-dep <name>:<git_url>:<git_tag>
 ```
 
-The `git_tag` is optional — if omitted, it defaults to `main`:
+The `git_tag` is optional: if omitted, it defaults to `main`:
 
 ```bash
 sniffercommit init --enable-cmake \

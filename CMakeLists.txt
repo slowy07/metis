@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(sniffercommit
   LANGUAGES CXX
-  VERSION 0.3.26
+  VERSION 0.4.0
   DESCRIPTION "Fast, C++ pre-commit hook and CI generator"
   HOMEPAGE_URL "https://github.com/slowy07/sniffercommit"
 )
@@ -117,12 +117,24 @@ endif()
 set(SNIFFERCOMMIT_SOURCES
   src/argparse.cpp
   src/domain/config.cpp
+  src/domain/check.cpp
   src/domain/workflow.cpp
   src/application/init_use_case.cpp
   src/application/install_use_case.cpp
   src/application/run_checks_use_case.cpp
   src/application/generate_workflow_use_case.cpp
   src/application/install_toolchain_use_case.cpp
+  src/application/checks/shell_check.cpp
+  src/application/checks/clang_format_check.cpp
+  src/application/checks/clang_tidy_check.cpp
+  src/application/checks/compiler_check.cpp
+  src/application/checks/build_check.cpp
+  src/application/checks/git_diff_check.cpp
+  src/application/sanitizer_checks_use_case.cpp
+  src/application/checks/cppcheck_check.cpp
+  src/application/checks/iwyu_check.cpp
+  src/application/checks/clang_static_analyzer_check.cpp
+  src/application/checks/gcc_analyzer_check.cpp
   src/infrastructure/toml_config_repository.cpp
   src/infrastructure/process_shell_executor.cpp
   src/infrastructure/os_file_system.cpp
@@ -141,6 +153,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp
+  src/application/test_checks_use_case.cpp
   $<$<PLATFORM_ID:Windows>:src/infrastructure/windows_clang_provider.cpp>
 )
 
@@ -149,6 +162,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/domain/config.hpp
   include/sniffercommit/domain/workflow.hpp
   include/sniffercommit/domain/error_codes.hpp
+  include/sniffercommit/domain/check.hpp
   include/sniffercommit/domain/ports/config_repository.hpp
   include/sniffercommit/domain/ports/shell_executor.hpp
   include/sniffercommit/domain/ports/file_system.hpp
@@ -161,6 +175,19 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/application/run_checks_use_case.hpp
   include/sniffercommit/application/generate_workflow_use_case.hpp
   include/sniffercommit/application/install_toolchain_use_case.hpp
+  include/sniffercommit/application/checks/shell_check.hpp
+  include/sniffercommit/application/checks/clang_format_check.hpp
+  include/sniffercommit/application/checks/clang_tidy_check.hpp
+  include/sniffercommit/application/checks/compiler_check.hpp
+  include/sniffercommit/application/checks/build_check.hpp
+  include/sniffercommit/application/checks/git_diff_check.hpp
+  include/sniffercommit/application/run_checks_use_case.hpp
+  include/sniffercommit/application/sanitizer_checks_use_case.hpp
+  include/sniffercommit/application/test_checks_use_case.hpp
+  include/sniffercommit/application/checks/cppcheck_check.hpp
+  include/sniffercommit/application/checks/iwyu_check.hpp
+  include/sniffercommit/application/checks/clang_static_analyzer_check.hpp
+  include/sniffercommit/application/checks/gcc_analyzer_check.hpp
   include/sniffercommit/infrastructure/toml_config_repository.hpp
   include/sniffercommit/infrastructure/process_shell_executor.hpp
   include/sniffercommit/infrastructure/os_file_system.hpp

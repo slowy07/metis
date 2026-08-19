@@ -115,24 +115,44 @@ bool PosixToolchainProvider::supports_cpp_standard(domain::ports::CppStandard st
 
 domain::ports::CppStandard PosixToolchainProvider::max_supported_standard() const {
   auto major = parse_major_version();
-  if (major == 0) return domain::ports::CppStandard::CPP_23;
+  if (major == 0) {
+    return domain::ports::CppStandard::CPP_23;
+  }
   if (compiler_ == "gcc") {
-    if (major >= 14) return domain::ports::CppStandard::CPP_23;
-    if (major >= 11) return domain::ports::CppStandard::CPP_20;
+    if (major >= 15) {
+      return domain::ports::CppStandard::CPP_26;
+    }
+    if (major >= 14) {
+      return domain::ports::CppStandard::CPP_23;
+    }
+    if (major >= 11) {
+      return domain::ports::CppStandard::CPP_20;
+    }
     return domain::ports::CppStandard::CPP_17;
   }
-  if (major >= 17) return domain::ports::CppStandard::CPP_23;
-  if (major >= 14) return domain::ports::CppStandard::CPP_20;
+  if (major >= 19) {
+    return domain::ports::CppStandard::CPP_26;
+  }
+  if (major >= 17) {
+    return domain::ports::CppStandard::CPP_23;
+  }
+  if (major >= 14) {
+    return domain::ports::CppStandard::CPP_20;
+  }
   return domain::ports::CppStandard::CPP_17;
 }
 
 int PosixToolchainProvider::parse_major_version() const {
-  if (version_.empty() || version_ == "latest") return 0;
+  if (version_.empty() || version_ == "latest") {
+    return 0;
+  }
   try {
     return std::stoi(version_);
   } catch (...) {
     auto dot = version_.find('.');
-    if (dot == std::string::npos) return 0;
+    if (dot == std::string::npos) {
+      return 0;
+    }
     try {
       return std::stoi(version_.substr(0, dot));
     } catch (...) {

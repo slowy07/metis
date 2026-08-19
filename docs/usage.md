@@ -24,6 +24,9 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `run` | Execute configured checks on files |
 | `generate-gha` | Write `.github/workflows/sniffercommit.yml` |
 | `generate-gitlab` | Write `.gitlab-ci.yml` |
+| `install-compiler` | Download and install a C++ toolchain |
+| `test` | Run ctest and optional coverage checks |
+| `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.sniffercommit.toml`).
@@ -55,12 +58,21 @@ sniffercommit init --style google --enable-clang-tidy
 | `--cmake-enable-testing` | flag | off |
 | `--cmake-enable-sanitizers` | flag | off |
 | `--enable-conan` | flag | off |
-| `--add-dep` | package name (repeatable) | — |
+| `--add-dep` | package name (repeatable) | - |
 | `--generate-src` | flag | off |
+| `--enable-compiler-checks`, `--compiler-checks` | flag | off |
+| `--compiler` | `g++`, `clang++`, `gcc`, `clang` | `g++` |
+| `--compiler-cpp-standard` | `17`, `20`, `23`, `26` | `20` |
+| `--compiler-werror` / `--compiler-no-werror` | flag | on |
+| `--compiler-debug-and-release` | flag | off |
 
 What `init` creates: `.sniffercommit.toml` always; `.clang-format` always;
 `.clang-tidy` with `--enable-clang-tidy`; `CMakeLists.txt` + `src/main.cpp`
 with `--enable-cmake`; `conanfile.py` with `--enable-conan`.
+With `--enable-compiler-checks`, `.sniffercommit.toml` gains `[[checks]]`
+entries that syntax-check each file with your compiler (`g++ -std=c++20 -Wall
+-Wextra -Wpedantic [-Werror] -fsyntax-only ...`). `--compiler-debug-and-release`
+emits two checks (`-O0 -g -D_DEBUG` / `-O2 -DNDEBUG`) instead of one.
 
 ## run
 
@@ -98,9 +110,43 @@ github_actions = false   # also write .github/workflows on `install`
 parallel = true
 ```
 
-- `[[checks]]` — `name` (unique), `command`, `args`, `patterns` (glob matched
-  against file paths). Checks run in parallel; output is serialized.
-- `[exclude]` — `paths` are matched as prefix, exact, or `*.ext` glob.
+- `[[checks]]`: `name` (unique), `description`, `enabled` (`false` skips the
+  check), `command`, `args`, `patterns` (glob matched against file paths),
+  `timeout` (seconds), `severity` (`error`/`warning`/`info`). Checks run in
+  parallel; output is serialized.
+- `[exclude]`: `paths` are matched as prefix, exact, or `*.ext` glob.
 - `generate-gha` / `generate-gitlab` write workflows regardless of `[output]`.
 - grep/rg checks: exit code 1 (no match) counts as pass, so a
   `grep -E "[[:space:]]+$"` trailing-whitespace check fails only on a match.
+
+## Check types
+
+`[[checks]]` is generic: the behavior is selected **automatically by `command`
+basename**, so the same config surface covers every tool. Unknown commands run
+as a custom shell check.
+
+| `command` basename | Behavior | Files |
+|---|---|---|
+| `clang-format` | In-place formatting; reports `Formatted`/`Clean` per file; exit `0` after applying fixes | once (batched), C/C++ only |
+| `clang-tidy` | Static analysis; requires `.clang-tidy` or `--config-file=` | once (batched) |
+| `gcc`, `g++`, `clang`, `clang++`, `cc`, `c++` (or versioned: `gcc-14`, `clang++-17`) | Syntax-only compile; `-fsyntax-only` is forced unless `args` already set `-c`/`-S`/`-E` | per-file |
+| `cmake` | Build command (e.g. `cmake --build build`); file list omitted | once |
+| `git` | e.g. `git diff --check`; runs against the whole working tree; file list omitted | once |
+| anything else | Custom shell command; file list appended | per-file (batched for `clang-format`, `clang-tidy`, `grep`, `egrep`, `rg`, `cppcheck`) |
+
+Notes:
+
+- **grep/rg exit codes are inverted**: exit `0` (match found) fails the check,
+  exit `1` (no match) passes.
+- **clang-format** always runs with `-i` (a user-supplied `-i` is stripped) and
+  needs `.clang-format` or `_clang-format`: otherwise the check fails before
+  anything runs. Stage the fixes with `git add -u`.
+- **clang-tidy** fails before execution if `.clang-tidy` is missing, unless
+  `args` includes `--config-file=<path>`.
+- **compiler checks** compile each file with `-fsyntax-only`, so no object
+  files ever land in the repo.
+- Dispatch matches `clang-format`/`clang-tidy`/`cmake`/`git` by **exact
+  basename**; `clang-format-17` falls back to a custom shell check. Compilers
+  are the exception: `gcc-14` still routes to the compiler check.
+- `timeout` is validated but not yet enforced; `severity`
+  (`error`/`warning`/`info`) is stored but does not yet change the exit code.

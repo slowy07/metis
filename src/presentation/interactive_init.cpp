@@ -198,6 +198,21 @@ void run_interactive_init(application::InitOptions& opts) {
 
   opts.enable_conan = prompt_bool("generate conanfile.py", opts.enable_conan);
 
+  opts.enable_compiler_checks = prompt_bool("enable compiler checks", opts.enable_compiler_checks);
+  if (opts.enable_compiler_checks) {
+    static constexpr auto compilers =
+        std::to_array<std::string_view>({"g++", "clang++", "gcc", "clang"});
+    opts.compiler = prompt_choice("compiler", "g++", compilers);
+
+    static constexpr auto standards = std::to_array<std::string_view>({"17", "20", "23", "26"});
+    opts.compiler_cpp_standard = prompt_choice("C++ standard", "20", standards);
+
+    opts.compiler_werror = prompt_bool("treat warnings as errors (-Werror)", opts.compiler_werror);
+
+    opts.compiler_debug_and_release =
+        prompt_bool("check both debug and release configurations", opts.compiler_debug_and_release);
+  }
+
   std::cout << "\n";
 }
 

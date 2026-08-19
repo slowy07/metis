@@ -25,11 +25,12 @@ requirements:
 
 ## Format in `Pre-Commit` Hook
 
-to auto-format on every commit, pass `--format` to check:
+The generated pre-commit hook does not support `--format` directly. To auto-format on every commit, configure the hook to run format mode:
 
 ```bash
 sniffercommit install
 
-# config git hook to use
-.git/hooks/pre-commit --format
+# The hook runs checks by default. To run format mode instead,
+# edit .git/hooks/pre-commit to use:
+sniffercommit run --format --staged
 ```

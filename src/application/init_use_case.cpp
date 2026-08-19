@@ -59,6 +59,12 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
     config_content = domain::config::generate_default_config(project_name, opts.style, repo_root);
   }
 
+  if (opts.enable_compiler_checks) {
+    config_content += domain::config::generate_compiler_checks(
+        opts.compiler, opts.compiler_cpp_standard, opts.compiler_warnings, opts.compiler_werror,
+        opts.compiler_debug_and_release);
+  }
+
   if (!file_system_->write_file(config_path, config_content)) {
     result.error_message = "Failed to create " + config_path.string();
     return result;

@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
@@ -15,6 +16,8 @@
 #include "sniffercommit/application/install_toolchain_use_case.hpp"
 #include "sniffercommit/application/install_use_case.hpp"
 #include "sniffercommit/application/run_checks_use_case.hpp"
+#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
+#include "sniffercommit/application/test_checks_use_case.hpp"
 #include "sniffercommit/argparse.hpp"
 #include "sniffercommit/domain/config.hpp"
 #include "sniffercommit/domain/error_codes.hpp"
@@ -114,6 +117,18 @@ bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOpt
       opts.dependencies.emplace_back(args[++i]);
     } else if (arg == "--generate-src") {
       opts.generate_source = true;
+    } else if (arg == "--enable-compiler-checks" || arg == "--compiler-checks") {
+      opts.enable_compiler_checks = true;
+    } else if (arg == "--compiler" && i + 1 < args.size()) {
+      opts.compiler = args[++i];
+    } else if (arg == "--compiler-cpp-standard" && i + 1 < args.size()) {
+      opts.compiler_cpp_standard = to_lower(args[++i]);
+    } else if (arg == "--compiler-werror") {
+      opts.compiler_werror = true;
+    } else if (arg == "--compiler-no-werror") {
+      opts.compiler_werror = false;
+    } else if (arg == "--compiler-debug-and-release") {
+      opts.compiler_debug_and_release = true;
     }
   }
   return true;
@@ -129,13 +144,16 @@ int main(int argc, char** argv) {
   std::string config_path = preparse_config_path(args);
 
   ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
-  app.set_version("0.3.26")
+  app.set_version("0.4.0")
       .add_option("-c", "--config", "Config file path", config_path)
       .add_subcommand("init", "Create default .sniffercommit.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
-      .add_subcommand("run", "Execute checks on files");
+      .add_subcommand("run", "Execute checks on files")
+      .add_subcommand("install-compiler", "Download and install a C++ toolchain")
+      .add_subcommand("sanitizer", "Run sanitizer checks (ASan, UBSan, TSan, LSan)")
+      .add_subcommand("test", "Run test and optional coverage checks");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -250,6 +268,80 @@ int main(int argc, char** argv) {
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 
+    if (subcmd == "test") {
+      bool coverage = false;
+      bool verbose = false;
+      std::string build_dir_override;
+
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+
+        if (arg == "test") {
+          continue;
+        }
+
+        if (arg == "--coverage") {
+          coverage = true;
+        } else if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        } else if (!arg.starts_with('-')) {
+          build_dir_override = std::string(arg);
+        }
+      }
+
+      if (!build_dir_override.empty()) {
+        cfg.test.build_dir = build_dir_override;
+      }
+
+      auto test_use_case = application::TestChecksUseCase(std::move(shell), std::move(fs));
+
+      auto result = test_use_case.execute(cfg, repo_root, coverage, verbose);
+
+      if (!result.output.empty()) {
+        std::cout << result.output;
+      }
+
+      if (!result.success) {
+        return static_cast<int>(domain::ExitCode::TEST_FAILURE);
+      }
+
+      if (coverage && !result.coverage_ok) {
+        return static_cast<int>(domain::ExitCode::COVERAGE_THRESHOLD_NOT_MET);
+      }
+
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
+    if (subcmd == "sanitizer") {
+      bool verbose = false;
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+        if (arg == "sanitizer") {
+          continue;
+        }
+        if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        }
+      }
+
+      if (!cfg.sanitizer.enabled) {
+        std::cerr << "[WARN] Sanitizers not enabled in config.\n";
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
+
+      domain::config::ProjectConfig cfg_data = config_repo->load(config_path);
+
+      auto sanitizer_use_case =
+          application::SanitizerChecksUseCase(std::move(shell), std::move(fs));
+      bool ok = sanitizer_use_case.execute(cfg_data, repo_root, verbose);
+
+      if (!ok) {
+        return static_cast<int>(domain::ExitCode::SANITIZER_TEST_FAILURE);
+      }
+
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
     if (subcmd == "run") {
       // Run subcommand: executes checks against files.
       // Parses its own flags (--all-files, --verbose, --dry-run, --format)
@@ -320,19 +412,21 @@ int main(int argc, char** argv) {
       }
 
       domain::ports::CppStandard cpp_standard = domain::ports::CppStandard::CPP_20;
-      if (cpp_standard_str == "20") {
+      if (cpp_standard_str == "17") {
         cpp_standard = domain::ports::CppStandard::CPP_17;
       } else if (cpp_standard_str == "20") {
         cpp_standard = domain::ports::CppStandard::CPP_20;
       } else if (cpp_standard_str == "23") {
         cpp_standard = domain::ports::CppStandard::CPP_23;
+      } else if (cpp_standard_str == "26") {
+        cpp_standard = domain::ports::CppStandard::CPP_26;
       } else {
         std::cerr << "[ERROR] Invalid --cpp-standard. use 17, 20, or 23\n";
         return static_cast<int>(domain::ExitCode::INVALID_ARGUMENTS);
       }
 
       auto provider =
-          infrastructure::ToolchainFactory::create("gcc", version, shell.get(), fs.get());
+          infrastructure::ToolchainFactory::create(compiler, version, shell.get(), fs.get());
 
       if (!provider) {
         std::cerr << "[ERROR] GCC installation is not supported on this platform\n";
