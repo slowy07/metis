@@ -27,6 +27,7 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `install-compiler` | Download and install a C++ toolchain |
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
+| `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.sniffercommit.toml`).
@@ -119,6 +120,31 @@ parallel = true
 - grep/rg checks: exit code 1 (no match) counts as pass, so a
   `grep -E "[[:space:]]+$"` trailing-whitespace check fails only on a match.
 
+## Test and sanitizer config
+
+```toml
+[test]
+build_dir = "build"
+coverage = false
+line_threshold = 80.0
+branch_threshold = 70.0
+function_threshold = 90.0
+
+[sanitizers]
+enabled = false
+types = ["address", "undefined"]
+build_dir = "build"
+timeout = 0
+```
+
+`[test]`: `build_dir` is the CMake build directory for `ctest`. `coverage`
+enables coverage reporting. Thresholds are minimum percentages; the check
+fails if any metric falls below.
+
+`[sanitizers]`: `types` accepts `address`, `undefined`, `thread`, `leak`.
+`build_dir` is where the sanitizer build is created. `timeout` is max seconds
+per test (`0` = no limit).
+
 ## Check types
 
 `[[checks]]` is generic: the behavior is selected **automatically by `command`
@@ -130,6 +156,10 @@ as a custom shell check.
 | `clang-format` | In-place formatting; reports `Formatted`/`Clean` per file; exit `0` after applying fixes | once (batched), C/C++ only |
 | `clang-tidy` | Static analysis; requires `.clang-tidy` or `--config-file=` | once (batched) |
 | `gcc`, `g++`, `clang`, `clang++`, `cc`, `c++` (or versioned: `gcc-14`, `clang++-17`) | Syntax-only compile; `-fsyntax-only` is forced unless `args` already set `-c`/`-S`/`-E` | per-file |
+| `cppcheck` | Static analysis via cppcheck; batches all files | once (batched) |
+| `gcc-analyzer` | GCC static analyzer (`-fanalyzer`); per-file | per-file |
+| `clang-static-analyzer` | Clang static analyzer; per-file | per-file |
+| `include-what-you-use`, `iwyu` | Include-what-you-use analysis; per-file | per-file |
 | `cmake` | Build command (e.g. `cmake --build build`); file list omitted | once |
 | `git` | e.g. `git diff --check`; runs against the whole working tree; file list omitted | once |
 | anything else | Custom shell command; file list appended | per-file (batched for `clang-format`, `clang-tidy`, `grep`, `egrep`, `rg`, `cppcheck`) |

@@ -124,6 +124,7 @@ set(SNIFFERCOMMIT_SOURCES
   src/application/run_checks_use_case.cpp
   src/application/generate_workflow_use_case.cpp
   src/application/install_toolchain_use_case.cpp
+  src/application/dependency_check_use_case.cpp
   src/application/checks/shell_check.cpp
   src/application/checks/clang_format_check.cpp
   src/application/checks/clang_tidy_check.cpp
@@ -163,6 +164,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/domain/workflow.hpp
   include/sniffercommit/domain/error_codes.hpp
   include/sniffercommit/domain/check.hpp
+  include/sniffercommit/domain/dependency.hpp
   include/sniffercommit/domain/ports/config_repository.hpp
   include/sniffercommit/domain/ports/shell_executor.hpp
   include/sniffercommit/domain/ports/file_system.hpp
@@ -184,6 +186,7 @@ set(SNIFFERCOMMIT_HEADERS
   include/sniffercommit/application/run_checks_use_case.hpp
   include/sniffercommit/application/sanitizer_checks_use_case.hpp
   include/sniffercommit/application/test_checks_use_case.hpp
+  include/sniffercommit/application/dependency_check_use_case.hpp
   include/sniffercommit/application/checks/cppcheck_check.hpp
   include/sniffercommit/application/checks/iwyu_check.hpp
   include/sniffercommit/application/checks/clang_static_analyzer_check.hpp

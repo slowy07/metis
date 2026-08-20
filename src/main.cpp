@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "sniffercommit/application/dependency_check_use_case.hpp"
 #include "sniffercommit/application/generate_workflow_use_case.hpp"
 #include "sniffercommit/application/init_use_case.hpp"
 #include "sniffercommit/application/install_toolchain_use_case.hpp"
@@ -153,7 +154,8 @@ int main(int argc, char** argv) {
       .add_subcommand("run", "Execute checks on files")
       .add_subcommand("install-compiler", "Download and install a C++ toolchain")
       .add_subcommand("sanitizer", "Run sanitizer checks (ASan, UBSan, TSan, LSan)")
-      .add_subcommand("test", "Run test and optional coverage checks");
+      .add_subcommand("test", "Run test and optional coverage checks")
+      .add_subcommand("deps", "Validate project dependencies (conan, vcpkg, cmake)");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -474,6 +476,88 @@ int main(int argc, char** argv) {
       std::cout << "[INFO] " << compiler << " " << result.version_ << " (C++ "
                 << static_cast<int>(result.installed_cpp_standard_) << ")" << " installed at "
                 << result.installed_path_ << "\n";
+    }
+
+    if (subcmd == "deps") {
+      bool verbose = false;
+      bool graph = false;
+
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+
+        if (arg == "deps") {
+          continue;
+        }
+
+        if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        }
+
+        if (arg == "--graph" || arg == "-g") {
+          graph = true;
+        }
+
+        application::DependencyCheckOptions dep_opts;
+
+        dep_opts.verbose = verbose;
+        dep_opts.generate_graph = false;
+
+        application::DependencyCheckUseCase deps_uc(
+            std::make_unique<infrastructure::ProcessShellExecutor>(),
+            std::make_unique<infrastructure::OsFileSystem>());
+
+        auto result = deps_uc.execute(repo_root, dep_opts);
+
+        std::cout << "\nDependencies: \n";
+        if (result.validations.empty()) {
+          std::cout << "No Dependencies manifes found (conanfile.py, vcpkg.json, CMakeLists.txt)\n";
+        } else {
+          for (const auto& res_validation : result.validations) {
+            std::cout << (res_validation.ok ? "✓ " : "✕ ") << res_validation.dep.name;
+
+            if (!res_validation.dep.version.empty()) {
+              std::cout << " " << res_validation.dep.version;
+            }
+
+            if (!res_validation.ok) {
+              std::cout << "   [" << res_validation.message << "]";
+            }
+
+            std::cout << "    (" << res_validation.dep.source << ")\n";
+          }
+        }
+
+        bool has_issue = false;
+
+        if (!result.duplicates.empty()) {
+          has_issue = true;
+
+          std::cout << "\nDuplicate dependencies detect\n";
+          for (const auto& dep_duplicate : result.duplicates) {
+            std::cout << "  - " << dep_duplicate << "\n";
+          }
+        }
+
+        if (!result.lockfile_issues.empty()) {
+          has_issue = true;
+
+          std::cout << "\nLockfile Issue:\n";
+          for (const auto& lock_issue : result.lockfile_issues) {
+            std::cout << "  - " << lock_issue << "\n";
+          }
+        }
+
+        if (!has_issue && !result.validations.empty()) {
+          std::cout << "\nNo dependencies problems\n";
+        }
+
+        if (graph) {
+          std::cout << "\n[INFO] Dependency graph written into dependencies.dot\n";
+        }
+
+        return static_cast<int>(result.success() ? domain::ExitCode::SUCCESS
+                                                 : domain::ExitCode::MISSING_DEPENDENCY);
+      }
     }
 
     app.show_help();

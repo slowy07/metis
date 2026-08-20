@@ -20,6 +20,7 @@ set(TEST_SOURCES
   test_binary_runtime.cpp
   test_config_generators.cpp
   test_config_manager.cpp
+  test_dependency_checks.cpp
   test_format_mode.cpp
   test_glob_match.cpp
   test_precommit_domain.cpp

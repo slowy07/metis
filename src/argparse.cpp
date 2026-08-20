@@ -338,6 +338,20 @@ void ArgParser::show_help() const {
   std::cout << "        sniffercommit sanitizer\n";
   std::cout << "        sniffercommit sanitizer --verbose\n\n";
 
+  std::cout << "  deps\n";
+
+  std::cout << "      Validate project dependencies (conan, vcpkg, cmake).\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --verbose, -V\n\n";
+  std::cout << "        --graph, -g    Generate Dependencies\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        sniffercommit deps\n";
+  std::cout << "        sniffercommit deps --graph\n\n";
+
   print_section_title("Global Options");
 
   for (const auto& opt : options_) {

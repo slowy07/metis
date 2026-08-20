@@ -42,9 +42,9 @@ The pre-commit hook runs clang-format, clang-tidy, and trailing-whitespace.
 ```
 src/
   main.cpp                    CLI entry, arg parsing, DI wiring
-  application/                use cases: init, install, run, test, sanitizer, install-toolchain, generate-workflow
-  application/checks/         concrete checks: shell, clang-format, clang-tidy, compiler, build, git-diff
-  domain/                     config, check, workflow models + defaults, exit codes
+  application/                use cases: init, install, run, test, sanitizer, deps, install-toolchain, generate-workflow
+  application/checks/         concrete checks: shell, clang-format, clang-tidy, compiler, build, git-diff, cppcheck, gcc-analyzer, clang-static-analyzer, iwyu
+  domain/                     config, check, workflow, dependency models + defaults, exit codes
   domain/ports/               interfaces: shell, fs, git, config, http, archive, toolchain
   generators/                 clang-format / clang-tidy / cmake / conan templates
   infrastructure/             concrete adapters: toml, shell, fs, git, curl, tar, toolchain providers
@@ -70,6 +70,10 @@ Config (`[[checks]]`) selects the runtime behavior by **command basename**
 through the `make_check` factory (`src/application/run_checks_use_case.cpp`).
 Known commands map to a subclass of `domain::check::Check`; everything else
 runs as `ShellCheck`.
+
+Current check types: `clang-format`, `clang-tidy`, compilers (`gcc`, `g++`,
+`clang`, `clang++`, `cc`, `c++`), `cmake`, `git`, `cppcheck`, `gcc-analyzer`,
+`clang-static-analyzer`, `include-what-you-use`/`iwyu`.
 
 To add a new specialized check type:
 
