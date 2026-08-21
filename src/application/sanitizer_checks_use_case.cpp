@@ -13,8 +13,8 @@
 
 namespace sniffercommit::application {
 SanitizerChecksUseCase::SanitizerChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                                               std::unique_ptr<domain::ports::IFileSystem> fs)
-    : shell_(std::move(shell)), fs_(std::move(fs)) {}
+                                               std::unique_ptr<domain::ports::IFileSystem> file_system)
+    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 std::string SanitizerChecksUseCase::to_compiler_flag(const std::string& type) {
   if (type == "address") {
@@ -44,7 +44,7 @@ bool SanitizerChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
 
   auto build_dir = repo_root / cfg.sanitizer.build_dir;
 
-  if (!fs_->exists(build_dir)) {
+  if (!file_system_->exists(build_dir)) {
     std::cerr << fmt::format("[ERROR] Build directory does not exists: {}\n", build_dir.string());
     return false;
   }

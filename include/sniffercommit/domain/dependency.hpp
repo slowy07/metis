@@ -1,6 +1,7 @@
 #ifndef SNIFFERCOMMIT_DOMAIN_DEPEDENCY_HPP
 #define SNIFFERCOMMIT_DOMAIN_DEPEDENCY_HPP
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -33,13 +34,8 @@ struct DependencyCheckResult {
       return false;
     }
 
-    for (const auto& valid : validations) {
-      if (!valid.ok) {
-        return false;
-      }
-    }
-
-    return true;
+    return std::ranges::all_of(validations,
+                               [](const auto& valid) { return valid.ok; });
   }
 };
 

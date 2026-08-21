@@ -49,7 +49,7 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
 
   try {
     repo_root = config_repo_->find_git_root();
-  } catch (const std::exception&) {
+  } catch (const std::exception&) {  // NOLINT: fallback to cwd if not in a git repo
   }
 
   if (opts.enable_clang_tidy) {

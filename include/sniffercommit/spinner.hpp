@@ -12,7 +12,7 @@
 namespace sniffercommit {
 class Spinner {
  public:
-  enum class Mode { Auto };
+  enum class Mode : std::uint8_t { Auto };
 
   explicit Spinner(std::string_view message, Mode mode = Mode::Auto,
                    std::vector<std::string> frames = {},

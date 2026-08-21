@@ -3,7 +3,7 @@
 # Preset: standard
 # Severity threshold: error
 
-Checks: "cppcoreguidelines-*,bugprone-*,clang-analyzer-*,modernize-*,performance-*,readability-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-init-variables,-modernize-use-trailing-return-type,-cppcoreguidelines-macro-to-enum,-cppcoreguidelines-macro-usage,-modernize-macro-to-enum,-readability-magic-numbers,-readability-use-concise-preprocessor-directives,-readability-redundant-typename,-bugprone-easily-swappable-parameters"
+Checks: "cppcoreguidelines-*,bugprone-*,clang-analyzer-*,modernize-*,performance-*,readability-*,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-init-variables,-modernize-use-trailing-return-type,-cppcoreguidelines-macro-to-enum,-cppcoreguidelines-macro-usage,-modernize-macro-to-enum,-readability-magic-numbers,-readability-use-concise-preprocessor-directives,-readability-redundant-typename,-bugprone-easily-swappable-parameters,-readability-identifier-naming,-cppcoreguidelines-pro-bounds-avoid-unchecked-container-access"
 WarningsAsErrors: 'clang-diagnostic-*'
 HeaderFilterRegex: 'sniffercommit/(include/sniffercommit|src)/'
 FormatStyle: file

@@ -12,7 +12,6 @@
 #include <sstream>
 #include <string>
 #include <string_view>
-
 #include <utility>
 #include <vector>
 
@@ -37,8 +36,8 @@ std::string normalize_name(std::string_view name) {
 }  // namespace
 
 DependencyCheckUseCase::DependencyCheckUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                                               std::unique_ptr<domain::ports::IFileSystem> fs)
-    : shell_(std::move(shell)), fs_(std::move(fs)) {}
+                                               std::unique_ptr<domain::ports::IFileSystem> file_system)
+    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 domain::DependencyCheckResult DependencyCheckUseCase::execute(
     const std::filesystem::path& repo_root, const DependencyCheckOptions& opts) {
@@ -90,32 +89,32 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_conanfile(
     const std::filesystem::path& repo_root) {
   std::vector<domain::Dependency> out;
   auto path = repo_root / "conanfile.py";
-  if (!fs_->exists(path)) {
+  if (!file_system_->exists(path)) {
     return out;
   }
 
-  std::string content = fs_->read_file(path);
+  std::string content = file_system_->read_file(path);
   if (content.empty()) {
     return out;
   }
 
   std::regex req_re{R"(self\.requires\s*\(\s*"([^"/@]+)/([^"/@]+)[^"]*"\s*\))"};
-  std::sregex_iterator it(content.begin(), content.end(), req_re);
+  std::sregex_iterator iter(content.begin(), content.end(), req_re);
   std::sregex_iterator end;
-  for (; it != end; ++it) {
+  for (; iter != end; ++iter) {
     domain::Dependency deps;
-    deps.name = (*it)[1].str();
-    deps.version = (*it)[2].str();
+    deps.name = (*iter)[1].str();
+    deps.version = (*iter)[2].str();
     deps.source = "conan";
     out.push_back(std::move(deps));
   }
 
   std::regex test_re{R"(self\.test_requires\s*\(\s*"([^"/@]+)/([^"/@]+)[^"]*"\s*\))"};
-  it = std::sregex_iterator(content.begin(), content.end(), test_re);
-  for (; it != end; ++it) {
+  iter = std::sregex_iterator(content.begin(), content.end(), test_re);
+  for (; iter != end; ++iter) {
     domain::Dependency deps;
-    deps.name = (*it)[1].str();
-    deps.version = (*it)[2].str();
+    deps.name = (*iter)[1].str();
+    deps.version = (*iter)[2].str();
     deps.source = "conan";
     out.push_back(std::move(deps));
   }
@@ -128,11 +127,11 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_vcpkg_json(
   std::vector<domain::Dependency> out;
   auto path = repo_root / "vcpkg.json";
 
-  if (!fs_->exists(path)) {
+  if (!file_system_->exists(path)) {
     return out;
   }
 
-  std::string content = fs_->read_file(path);
+  std::string content = file_system_->read_file(path);
   if (content.empty()) {
     return out;
   }
@@ -237,11 +236,11 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent
   std::vector<domain::Dependency> out;
   auto path = repo_root / "CMakeLists.txt";
 
-  if (!fs_->exists(path)) {
+  if (!file_system_->exists(path)) {
     return out;
   }
 
-  std::string content = fs_->read_file(path);
+  std::string content = file_system_->read_file(path);
   if (content.empty()) {
     return out;
   }
@@ -249,12 +248,12 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent
   std::regex fc_re{
       R"(FetchContent_Declare\s*\(\s*([A-Za-z0-9_\-]+)[^\)]*VERSION\s+([0-9]+\.[0-9]+(?:\.[0-9]+)?)\s*[^\)]*\))",
       std::regex::icase};
-  std::sregex_iterator it(content.begin(), content.end(), fc_re);
+  std::sregex_iterator iter(content.begin(), content.end(), fc_re);
   std::sregex_iterator end;
-  for (; it != end; ++it) {
+  for (; iter != end; ++iter) {
     domain::Dependency domain_deps;
-    domain_deps.name = (*it)[1].str();
-    domain_deps.version = (*it)[2].str();
+    domain_deps.name = (*iter)[1].str();
+    domain_deps.version = (*iter)[2].str();
     domain_deps.source = "cmake-fetchcontent";
     out.push_back(std::move(domain_deps));
   }
@@ -262,11 +261,11 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent
   std::regex git_re{
       R"(FetchContent_Declare\s*\(\s*([A-Za-z0-9_\-]+)[^\)]*GIT_TAG\s+([vV]?[0-9]+\.[0-9]+(?:\.[0-9]+)?)\s*[^\)]*\))",
       std::regex::icase};
-  it = std::sregex_iterator(content.begin(), content.end(), git_re);
-  for (; it != end; ++it) {
+  iter = std::sregex_iterator(content.begin(), content.end(), git_re);
+  for (; iter != end; ++iter) {
     domain::Dependency domain_deps;
-    domain_deps.name = (*it)[1].str();
-    domain_deps.version = (*it)[2].str();
+    domain_deps.name = (*iter)[1].str();
+    domain_deps.version = (*iter)[2].str();
     if (!domain_deps.version.empty() &&
         (domain_deps.version[0] == 'v' || domain_deps.version[0] == 'V')) {
       domain_deps.version = domain_deps.version.substr(1);
@@ -278,7 +277,7 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent
   return out;
 }
 
-bool DependencyCheckUseCase::is_valid_semver(std::string_view version) const {
+bool DependencyCheckUseCase::is_valid_semver(std::string_view version) {
   if (version.empty()) {
     return false;
   }
@@ -307,16 +306,16 @@ bool DependencyCheckUseCase::vcpkg_dep_installed(const std::string& name) const 
 
 void DependencyCheckUseCase::check_lockfiles(const std::filesystem::path& repo_root,
                                              domain::DependencyCheckResult& out) const {
-  bool has_conan = fs_->exists(repo_root / "conanfile.py");
-  bool has_vcpkg = fs_->exists(repo_root / "vckpg.json");
+  bool has_conan = file_system_->exists(repo_root / "conanfile.py");
+  bool has_vcpkg = file_system_->exists(repo_root / "vckpg.json");
 
-  if (has_conan && !fs_->exists(repo_root / "conan.lock")) {
+  if (has_conan && !file_system_->exists(repo_root / "conan.lock")) {
     out.lockfile_issues.emplace_back("conanfile.py exists but conan.lock is missing");
   }
 
   if (has_vcpkg) {
-    bool has_lock = fs_->exists(repo_root / "vcpkg-configuration.json") ||
-                    fs_->exists(repo_root / "vcpkg-manifest-install.log");
+    bool has_lock = file_system_->exists(repo_root / "vcpkg-configuration.json") ||
+                    file_system_->exists(repo_root / "vcpkg-manifest-install.log");
 
     if (has_lock) {
       out.lockfile_issues.emplace_back(
@@ -326,7 +325,7 @@ void DependencyCheckUseCase::check_lockfiles(const std::filesystem::path& repo_r
 }
 
 void DependencyCheckUseCase::detect_duplicates(const std::vector<domain::Dependency>& all,
-                                               domain::DependencyCheckResult& out) const {
+                                               domain::DependencyCheckResult& out) {
   std::map<std::string, std::set<std::string>> seen;
   for (const auto& deps : all) {
     seen[normalize_name(deps.name)].insert(deps.source);
@@ -350,9 +349,8 @@ void DependencyCheckUseCase::detect_duplicates(const std::vector<domain::Depende
   }
 }
 
-void DependencyCheckUseCase::generate_dot_graph(
-    const std::vector<domain::Dependency>& all,
-    const std::filesystem::path& out_path) {
+void DependencyCheckUseCase::generate_dot_graph(const std::vector<domain::Dependency>& all,
+                                                const std::filesystem::path& out_path) {
   std::ostringstream dot;
   dot << "digraph dependencies {\n";
   dot << "  rankdir=LR;\n";

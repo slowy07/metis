@@ -46,14 +46,11 @@ constexpr size_t k_result_col = 68;
 bool is_compiler(const std::string& basename) {
   static const std::vector<std::string> k_prefixes = {"gcc",     "g++", "clang",
                                                       "clang++", "cc",  "c++"};
-  for (const auto& prefix : k_prefixes) {
-    if (basename == prefix ||
-        (basename.size() > prefix.size() && basename.compare(0, prefix.size(), prefix) == 0 &&
-         basename[prefix.size()] == '-')) {
-      return true;
-    }
-  }
-  return false;
+  return std::ranges::any_of(k_prefixes, [&basename](const auto& prefix) {
+    return basename == prefix ||
+           (basename.size() > prefix.size() && basename.starts_with(prefix) &&
+            basename[prefix.size()] == '-');
+  });
 }
 
 std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
@@ -96,7 +93,7 @@ class SyncPrinter {
  public:
   void print_check_result(const std::string& name, std::string_view result, int exit_code = 0,
                           std::string_view tool_output = {}, bool verbose = false) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     size_t dot_count = (name.length() < k_result_col) ? k_result_col - name.length() : 1;
     std::cout << name << std::string(dot_count, '.') << result << "\n";
     if (!tool_output.empty() && (exit_code != 0 || verbose)) {
@@ -125,7 +122,7 @@ class SyncPrinter {
 
   void print_file_result(const std::string& file_name, std::string_view status,
                          size_t indent_col = 2) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::string label = std::string(indent_col, ' ') + file_name;
     size_t effective_col = k_result_col - indent_col;
     if (effective_col > label.length()) {
@@ -136,12 +133,12 @@ class SyncPrinter {
   }
 
   void print_verbose(std::string_view msg) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::cout << msg;
   }
 
   void print_error(std::string_view msg) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::cerr << msg;
   }
 
@@ -151,9 +148,9 @@ class SyncPrinter {
 
 // Result of running a single check against a set of matched files.
 struct CheckResult {
-  std::string check_name_{};
+  std::string check_name_;
   int exit_code_{0};
-  std::string output_{};
+  std::string output_;
   bool verbose_{false};
 };
 
@@ -190,7 +187,7 @@ bool is_format_eligible(const std::string& file) {
   std::string ext = file_path.extension().string();
   std::ranges::transform(ext, ext.begin(),
                          [](unsigned char chr) { return static_cast<char>(std::tolower(chr)); });
-  return std::ranges::any_of(k_format_extensions, [&ext](const auto& e) { return ext == e; });
+  return std::ranges::any_of(k_format_extensions, [&ext](const auto& ext_entry) { return ext == ext_entry; });
 }
 
 std::vector<std::string> filter_format_files(const std::vector<std::string>& files) {
@@ -208,8 +205,8 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 
 RunChecksUseCase::RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
-                                   std::unique_ptr<domain::ports::IFileSystem> fs)
-    : shell_(std::move(shell)), git_repo_(std::move(git_repo)), fs_(std::move(fs)) {}
+                                   std::unique_ptr<domain::ports::IFileSystem> file_system)
+    : shell_(std::move(shell)), git_repo_(std::move(git_repo)), file_system_(std::move(file_system)) {}
 
 // Collects the list of files to check based on the run mode:
 //   STAGED  - git staged files (default for pre-commit hook)
@@ -230,11 +227,19 @@ std::vector<std::string> RunChecksUseCase::collect_files(
   //   Prefix match:   "build/" matches "build/debug/foo.cpp"
   auto is_excluded = [&exclude_paths](const std::string& file) -> bool {
     for (const auto& excl : exclude_paths) {
-      if (file == excl) return true;
-      if (excl.starts_with("*.") && file.ends_with(excl.substr(1))) return true;
+      if (file == excl) {
+        return true;
+      }
+      if (excl.starts_with("*.") && file.ends_with(excl.substr(1))) {
+        return true;
+      }
       std::string norm_e = excl;
-      if (!norm_e.empty() && norm_e.back() != '/') norm_e += '/';
-      if (file.starts_with(norm_e)) return true;
+      if (!norm_e.empty() && norm_e.back() != '/') {
+        norm_e += '/';
+      }
+      if (file.starts_with(norm_e)) {
+        return true;
+      }
     }
     return false;
   };
@@ -251,7 +256,7 @@ std::vector<std::string> RunChecksUseCase::collect_files(
     }
   }
 
-  std::erase_if(files, [&](const std::string& f) { return is_excluded(f); });
+  std::erase_if(files, [&](const std::string& file) { return is_excluded(file); });
 
   std::ranges::sort(files);
   auto [first, last] = std::ranges::unique(files);
@@ -266,7 +271,7 @@ std::vector<std::string> RunChecksUseCase::collect_files(
 int RunChecksUseCase::execute(const domain::config::ProjectConfig& cfg, const RunOptions& opts) {
   std::filesystem::path repo_root;
   try {
-    repo_root = git_repo_->find_repo_root(fs_->current_path());
+    repo_root = git_repo_->find_repo_root(file_system_->current_path());
   } catch (const std::exception& e) {
     std::cerr << "[ERROR] " << e.what() << "\n";
     return static_cast<int>(ExitCode::NOT_A_GIT_REPO);

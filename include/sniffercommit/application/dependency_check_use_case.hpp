@@ -21,7 +21,7 @@ struct DependencyCheckOptions {
 class DependencyCheckUseCase {
  public:
   DependencyCheckUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                         std::unique_ptr<domain::ports::IFileSystem> fs);
+                         std::unique_ptr<domain::ports::IFileSystem> file_system);
 
   [[nodiscard]] domain::DependencyCheckResult execute(const std::filesystem::path& repo_root,
                                                       const DependencyCheckOptions& opts);
@@ -31,19 +31,19 @@ class DependencyCheckUseCase {
   std::vector<domain::Dependency> parse_vcpkg_json(const std::filesystem::path& repo_root);
   std::vector<domain::Dependency> parse_cmake_fetchcontent(const std::filesystem::path& repo_root);
 
-  [[nodiscard]] bool is_valid_semver(std::string_view version) const;
+  static bool is_valid_semver(std::string_view version);
   [[nodiscard]] bool conan_dep_installed(const std::string& name) const;
   [[nodiscard]] bool vcpkg_dep_installed(const std::string& name) const;
 
   void check_lockfiles(const std::filesystem::path& repo_root,
                        domain::DependencyCheckResult& out) const;
-  void detect_duplicates(const std::vector<domain::Dependency>& all,
-                         domain::DependencyCheckResult& out) const;
-  void generate_dot_graph(const std::vector<domain::Dependency>& all,
+  static void detect_duplicates(const std::vector<domain::Dependency>& all,
+                         domain::DependencyCheckResult& out);
+  static void generate_dot_graph(const std::vector<domain::Dependency>& all,
                           const std::filesystem::path& out_path);
 
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
-  std::unique_ptr<domain::ports::IFileSystem> fs_;
+  std::unique_ptr<domain::ports::IFileSystem> file_system_;
 };
 
 }  // namespace sniffercommit::application

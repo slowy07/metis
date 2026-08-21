@@ -14,9 +14,7 @@ using namespace sniffercommit;
 
 struct MockShell : domain::ports::IShellExecutor {
   std::string exec(const std::string&) override { return {}; }
-  domain::ports::CapturedResult exec_captured(const std::string&) override {
-    return {0, ""};
-  }
+  domain::ports::CapturedResult exec_captured(const std::string&) override { return {0, ""}; }
   bool command_exists(const std::string&) override { return false; }
 };
 
@@ -52,8 +50,8 @@ TEST(DependencyCheckTest, EmptyRepoReturnsSuccess) {
   MockFs fs;
   application::DependencyCheckOptions opts;
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", opts);
 
@@ -72,8 +70,8 @@ class Pkg(ConanFile):
         self.requires("spdlog/1.14.1")
 )";
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", {});
 
@@ -98,8 +96,8 @@ FetchContent_Declare(spdlog
 )
 )";
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", {});
 
@@ -115,8 +113,8 @@ TEST(DependencyCheckTest, InvalidSemverIsInvalid) {
   MockFs fs;
   fs.files["/mock/conanfile.py"] = R"(self.requires("fmt/not-a-version"))";
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", {});
 
@@ -132,8 +130,8 @@ TEST(DependencyCheckTest, DetectsDuplicateAcrossSources) {
   fs.files["/mock/CMakeLists.txt"] =
       R"(FetchContent_Declare(fmt VERSION 10.0.0 GIT_REPOSITORY https://example.com/fmt.git))";
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", {});
 
@@ -145,8 +143,8 @@ TEST(DependencyCheckTest, MissingConanLockIsReported) {
   MockFs fs;
   fs.files["/mock/conanfile.py"] = R"(self.requires("fmt/1.0.0"))";
 
-  application::DependencyCheckUseCase use_case(
-      std::make_unique<MockShell>(shell), std::make_unique<MockFs>(fs));
+  application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
+                                               std::make_unique<MockFs>(fs));
 
   auto result = use_case.execute("/mock", {});
 
