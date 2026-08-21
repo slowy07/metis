@@ -1,4 +1,4 @@
-#include "sniffercommit/generators/clang_format_generator.hpp"
+#include "metis/generators/clang_format_generator.hpp"
 
 #include <fmt/format.h>
 
@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace sniffercommit::generators {
+namespace metis::generators {
 
 std::string generate_clang_format_style(std::string_view style) {
   std::string lower;
@@ -72,4 +72,4 @@ AlignConsecutiveAssignments: false
       style_name, indent_width, column_limit, pointer_alignment, brace_style);
 }
 
-}  // namespace sniffercommit::generators
+}  // namespace metis::generators

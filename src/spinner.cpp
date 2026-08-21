@@ -1,4 +1,4 @@
-#include "sniffercommit/spinner.hpp"
+#include "metis/spinner.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -15,7 +15,7 @@
 #include <unistd.h>
 #endif  // _WIN32
 
-namespace sniffercommit {
+namespace metis {
 
 #ifdef _WIN32
 // Enables ANSI escape code support on Windows terminals.
@@ -159,4 +159,4 @@ void Spinner::clear_line() const {
   std::cout << "\r" << std::string(message_.size() + frame_len + 2, ' ') << "\r" << std::flush;
 }
 
-}  // namespace sniffercommit
+}  // namespace metis

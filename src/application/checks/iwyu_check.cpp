@@ -1,16 +1,16 @@
-#include "sniffercommit/application/checks/iwyu_check.hpp"
+#include "metis/application/checks/iwyu_check.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/check.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/check.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 IWYUCheck::IWYUCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
                     config.command, config.args, config.timeout, config.severity) {}
@@ -50,4 +50,4 @@ domain::CheckResult IWYUCheck::execute(const std::vector<std::string>& files,
 
   return {.exit_code = last_exit, .output = combined_output};
 }
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

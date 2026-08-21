@@ -1,13 +1,13 @@
 #!/bin/sh
-# sniffercommit install script
+# metis install script
 #
 # Usage:
-#   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
-#   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.26
-#   curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- --force
+#   curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh
+#   curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh -s -- v0.3.26
+#   curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh -s -- --force
 set -eu
 
-REPO="slowy07/sniffercommit"
+REPO="slowy07/metis"
 VERSION="latest"
 FORCE_BUILD=false
 VERBOSE=false
@@ -43,12 +43,12 @@ for arg in "$@"; do
   case "${arg}" in
   --help | -h)
     cat <<'EOF'
-sniffercommit install script
+metis install script
 
 Usage:
-  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
-  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- --force
-  curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh -s -- v0.3.26
+  curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh
+  curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh -s -- --force
+  curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh -s -- v0.3.26
 
 Options:
   -h, --help              Print this help and exit
@@ -57,17 +57,17 @@ Options:
   -f, --force,
       --force-build       Rebuild from source even if a prebuilt binary exists
   --no-modify-path        Don't attempt to add the install dir to PATH
-  --uninstall             Remove a previously installed sniffercommit
+  --uninstall             Remove a previously installed metis
   <version>               Install a specific tag, e.g. v0.3.26 (default: latest)
 
 Environment variables:
-  SNIFFERCOMMIT_INSTALL_DIR   Override the install directory
-  SNIFFERCOMMIT_FORCE_BUILD   Same as --force if set to a non-empty value
+  METIS_INSTALL_DIR   Override the install directory
+  METIS_FORCE_BUILD   Same as --force if set to a non-empty value
 EOF
     exit 0
     ;;
   --version)
-    echo "sniffercommit installer 0.3.26"
+    echo "metis installer 0.3.26"
     exit 0
     ;;
   --verbose) VERBOSE=true ;;
@@ -83,17 +83,17 @@ EOF
   esac
 done
 
-if [ -n "${SNIFFERCOMMIT_FORCE_BUILD:-}" ]; then
+if [ -n "${METIS_FORCE_BUILD:-}" ]; then
   FORCE_BUILD=true
 fi
 
-if [ -n "${SNIFFERCOMMIT_INSTALL_DIR:-}" ]; then
-  DEFAULT_INSTALL_DIR="${SNIFFERCOMMIT_INSTALL_DIR}"
+if [ -n "${METIS_INSTALL_DIR:-}" ]; then
+  DEFAULT_INSTALL_DIR="${METIS_INSTALL_DIR}"
 else
   DEFAULT_INSTALL_DIR="${HOME}/.local/bin"
 fi
 INSTALL_DIR="${DEFAULT_INSTALL_DIR}"
-BIN_NAME="sniffercommit"
+BIN_NAME="metis"
 
 do_uninstall() {
   target="${INSTALL_DIR}/${BIN_NAME}"
@@ -139,7 +139,7 @@ if command -v curl >/dev/null 2>&1; then
 elif command -v wget >/dev/null 2>&1; then
   DOWNLOADER="wget"
 else
-  err "need either 'curl' or 'wget' installed to download sniffercommit"
+  err "need either 'curl' or 'wget' installed to download metis"
 fi
 
 fetch() {
@@ -170,7 +170,7 @@ if [ "${VERSION}" = "latest" ]; then
   [ -n "${RESOLVED_TAG}" ] || err "could not resolve latest release tag from GitHub API"
   VERSION="${RESOLVED_TAG}"
 fi
-say "installing sniffercommit ${VERSION} (${TARGET})"
+say "installing metis ${VERSION} (${TARGET})"
 
 need_cmd mktemp
 WORK_DIR="$(mktemp -d)"
@@ -185,7 +185,7 @@ install_prebuilt() {
   pc-windows-msvc) ARCHIVE_EXT="zip" ;;
   esac
 
-  ASSET="sniffercommit-${VERSION}-${TARGET}.${ARCHIVE_EXT}"
+  ASSET="metis-${VERSION}-${TARGET}.${ARCHIVE_EXT}"
   ASSET_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
   CHECKSUM_URL="${ASSET_URL}.sha256"
 
@@ -236,7 +236,7 @@ install_from_source() {
     cd src &&
     mkdir -p build &&
     cd build &&
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DSNIFFERCOMMIT_BUILD_TESTS=OFF &&
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DMETIS_BUILD_TESTS=OFF &&
     cmake --build . --parallel "$(nproc)")
   mkdir -p "${INSTALL_DIR}"
   install -m 755 "${WORK_DIR}/src/build/bin/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
@@ -279,7 +279,7 @@ if [ "${ALREADY_ON_PATH}" = "false" ] && [ "${NO_MODIFY_PATH}" = "false" ]; then
   if [ -f "${PROFILE}" ] && grep -qF "${INSTALL_DIR}" "${PROFILE}" 2>/dev/null; then
     say_verbose "${PROFILE} already references ${INSTALL_DIR}"
   else
-    printf '\n# added by sniffercommit installer\n%s\n' "${LINE}" >>"${PROFILE}"
+    printf '\n# added by metis installer\n%s\n' "${LINE}" >>"${PROFILE}"
     say "added ${INSTALL_DIR} to PATH in ${PROFILE}"
     say "run 'source ${PROFILE}' or start a new shell to use ${BIN_NAME}"
   fi

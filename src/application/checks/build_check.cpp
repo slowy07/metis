@@ -1,13 +1,13 @@
-#include "sniffercommit/application/checks/build_check.hpp"
+#include "metis/application/checks/build_check.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 
 BuildCheck::BuildCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
@@ -38,4 +38,4 @@ domain::CheckResult BuildCheck::execute(const std::vector<std::string>& /*files*
   return {.exit_code = result.exit_code_, .output = output + result.output_};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

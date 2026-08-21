@@ -1,21 +1,21 @@
 #ifndef CONFIG_HPP_IN
 #define CONFIG_HPP_IN
 
-#define SNIFFERCOMMIT_VERSION "@SNIFFERCOMMIT_VERSION@"
-#define SNIFFERCOMMIT_PLATFORM "@SNIFFERCOMMIT_PLATFORM@"
-#define SNIFFERCOMMIT_COMPILER "@SNIFFERCOMMIT_COMPILER@"
-#define SNIFFERCOMMIT_GIT_COMMIT "@SNIFFERCOMMIT_GIT_COMMIT@"
-#define SNIFFERCOMMIT_BUILD_TIMESTAMP "@SNIFFERCOMMIT_BUILD_TIMESTAMP@"
+#define METIS_VERSION "@METIS_VERSION@"
+#define METIS_PLATFORM "@METIS_PLATFORM@"
+#define METIS_COMPILER "@METIS_COMPILER@"
+#define METIS_GIT_COMMIT "@METIS_GIT_COMMIT@"
+#define METIS_BUILD_TIMESTAMP "@METIS_BUILD_TIMESTAMP@"
 
-namespace sniffercommit {
+namespace metis {
 
 struct BuildInfo {
-  static constexpr const char *version = SNIFFERCOMMIT_VERSION;
-  static constexpr const char *platform = SNIFFERCOMMIT_PLATFORM;
-  static constexpr const char *compiler = SNIFFERCOMMIT_COMPILER;
-  static constexpr const char *git_commit = SNIFFERCOMMIT_GIT_COMMIT;
-  static constexpr const char *build_timestamp = SNIFFERCOMMIT_BUILD_TIMESTAMP;
+  static constexpr const char *version = METIS_VERSION;
+  static constexpr const char *platform = METIS_PLATFORM;
+  static constexpr const char *compiler = METIS_COMPILER;
+  static constexpr const char *git_commit = METIS_GIT_COMMIT;
+  static constexpr const char *build_timestamp = METIS_BUILD_TIMESTAMP;
 };
-} // namespace sniffercommit
+} // namespace metis
 
 #endif // !CONFIG_HPP_IN

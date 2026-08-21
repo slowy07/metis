@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 
@@ -227,4 +227,4 @@ bool ProcessShellExecutor::command_exists(const std::string& cmd) {
 #endif
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

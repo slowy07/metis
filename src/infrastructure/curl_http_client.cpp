@@ -1,13 +1,13 @@
-#include "sniffercommit/infrastructure/curl_http_client.hpp"
+#include "metis/infrastructure/curl_http_client.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 
-#include "sniffercommit/domain/ports/http_client.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/http_client.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
@@ -61,4 +61,4 @@ std::string CurlHttpClient::basename_for_url(const std::string& url) const {
 
   return {};
 }
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

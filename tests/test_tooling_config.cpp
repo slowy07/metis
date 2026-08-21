@@ -3,11 +3,11 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/generators/clang_format_generator.hpp"
-#include "sniffercommit/generators/clang_tidy_generator.hpp"
-#include "sniffercommit/generators/cmake_generator.hpp"
+#include "metis/generators/clang_format_generator.hpp"
+#include "metis/generators/clang_tidy_generator.hpp"
+#include "metis/generators/cmake_generator.hpp"
 
-using namespace sniffercommit::generators;
+using namespace metis::generators;
 
 TEST(ClangFormatStyleTest, StyleNameReturnsCorrectStrings) {
   EXPECT_EQ(generate_clang_format_style("google"), "Google");

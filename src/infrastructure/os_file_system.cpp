@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -7,7 +7,7 @@
 #include <string>
 #include <system_error>
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 bool OsFileSystem::exists(const std::filesystem::path& path) {
   std::error_code err_code;
@@ -99,4 +99,4 @@ std::filesystem::path OsFileSystem::absolute(const std::filesystem::path& path) 
   return err_code ? std::filesystem::path{} : abs_path;
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

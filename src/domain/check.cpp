@@ -1,11 +1,11 @@
-#include "sniffercommit/domain/check.hpp"
+#include "metis/domain/check.hpp"
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/util.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::domain {
+namespace metis::domain {
 
 Check::Check(std::string name, std::string description, bool enabled,
              std::vector<std::string> file_patterns, std::string command,
@@ -32,4 +32,4 @@ std::string Check::command_line(const std::vector<std::string>& files) const {
   return cmd;
 }
 
-}  // namespace sniffercommit::domain
+}  // namespace metis::domain

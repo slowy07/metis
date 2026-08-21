@@ -1,11 +1,11 @@
-#include "sniffercommit/argparse.hpp"
+#include "metis/argparse.hpp"
 
 #include <algorithm>
 #include <iostream>
 #include <iterator>
 #include <string>
 
-namespace sniffercommit {
+namespace metis {
 
 ArgParser::ArgParser(std::string_view name, std::string_view desc)
     : app_name_(name), description_(desc) {}
@@ -167,7 +167,7 @@ void ArgParser::show_help() const {
   std::cout << "  " << app_name_ << " run src/main.cpp\n";
   std::cout << "  " << app_name_
             << " generate-gha > "
-               ".github/workflows/sniffercommit.yml\n";
+               ".github/workflows/metis.yml\n";
   std::cout << "  " << app_name_ << " install-compiler --compiler gcc --cpp-standard 20\n";
   std::cout << "  " << app_name_ << " test --coverage\n\n";
 
@@ -177,7 +177,7 @@ void ArgParser::show_help() const {
 
   std::cout << "      Create:\n";
 
-  std::cout << "        - .sniffercommit.toml\n";
+  std::cout << "        - .metis.toml\n";
 
   std::cout << "        - .clang-format\n";
 
@@ -239,7 +239,7 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit install\n\n";
+  std::cout << "        metis install\n\n";
 
   std::cout << "  run\n";
 
@@ -257,11 +257,11 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit run --all-files\n";
+  std::cout << "        metis run --all-files\n";
 
-  std::cout << "        sniffercommit run src/main.cpp\n";
+  std::cout << "        metis run src/main.cpp\n";
 
-  std::cout << "        sniffercommit run --format --all-files\n\n";
+  std::cout << "        metis run --format --all-files\n\n";
 
   std::cout << "  generate-gha\n";
 
@@ -270,9 +270,9 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit generate-gha\n";
-  std::cout << "        sniffercommit generate-gha > "
-               ".github/workflows/sniffercommit.yml\n\n";
+  std::cout << "        metis generate-gha\n";
+  std::cout << "        metis generate-gha > "
+               ".github/workflows/metis.yml\n\n";
 
   std::cout << "  generate-gitlab\n";
 
@@ -280,8 +280,8 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit generate-gitlab\n";
-  std::cout << "        sniffercommit generate-gitlab > .gitlab-ci.yml\n\n";
+  std::cout << "        metis generate-gitlab\n";
+  std::cout << "        metis generate-gitlab > .gitlab-ci.yml\n\n";
 
   std::cout << "  install-compiler\n";
 
@@ -303,9 +303,9 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit install-compiler\n";
-  std::cout << "        sniffercommit install-compiler --compiler gcc --cpp-standard 20\n";
-  std::cout << "        sniffercommit install-compiler --compiler clang --dry-run\n\n";
+  std::cout << "        metis install-compiler\n";
+  std::cout << "        metis install-compiler --compiler gcc --cpp-standard 20\n";
+  std::cout << "        metis install-compiler --compiler clang --dry-run\n\n";
 
   std::cout << "  test\n";
 
@@ -321,9 +321,9 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit test\n";
-  std::cout << "        sniffercommit test --coverage\n";
-  std::cout << "        sniffercommit test --verbose build/\n\n";
+  std::cout << "        metis test\n";
+  std::cout << "        metis test --coverage\n";
+  std::cout << "        metis test --verbose build/\n\n";
 
   std::cout << "  sanitizer\n";
 
@@ -335,8 +335,8 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit sanitizer\n";
-  std::cout << "        sniffercommit sanitizer --verbose\n\n";
+  std::cout << "        metis sanitizer\n";
+  std::cout << "        metis sanitizer --verbose\n\n";
 
   std::cout << "  deps\n";
 
@@ -349,8 +349,8 @@ void ArgParser::show_help() const {
 
   std::cout << "      Usage:\n";
 
-  std::cout << "        sniffercommit deps\n";
-  std::cout << "        sniffercommit deps --graph\n\n";
+  std::cout << "        metis deps\n";
+  std::cout << "        metis deps --graph\n\n";
 
   print_section_title("Global Options");
 
@@ -384,4 +384,4 @@ void ArgParser::show_help() const {
   print_aligned("-h, --help", "Show help message");
 }
 
-}  // namespace sniffercommit
+}  // namespace metis

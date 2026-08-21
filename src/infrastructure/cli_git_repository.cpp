@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/cli_git_repository.hpp"
+#include "metis/infrastructure/cli_git_repository.hpp"
 
 #include <fmt/format.h>
 
@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 
@@ -95,4 +95,4 @@ std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::pa
   throw std::runtime_error("Not inside a Git repository or git not in PATH");
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

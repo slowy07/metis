@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/clang_tidy_check.hpp"
+#include "metis/application/checks/clang_tidy_check.hpp"
 
 #include <fmt/format.h>
 
@@ -8,9 +8,9 @@
 #include <string_view>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 namespace {
 std::optional<std::string> extract_config_path(std::string_view arg, std::string_view prefix) {
   if (arg.starts_with(prefix)) {
@@ -37,7 +37,7 @@ std::string ClangTidyCheck::validate(const std::filesystem::path& repo_root) con
       if (!std::filesystem::exists(config_path)) {
         return fmt::format(
             "Config file not found for `{}`: {}\n"
-            " Run `sniffercommit init --enable-clang-tidy` to generate it.",
+            " Run `metis init --enable-clang-tidy` to generate it.",
             name_, config_path.string());
       }
     }
@@ -48,7 +48,7 @@ std::string ClangTidyCheck::validate(const std::filesystem::path& repo_root) con
     if (!std::filesystem::exists(default_path)) {
       return fmt::format(
           "Default config file not found for `{}`: {}\n"
-          " Run `sniffercommit init` to generate it.",
+          " Run `metis init` to generate it.",
           name_, default_path.string());
     }
   }
@@ -78,4 +78,4 @@ domain::CheckResult ClangTidyCheck::execute(const std::vector<std::string>& file
   return {.exit_code = result.exit_code_, .output = output + result.output_};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

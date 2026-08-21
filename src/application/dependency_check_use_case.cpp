@@ -1,4 +1,4 @@
-#include "sniffercommit/application/dependency_check_use_case.hpp"
+#include "metis/application/dependency_check_use_case.hpp"
 
 #include <fmt/format.h>
 
@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 
-namespace sniffercommit::application {
+namespace metis::application {
 
 namespace {
 std::string normalize_name(std::string_view name) {
@@ -377,4 +377,4 @@ void DependencyCheckUseCase::generate_dot_graph(const std::vector<domain::Depend
   }
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

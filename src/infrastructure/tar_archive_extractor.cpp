@@ -1,13 +1,13 @@
-#include "sniffercommit/infrastructure/tar_archive_extractor.hpp"
+#include "metis/infrastructure/tar_archive_extractor.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 
-#include "sniffercommit/domain/ports/archive_extractor.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/archive_extractor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 TarArchiveExtractor::TarArchiveExtractor(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
@@ -61,4 +61,4 @@ std::string TarArchiveExtractor::tar_flags_for_extension(const std::filesystem::
   return {};
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

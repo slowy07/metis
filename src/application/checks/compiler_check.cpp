@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/compiler_check.hpp"
+#include "metis/application/checks/compiler_check.hpp"
 
 #include <fmt/format.h>
 
@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 
 CompilerCheck::CompilerCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
@@ -64,4 +64,4 @@ domain::CheckResult CompilerCheck::execute(const std::vector<std::string>& files
   return {.exit_code = overall_exit, .output = verbose_log + accumulated_output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

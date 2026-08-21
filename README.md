@@ -1,7 +1,7 @@
-[![GitHub Release](https://img.shields.io/github/v/release/slowy07/sniffercommit?display_name=tag&style=flat-square)](https://github.com/slowy07/sniffercommit/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/slowy07/metis?display_name=tag&style=flat-square)](https://github.com/slowy07/metis/releases)
 
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/sniffercommit/test_sniffercommit.yml?branch=develop&style=flat-square&label=GoogleTest)
-](https://github.com/slowy07/sniffercommit/actions)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/metis/test_metis.yml?branch=develop&style=flat-square&label=GoogleTest)
+](https://github.com/slowy07/metis/actions)
 
 Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies: a single static binary that replaces Python- and Node-based pre-commit frameworks.
 
@@ -22,12 +22,12 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 
 ```bash
 # POSIX (Linux, macOS)
-curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/slowy07/metis/develop/install.sh | sh
 ```
 
 ```powershell
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/slowy07/sniffercommit/develop/install.ps1 | iex
+irm https://raw.githubusercontent.com/slowy07/metis/develop/install.ps1 | iex
 ```
 
 The script detects your platform, downloads the latest release binary, and adds it to your `PATH`.
@@ -38,17 +38,17 @@ The script detects your platform, downloads the latest release binary, and adds 
 cd my-project
 
 # Initialize config and tooling files
-sniffercommit init --style google --enable-clang-tidy
+metis init --style google --enable-clang-tidy
 
 # Install the pre-commit hook (auto-runs on every `git commit`)
-sniffercommit install
+metis install
 
 # Stage and commit: hook fires automatically
 git add .
 git commit -m "initial"
 
 # Or run checks ad-hoc without committing
-sniffercommit run --all-files
+metis run --all-files
 ```
 
 `exit code 0` → all checks pass. Non-zero → at least one check failed.
@@ -57,10 +57,10 @@ sniffercommit run --all-files
 
 | Command | Action |
 |---------|--------|
-| `init` | Generate `.sniffercommit.toml`, `.clang-format` (plus `.clang-tidy` / `CMakeLists.txt` with `--enable-*` flags) |
+| `init` | Generate `.metis.toml`, `.clang-format` (plus `.clang-tidy` / `CMakeLists.txt` with `--enable-*` flags) |
 | `install` | Install pre-commit hook + optional CI workflow |
 | `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
-| `generate-gha` | Write GitHub Actions workflow to `.github/workflows/sniffercommit.yml` |
+| `generate-gha` | Write GitHub Actions workflow to `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write GitLab CI workflow to `.gitlab-ci.yml` |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
@@ -76,7 +76,7 @@ Global flag: `--config <path>`: use a non-default config file path with any subc
 
 Both are fetched automatically at configure time via CMake's `FetchContent`. No system installation required.
 
-Optional system packages (if `SNIFFERCOMMIT_USE_SYSTEM_FMT=ON`):
+Optional system packages (if `METIS_USE_SYSTEM_FMT=ON`):
 
 ```bash
 # macOS (Homebrew)
@@ -91,19 +91,19 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 
 # Verify
-./build/sniffercommit --version
+./build/metis --version
 
 # Quick smoke test
-./build/sniffercommit init --style google --enable-clang-tidy
-./build/sniffercommit run --dry-run --all-files
-./build/sniffercommit install
+./build/metis init --style google --enable-clang-tidy
+./build/metis run --dry-run --all-files
+./build/metis install
 ```
 
 | Option | Default | Description |
 | ----- | ------- | ----------- |
-| `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | AddressSanitizer + UBSan (Debug only) |
-| `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `ON` | Use system `libfmt` instead of FetchContent |
-| `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system `tomlplusplus` instead of FetchContent |
+| `METIS_ENABLE_SANITIZERS` | `OFF` | AddressSanitizer + UBSan (Debug only) |
+| `METIS_USE_SYSTEM_FMT` | `ON` | Use system `libfmt` instead of FetchContent |
+| `METIS_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system `tomlplusplus` instead of FetchContent |
 
 **Compiler Requirements**
 
@@ -123,11 +123,11 @@ sudo cmake --install build
 
 **Interactive mode (default)**
 
-Running `sniffercommit init` with no flags will launch interactive wizard:
+Running `metis init` with no flags will launch interactive wizard:
 
 ```bash
 cd /path/to/project
-sniffercommit init
+metis init
 ```
 How it works:
     - Press enter to acept the detault value who in `[bracket value info]`
@@ -135,21 +135,21 @@ How it works:
     - Invalid input is rejected with a warning; and the prompt are repeats
 
 ```bash
-sniffercommit init --interactive # or using -i
+metis init --interactive # or using -i
 ```
-if using more flag like `sniffercommit --style google` or another flag after `init` will disable interactive wizard and using CLI-only mode.
+if using more flag like `metis --style google` or another flag after `init` will disable interactive wizard and using CLI-only mode.
 
 
 **With clang-tidy (static analysis)**
 
 ```bash
-sniffercommit init --enable-clang-tidy                        # standard preset
-sniffercommit init --enable-clang-tidy --tidy-preset strict   # strict preset
-sniffercommit init --enable-clang-tidy --tidy-severity warning # compiler warnings only
+metis init --enable-clang-tidy                        # standard preset
+metis init --enable-clang-tidy --tidy-preset strict   # strict preset
+metis init --enable-clang-tidy --tidy-severity warning # compiler warnings only
 ```
 
 With `--enable-clang-tidy`, three files are created:
-- `.sniffercommit.toml`: includes `clang-tidy` check
+- `.metis.toml`: includes `clang-tidy` check
 - `.clang-format`: formatter config
 - `.clang-tidy`: static analysis config with curated check preset
 
@@ -157,19 +157,19 @@ With `--enable-clang-tidy`, three files are created:
 
 ```bash
 # available styles: google, llvm, chromium, mozilla, webkit, microsoft, gnu
-sniffercommit init --style llvm
+metis init --style llvm
 
 # clang-tidy preset: minimal, standard (default), strict, custom
-sniffercommit init --enable-clang-tidy --tidy-preset standard
+metis init --enable-clang-tidy --tidy-preset standard
 
 # tidy severity: note (off), warning (compiler only), error (all)
-sniffercommit init --enable-clang-tidy --tidy-severity warning
+metis init --enable-clang-tidy --tidy-severity warning
 
 # header filter: 0=none, 1=project, 2=all
-sniffercommit init --enable-clang-tidy --tidy-header-filter 1
+metis init --enable-clang-tidy --tidy-header-filter 1
 
 # full customization
-sniffercommit init \
+metis init \
   --style google \
   --name my-project \
   --indent-width 4 \
@@ -184,7 +184,7 @@ sniffercommit init \
 **Custom config path**
 
 ```bash
-sniffercommit --config /path/to/.sniffercommit.toml init
+metis --config /path/to/.metis.toml init
 ```
 
 ---
@@ -192,12 +192,12 @@ sniffercommit --config /path/to/.sniffercommit.toml init
 ### install: Install Pre-commit Hook
 
 ```bash
-sniffercommit install
+metis install
 ```
 
 Installs:
 - `.git/hooks/pre-commit`: Bash hook with parallel execution
-- `.github/workflows/sniffercommit.yml`: GitHub Actions workflow (only if `github_actions = true` in config)
+- `.github/workflows/metis.yml`: GitHub Actions workflow (only if `github_actions = true` in config)
 - `.gitlab-ci.yml`: GitLab CI workflow (only if `gitlab_ci = true` in config)
 
 The hook is validated with `bash -n` before installation to prevent broken hooks.
@@ -206,11 +206,11 @@ The hook is validated with `bash -n` before installation to prevent broken hooks
 
 ```bash
 rm .git/hooks/pre-commit
-rm -rf .github/workflows/sniffercommit.yml
+rm -rf .github/workflows/metis.yml
 rm -f .gitlab-ci.yml
 ```
 
-Or re-run `sniffercommit install` to regenerate both files from config.
+Or re-run `metis install` to regenerate both files from config.
 
 ---
 
@@ -218,19 +218,19 @@ Or re-run `sniffercommit install` to regenerate both files from config.
 
 ```bash
 # staged files only (default)
-sniffercommit run
+metis run
 
 # all tracked files
-sniffercommit run --all-files
+metis run --all-files
 
 # specific files
-sniffercommit run src/main.cpp include/foo.hpp
+metis run src/main.cpp include/foo.hpp
 
 # dry-run (list files without executing)
-sniffercommit run --dry-run --all-files
+metis run --dry-run --all-files
 
 # verbose (print each shell command)
-sniffercommit run --verbose --all-files
+metis run --verbose --all-files
 ```
 
 Exit code: `0` if all checks pass, non-zero if any check fails.
@@ -240,17 +240,17 @@ Exit code: `0` if all checks pass, non-zero if any check fails.
 ### generate-gha: CI Workflow Only
 
 ```bash
-sniffercommit generate-gha
+metis generate-gha
 ```
 
-Always writes `.github/workflows/sniffercommit.yml` regardless of the `github_actions` config setting.
+Always writes `.github/workflows/metis.yml` regardless of the `github_actions` config setting.
 
 ---
 
 ### generate-gitlab: GitLab CI Workflow Only
 
 ```bash
-sniffercommit generate-gitlab
+metis generate-gitlab
 ```
 
 Always writes `.gitlab-ci.yml` regardless of the `gitlab_ci` config setting.
@@ -259,7 +259,7 @@ Always writes `.gitlab-ci.yml` regardless of the `gitlab_ci` config setting.
 
 ### Tidy Presets
 
-Used with `sniffercommit init --enable-clang-tidy`:
+Used with `metis init --enable-clang-tidy`:
 
 | Preset | Scope |
 |--------|-------|
@@ -270,22 +270,22 @@ Used with `sniffercommit init --enable-clang-tidy`:
 
 ---
 
-### Manual clang-tidy (no sniffercommit wrapper)
+### Manual clang-tidy (no metis wrapper)
 
 ```bash
 clang-tidy --config-file=.clang-tidy src/main.cpp --
 ```
 
-Requires `sniffercommit init --enable-clang-tidy` to have created `.clang-tidy`.
+Requires `metis init --enable-clang-tidy` to have created `.clang-tidy`.
 
 ---
 
 ### CMake Scaffolding
 
-`sniffercommit init --enable-cmake` generates a production-grade `CMakeLists.txt` and a minimal `src/main.cpp`:
+`metis init --enable-cmake` generates a production-grade `CMakeLists.txt` and a minimal `src/main.cpp`:
 
 ```bash
-sniffercommit init --enable-cmake
+metis init --enable-cmake
 ```
 
 Creates:
@@ -320,13 +320,13 @@ Creates:
 
 ```bash
 # Minimal C++20 executable project
-sniffercommit init --enable-cmake
+metis init --enable-cmake
 
 # C++17 static library with testing
-sniffercommit init --enable-cmake --cmake-cpp-standard 17 --cmake-target-type static --cmake-enable-testing
+metis init --enable-cmake --cmake-cpp-standard 17 --cmake-target-type static --cmake-enable-testing
 
 # Full-featured project with clang-tidy + sanitizers
-sniffercommit init \
+metis init \
   --enable-cmake \
   --cmake-cpp-standard 20 \
   --cmake-enable-testing \
@@ -336,13 +336,13 @@ sniffercommit init \
   --style google
 
 # Header-only library (no src/main.cpp generated)
-sniffercommit init --enable-cmake --cmake-target-type header-only
+metis init --enable-cmake --cmake-target-type header-only
 
 # Project with Conan package manager support
-sniffercommit init --enable-cmake --enable-conan
+metis init --enable-cmake --enable-conan
 
 # Full-featured project with Conan + clang-tidy + testing
-sniffercommit init \
+metis init \
   --enable-cmake \
   --enable-conan \
   --cmake-cpp-standard 20 \
@@ -355,7 +355,7 @@ sniffercommit init \
 **Generate `src/main.cpp` without CMake:**
 
 ```bash
-sniffercommit init --generate-src
+metis init --generate-src
 ```
 
 Creates only `src/main.cpp`, no `CMakeLists.txt`.
@@ -364,7 +364,7 @@ Creates only `src/main.cpp`, no `CMakeLists.txt`.
 
 ### Conan Package Manager Integration
 
-When `--enable-conan` is passed with `--enable-cmake`, sniffercommit generates:
+When `--enable-conan` is passed with `--enable-cmake`, metis generates:
 
 - `conanfile.py`: Conan package definition with CMakeToolchain/CMakeDeps
 - `CMakeLists.txt`: Updated to use `find_package()` instead of FetchContent
@@ -372,7 +372,7 @@ When `--enable-conan` is passed with `--enable-cmake`, sniffercommit generates:
 The generated `conanfile.py` includes:
 - Python class-based Conan recipe
 - CMakeToolchain and CMakeDeps generators
-- Proper dependency resolution from `.sniffercommit.toml`
+- Proper dependency resolution from `.metis.toml`
 
 **What the generated CMakeLists.txt includes (with Conan):**
 
@@ -384,7 +384,7 @@ The generated `conanfile.py` includes:
 
 ```bash
 # Generate with Conan support
-sniffercommit init --enable-cmake --enable-conan
+metis init --enable-cmake --enable-conan
 
 # Build with Conan
 conan install . --output-folder=build --build=missing
@@ -396,17 +396,17 @@ cmake --build build
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| `clang-tidy: cannot find ...` | `.clang-tidy` missing | `sniffercommit init --enable-clang-tidy` |
-| `bash: pre-commit: No such file or directory` | Hook not installed | `sniffercommit install` |
-| Hook exits immediately with no output | File patterns don't match staged files | Run `sniffercommit run --all-files` to test outside hook |
-| `git commit` but hook doesn't run | Staged files don't match config checks | Check `patterns` in the `[[checks]]` sections of `.sniffercommit.toml` |
-| CI workflow not created | `github_actions` is `false` in config | `sniffercommit generate-gha` (bypasses config) |
-| GitLab CI not created | `gitlab_ci` is `false` in config | `sniffercommit generate-gitlab` (bypasses config) |
+| `clang-tidy: cannot find ...` | `.clang-tidy` missing | `metis init --enable-clang-tidy` |
+| `bash: pre-commit: No such file or directory` | Hook not installed | `metis install` |
+| Hook exits immediately with no output | File patterns don't match staged files | Run `metis run --all-files` to test outside hook |
+| `git commit` but hook doesn't run | Staged files don't match config checks | Check `patterns` in the `[[checks]]` sections of `.metis.toml` |
+| CI workflow not created | `github_actions` is `false` in config | `metis generate-gha` (bypasses config) |
+| GitLab CI not created | `gitlab_ci` is `false` in config | `metis generate-gitlab` (bypasses config) |
 
-**Debug mode**: Run `sniffercommit run --verbose --all-files` to see the exact shell commands being executed.
+**Debug mode**: Run `metis run --verbose --all-files` to see the exact shell commands being executed.
 
 ## Acknowledgements
 
 - [pre-commit](https://pre-commit.com/): inspiration for hook management workflow
 
-This project was inspired by an internal tool developed at a previous company for enforcing C/C++ naming conventions. Due to licensing constraints, sniffercommit was built from scratch with the same functionality but a distinct architecture and open-source ethos.
+This project was inspired by an internal tool developed at a previous company for enforcing C/C++ naming conventions. Due to licensing constraints, metis was built from scratch with the same functionality but a distinct architecture and open-source ethos.

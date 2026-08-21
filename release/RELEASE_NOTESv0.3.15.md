@@ -14,29 +14,29 @@ This release completes a major internal redesign from monolithic code to a **hex
 
 | Archive | Platform | Size |
 |---------|----------|------|
-| [sniffercommit-0.3.15-linux-x86_64.tar.gz](https://github.com/slowy07/sniffercommit/releases/download/v0.3.15/sniffercommit-0.3.15-linux-x86_64.tar.gz) | Linux (x86_64) | 1.3M |
-| [sniffercommit-0.3.15-windows-x86_64.zip](https://github.com/slowy07/sniffercommit/releases/download/v0.3.15/sniffercommit-0.3.15-windows-x86_64.zip) | Windows (x86_64) | 1.7M |
+| [metis-0.3.15-linux-x86_64.tar.gz](https://github.com/slowy07/metis/releases/download/v0.3.15/metis-0.3.15-linux-x86_64.tar.gz) | Linux (x86_64) | 1.3M |
+| [metis-0.3.15-windows-x86_64.zip](https://github.com/slowy07/metis/releases/download/v0.3.15/metis-0.3.15-windows-x86_64.zip) | Windows (x86_64) | 1.7M |
 
 ### Checksums (SHA256)
 
 ```
-e1e76353b085339e0802b12582d2748f6d5e41a1b29cb8012661fd137ba08d1a  sniffercommit-0.3.15-linux-x86_64
-b1df67ccde736f54d953485b0c0edc3d7da7d815b6debefe51d809d00ec37776  sniffercommit-0.3.15-windows-x86_64.exe
+e1e76353b085339e0802b12582d2748f6d5e41a1b29cb8012661fd137ba08d1a  metis-0.3.15-linux-x86_64
+b1df67ccde736f54d953485b0c0edc3d7da7d815b6debefe51d809d00ec37776  metis-0.3.15-windows-x86_64.exe
 ```
 
 ### Install
 
 **Linux:**
 ```sh
-curl -LsSf https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh
 ```
 
 **Windows (Powershell):**
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/slowy07/sniffercommit/main/install.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/slowy07/metis/main/install.ps1 | iex"
 ```
 
 **Arch Linux (AUR):**
 ```sh
-yay -S sniffercommit
+yay -S metis
 ```

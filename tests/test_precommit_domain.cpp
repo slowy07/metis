@@ -4,18 +4,18 @@
 #include <fstream>
 #include <memory>
 
-#include "sniffercommit/application/install_use_case.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/infrastructure/cli_git_repository.hpp"
-#include "sniffercommit/infrastructure/os_file_system.hpp"
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
+#include "metis/application/install_use_case.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/infrastructure/cli_git_repository.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
 
-using namespace sniffercommit;
+using namespace metis;
 
 class InstallTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_root = std::filesystem::temp_directory_path() / "sniffercommit_install_test";
+    test_root = std::filesystem::temp_directory_path() / "metis_install_test";
     git_dir = test_root / ".git";
     hooks_dir = git_dir / "hooks";
     std::filesystem::create_directories(hooks_dir);
@@ -49,5 +49,5 @@ TEST_F(InstallTest, InstallCreatesHookFile) {
   std::ifstream file(hook_path);
   std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
   EXPECT_FALSE(content.empty());
-  EXPECT_NE(content.find("sniffercommit"), std::string::npos);
+  EXPECT_NE(content.find("metis"), std::string::npos);
 }

@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/shell_check.hpp"
+#include "metis/application/checks/shell_check.hpp"
 
 #include <fmt/format.h>
 
@@ -8,10 +8,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 namespace {
 int interpret_exit_code(int raw, std::string_view cmd) {
   auto basename = std::filesystem::path(cmd).filename().string();
@@ -111,4 +111,4 @@ domain::CheckResult ShellCheck::execute(const std::vector<std::string>& files,
   return {.exit_code = overall_exit, .output = verbose_log + accumulated_output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

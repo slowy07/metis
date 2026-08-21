@@ -1,4 +1,4 @@
-#include "sniffercommit/domain/config.hpp"
+#include "metis/domain/config.hpp"
 
 #include <fmt/format.h>
 
@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-namespace sniffercommit::domain::config {
+namespace metis::domain::config {
 
 // Validates a single check definition.
 // Returns empty string if valid, error message if not.
@@ -120,7 +120,7 @@ severity = "error"
   return result;
 }
 
-// Generates a basic .sniffercommit.toml with clang-format and trailing-whitespace checks.
+// Generates a basic .metis.toml with clang-format and trailing-whitespace checks.
 // This is the default config when no special options are enabled.
 std::string generate_default_config(const std::string& project_name,
                                     const std::string& fallback_style,
@@ -266,4 +266,4 @@ timeout = {}
       types_str, build_dir, timeout);
 }
 
-}  // namespace sniffercommit::domain::config
+}  // namespace metis::domain::config
