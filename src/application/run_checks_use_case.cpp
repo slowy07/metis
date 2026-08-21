@@ -47,9 +47,8 @@ bool is_compiler(const std::string& basename) {
   static const std::vector<std::string> k_prefixes = {"gcc",     "g++", "clang",
                                                       "clang++", "cc",  "c++"};
   return std::ranges::any_of(k_prefixes, [&basename](const auto& prefix) {
-    return basename == prefix ||
-           (basename.size() > prefix.size() && basename.starts_with(prefix) &&
-            basename[prefix.size()] == '-');
+    return basename == prefix || (basename.size() > prefix.size() && basename.starts_with(prefix) &&
+                                  basename[prefix.size()] == '-');
   });
 }
 
@@ -187,7 +186,8 @@ bool is_format_eligible(const std::string& file) {
   std::string ext = file_path.extension().string();
   std::ranges::transform(ext, ext.begin(),
                          [](unsigned char chr) { return static_cast<char>(std::tolower(chr)); });
-  return std::ranges::any_of(k_format_extensions, [&ext](const auto& ext_entry) { return ext == ext_entry; });
+  return std::ranges::any_of(k_format_extensions,
+                             [&ext](const auto& ext_entry) { return ext == ext_entry; });
 }
 
 std::vector<std::string> filter_format_files(const std::vector<std::string>& files) {
@@ -206,7 +206,9 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 RunChecksUseCase::RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
                                    std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : shell_(std::move(shell)), git_repo_(std::move(git_repo)), file_system_(std::move(file_system)) {}
+    : shell_(std::move(shell)),
+      git_repo_(std::move(git_repo)),
+      file_system_(std::move(file_system)) {}
 
 // Collects the list of files to check based on the run mode:
 //   STAGED  - git staged files (default for pre-commit hook)

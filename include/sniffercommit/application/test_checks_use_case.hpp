@@ -31,7 +31,7 @@ class TestChecksUseCase {
   TestResult run_ctest(const std::filesystem::path& build_dir, bool verbose, int timeout);
   TestResult run_coverage(const std::filesystem::path& build_dir, bool verbose);
   static void parse_coverage_xml(const std::string& xml_content, double& line_coverage,
-                          double& branch_coverage, double& function_coverage);
+                                 double& branch_coverage, double& function_coverage);
 
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
   std::unique_ptr<domain::ports::IFileSystem> file_system_;

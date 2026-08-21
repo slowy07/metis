@@ -38,9 +38,9 @@ class DependencyCheckUseCase {
   void check_lockfiles(const std::filesystem::path& repo_root,
                        domain::DependencyCheckResult& out) const;
   static void detect_duplicates(const std::vector<domain::Dependency>& all,
-                         domain::DependencyCheckResult& out);
+                                domain::DependencyCheckResult& out);
   static void generate_dot_graph(const std::vector<domain::Dependency>& all,
-                          const std::filesystem::path& out_path);
+                                 const std::filesystem::path& out_path);
 
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
   std::unique_ptr<domain::ports::IFileSystem> file_system_;

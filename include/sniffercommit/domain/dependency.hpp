@@ -34,8 +34,7 @@ struct DependencyCheckResult {
       return false;
     }
 
-    return std::ranges::all_of(validations,
-                               [](const auto& valid) { return valid.ok; });
+    return std::ranges::all_of(validations, [](const auto& valid) { return valid.ok; });
   }
 };
 

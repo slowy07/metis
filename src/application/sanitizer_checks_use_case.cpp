@@ -12,8 +12,9 @@
 #include "sniffercommit/domain/ports/shell_executor.hpp"
 
 namespace sniffercommit::application {
-SanitizerChecksUseCase::SanitizerChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                                               std::unique_ptr<domain::ports::IFileSystem> file_system)
+SanitizerChecksUseCase::SanitizerChecksUseCase(
+    std::unique_ptr<domain::ports::IShellExecutor> shell,
+    std::unique_ptr<domain::ports::IFileSystem> file_system)
     : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 std::string SanitizerChecksUseCase::to_compiler_flag(const std::string& type) {
