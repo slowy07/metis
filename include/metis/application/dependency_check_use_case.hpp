@@ -29,6 +29,7 @@ class DependencyCheckUseCase {
  private:
   std::vector<domain::Dependency> parse_conanfile(const std::filesystem::path& repo_root);
   std::vector<domain::Dependency> parse_vcpkg_json(const std::filesystem::path& repo_root);
+  static void parse_vcpkg_entry(const std::string& entry, std::vector<domain::Dependency>& out);
   std::vector<domain::Dependency> parse_cmake_fetchcontent(const std::filesystem::path& repo_root);
 
   static bool is_valid_semver(std::string_view version);

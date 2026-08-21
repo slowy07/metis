@@ -26,6 +26,7 @@ enum class ExitCode : std::uint8_t {
   COVERAGE_THRESHOLD_NOT_MET = 17,
   SANITIZER_BUILD_FAILURE = 18,
   SANITIZER_TEST_FAILURE = 19,
+  PERFORMANCE_REGRESSION = 20,
 };
 
 }  // namespace metis::domain

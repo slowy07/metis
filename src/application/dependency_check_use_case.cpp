@@ -66,11 +66,17 @@ domain::DependencyCheckResult DependencyCheckUseCase::execute(
       deps_validation.ok = false;
       deps_validation.message = "invalid semver: " + dep.version;
     } else {
-      if (dep.source == "vcpkg" && shell_->command_exists("vcpkg")) {
-        if (!vcpkg_dep_installed(dep.name)) {
-          deps_validation.ok = false;
-          deps_validation.message = "not installed locally";
-        }
+      bool installed = true;
+
+      if (dep.source == "conan" && shell_->command_exists("conan")) {
+        installed = conan_dep_installed(dep.name);
+      } else if (dep.source == "vcpkg" && shell_->command_exists("vcpkg")) {
+        installed = vcpkg_dep_installed(dep.name);
+      }
+
+      if (!installed) {
+        deps_validation.ok = false;
+        deps_validation.message = "not installed locally";
       }
     }
 
@@ -133,103 +139,60 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_vcpkg_json(
   }
 
   std::string content = file_system_->read_file(path);
-  if (content.empty()) {
-    return out;
-  }
-
   auto dep_pos = content.find("\"dependencies\"");
-  if (dep_pos == std::string::npos) {
+  if (content.empty() || dep_pos == std::string::npos) {
     return out;
   }
 
   auto arr_start = content.find('[', dep_pos);
-  if (arr_start == std::string::npos) {
+  auto arr_end = content.find(']', arr_start);
+  if (arr_start == std::string::npos || arr_end == std::string::npos) {
     return out;
   }
 
-  int depth = 0;
-  std::string current_obj;
-  bool in_string = false;
-  bool escape = false;
+  // ponytail: regex over the array slice; vcpkg dependency objects are flat, a
+  // nested-object manifest needs a real JSON parser
+  const std::string slice = content.substr(arr_start, arr_end - arr_start + 1);
 
-  for (size_t i = arr_start; i < content.size(); ++i) {
-    char chr = content[i];
-
-    if (escape) {
-      escape = false;
-      continue;
-    }
-
-    if (chr == '\\') {
-      escape = true;
-      continue;
-    }
-
-    if (chr == '"') {
-      in_string = !in_string;
-      continue;
-    }
-
-    if (in_string) {
-      continue;
-    }
-
-    if (chr == '[' || chr == '{') {
-      ++depth;
-
-      if (depth == 1) {
-        continue;
-      }
-    } else if (chr == ']' || chr == '}') {
-      --depth;
-      if (depth == 0) {
-        break;
-      }
-
-      if (depth == 1) {
-        domain::Dependency deps;
-
-        deps.source = "vcpkg";
-
-        std::regex name_re{R"re("name"\s*:\s*"([^"]+)")re"};
-        std::smatch match;
-
-        if (std::regex_search(current_obj, match, name_re)) {
-          deps.name = match[1].str();
-        }
-
-        std::regex ver_re{R"re("version>=?"?\s*:\s*"([^"]+)")re"};
-        if (std::regex_search(current_obj, match, ver_re)) {
-          deps.version = match[1].str();
-        }
-
-        if (!deps.name.empty()) {
-          out.push_back(std::move(deps));
-        }
-
-        current_obj.clear();
-        continue;
-      }
-    }
-
-    if (depth >= 2) {
-      current_obj += chr;
-    }
+  static const std::regex obj_re{R"re(\{[^{}]*\})re"};
+  for (std::sregex_iterator it(slice.begin(), slice.end(), obj_re); it != std::sregex_iterator{};
+       ++it) {
+    parse_vcpkg_entry(it->str(), out);
   }
 
-  std::regex str_re{R"re(\[\s*"([^"]+)"\s*\])re"};
-  std::smatch match;
-  std::string arr_slice = content.substr(arr_start, content.find(']', arr_start) - arr_start + 1);
-  std::sregex_iterator sit(arr_slice.begin(), arr_slice.end(), str_re);
-  std::sregex_iterator send;
-  for (; sit != send; ++sit) {
-    domain::Dependency deps;
-    deps.name = (*sit)[1].str();
-    deps.source = "vcpkg";
-    out.push_back(std::move(deps));
+  if (out.empty()) {
+    static const std::regex str_re{R"re("([^"]+)")re"};
+    for (std::sregex_iterator it(slice.begin(), slice.end(), str_re); it != std::sregex_iterator{};
+         ++it) {
+      domain::Dependency deps;
+      deps.name = (*it)[1].str();
+      deps.source = "vcpkg";
+      out.push_back(std::move(deps));
+    }
   }
 
   return out;
+}
+
+void DependencyCheckUseCase::parse_vcpkg_entry(const std::string& entry,
+                                               std::vector<domain::Dependency>& out) {
+  static const std::regex name_re{R"re("name"\s*:\s*"([^"]+)")re"};
+  static const std::regex ver_re{R"re("version>=?"?\s*:\s*"([^"]+)")re"};
+
+  std::smatch match;
+  if (!std::regex_search(entry, match, name_re)) {
+    return;
+  }
+
+  domain::Dependency deps;
+  deps.name = match[1].str();
+  deps.source = "vcpkg";
+
+  if (std::regex_search(entry, match, ver_re)) {
+    deps.version = match[1].str();
+  }
+
+  out.push_back(std::move(deps));
 }
 
 std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent(
@@ -279,12 +242,8 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent
 }
 
 bool DependencyCheckUseCase::is_valid_semver(std::string_view version) {
-  if (version.empty()) {
-    return false;
-  }
-
-  std::regex semver_re{R"(^[vV]?([0-9]+)(\.[0-9]+)?(\.[0-9]+)?([+\-].*)?$)"};
-  return std::regex_match(std::string(version), semver_re);
+  static const std::regex semver_re{R"(^[vV]?([0-9]+)(\.[0-9]+)?(\.[0-9]+)?([+\-].*)?$)"};
+  return !version.empty() && std::regex_match(std::string(version), semver_re);
 }
 
 bool DependencyCheckUseCase::conan_dep_installed(const std::string& name) const {
@@ -308,20 +267,15 @@ bool DependencyCheckUseCase::vcpkg_dep_installed(const std::string& name) const 
 void DependencyCheckUseCase::check_lockfiles(const std::filesystem::path& repo_root,
                                              domain::DependencyCheckResult& out) const {
   bool has_conan = file_system_->exists(repo_root / "conanfile.py");
-  bool has_vcpkg = file_system_->exists(repo_root / "vckpg.json");
+  bool has_vcpkg = file_system_->exists(repo_root / "vcpkg.json");
 
   if (has_conan && !file_system_->exists(repo_root / "conan.lock")) {
     out.lockfile_issues.emplace_back("conanfile.py exists but conan.lock is missing");
   }
 
-  if (has_vcpkg) {
-    bool has_lock = file_system_->exists(repo_root / "vcpkg-configuration.json") ||
-                    file_system_->exists(repo_root / "vcpkg-manifest-install.log");
-
-    if (has_lock) {
-      out.lockfile_issues.emplace_back(
-          "vckpg.json exists but no lockfile (vcpkg-configuration.json)");
-    }
+  if (has_vcpkg && !file_system_->exists(repo_root / "vcpkg-configuration.json")) {
+    out.lockfile_issues.emplace_back(
+        "vcpkg.json exists but no lockfile (vcpkg-configuration.json)");
   }
 }
 

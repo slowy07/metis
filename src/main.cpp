@@ -479,85 +479,83 @@ int main(int argc, char** argv) {
     }
 
     if (subcmd == "deps") {
-      bool verbose = false;
-      bool graph = false;
+      application::DependencyCheckOptions dep_opts;
 
-      for (size_t i = 1; i < args.size(); ++i) {
+      for (size_t i = 2; i < args.size(); ++i) {
         std::string_view arg = args[i];
 
-        if (arg == "deps") {
-          continue;
-        }
-
         if (arg == "--verbose" || arg == "-V") {
-          verbose = true;
+          dep_opts.verbose = true;
+        } else if (arg == "--graph" || arg == "-g") {
+          dep_opts.generate_graph = true;
         }
-
-        if (arg == "--graph" || arg == "-g") {
-          graph = true;
-        }
-
-        application::DependencyCheckOptions dep_opts;
-
-        dep_opts.verbose = verbose;
-        dep_opts.generate_graph = false;
-
-        application::DependencyCheckUseCase deps_uc(
-            std::make_unique<infrastructure::ProcessShellExecutor>(),
-            std::make_unique<infrastructure::OsFileSystem>());
-
-        auto result = deps_uc.execute(repo_root, dep_opts);
-
-        std::cout << "\nDependencies: \n";
-        if (result.validations.empty()) {
-          std::cout << "No Dependencies manifes found (conanfile.py, vcpkg.json, CMakeLists.txt)\n";
-        } else {
-          for (const auto& res_validation : result.validations) {
-            std::cout << (res_validation.ok ? "✓ " : "✕ ") << res_validation.dep.name;
-
-            if (!res_validation.dep.version.empty()) {
-              std::cout << " " << res_validation.dep.version;
-            }
-
-            if (!res_validation.ok) {
-              std::cout << "   [" << res_validation.message << "]";
-            }
-
-            std::cout << "    (" << res_validation.dep.source << ")\n";
-          }
-        }
-
-        bool has_issue = false;
-
-        if (!result.duplicates.empty()) {
-          has_issue = true;
-
-          std::cout << "\nDuplicate dependencies detect\n";
-          for (const auto& dep_duplicate : result.duplicates) {
-            std::cout << "  - " << dep_duplicate << "\n";
-          }
-        }
-
-        if (!result.lockfile_issues.empty()) {
-          has_issue = true;
-
-          std::cout << "\nLockfile Issue:\n";
-          for (const auto& lock_issue : result.lockfile_issues) {
-            std::cout << "  - " << lock_issue << "\n";
-          }
-        }
-
-        if (!has_issue && !result.validations.empty()) {
-          std::cout << "\nNo dependencies problems\n";
-        }
-
-        if (graph) {
-          std::cout << "\n[INFO] Dependency graph written into dependencies.dot\n";
-        }
-
-        return static_cast<int>(result.success() ? domain::ExitCode::SUCCESS
-                                                 : domain::ExitCode::MISSING_DEPENDENCY);
       }
+
+      application::DependencyCheckUseCase deps_uc(
+          std::make_unique<infrastructure::ProcessShellExecutor>(),
+          std::make_unique<infrastructure::OsFileSystem>());
+
+      auto result = deps_uc.execute(repo_root, dep_opts);
+
+      std::cout << "\nDependencies\n";
+      std::cout << "────────────\n";
+
+      if (result.validations.empty()) {
+        std::cout << "No dependency manifest found (conanfile.py, vcpkg.json, CMakeLists.txt)\n";
+      } else {
+        size_t name_width = 0;
+        for (const auto& res_validation : result.validations) {
+          name_width = std::max(name_width, res_validation.dep.name.size());
+        }
+
+        for (const auto& res_validation : result.validations) {
+          std::cout << (res_validation.ok ? "✓ " : "✕ ") << res_validation.dep.name
+                    << std::string(name_width - res_validation.dep.name.size(), ' ');
+
+          if (!res_validation.dep.version.empty()) {
+            std::cout << "  " << res_validation.dep.version;
+          }
+
+          if (!res_validation.ok) {
+            std::cout << "  [" << res_validation.message << "]";
+          } else if (dep_opts.verbose) {
+            std::cout << "  (" << res_validation.dep.source << ")";
+          }
+
+          std::cout << "\n";
+        }
+      }
+
+      bool has_issue = false;
+
+      if (!result.duplicates.empty()) {
+        has_issue = true;
+
+        std::cout << "\nDuplicate dependencies detected:\n";
+        for (const auto& dep_duplicate : result.duplicates) {
+          std::cout << "  - " << dep_duplicate << "\n";
+        }
+      }
+
+      if (!result.lockfile_issues.empty()) {
+        has_issue = true;
+
+        std::cout << "\nLockfile issues:\n";
+        for (const auto& lock_issue : result.lockfile_issues) {
+          std::cout << "  - " << lock_issue << "\n";
+        }
+      }
+
+      if (dep_opts.generate_graph && !result.validations.empty()) {
+        std::cout << "\n[INFO] Dependency graph written to " << dep_opts.graph_output_path << "\n";
+      }
+
+      if (!has_issue && !result.validations.empty()) {
+        std::cout << "\nNo dependency problems.\n";
+      }
+
+      return static_cast<int>(result.success() ? domain::ExitCode::SUCCESS
+                                               : domain::ExitCode::MISSING_DEPENDENCY);
     }
 
     app.show_help();

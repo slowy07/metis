@@ -1,5 +1,5 @@
-#ifndef METIS_DOMAIN_DEPEDENCY_HPP
-#define METIS_DOMAIN_DEPEDENCY_HPP
+#ifndef METIS_DOMAIN_DEPENDENCY_HPP
+#define METIS_DOMAIN_DEPENDENCY_HPP
 
 #include <algorithm>
 #include <string>
@@ -22,14 +22,9 @@ struct DependencyValidation {
 struct DependencyCheckResult {
   std::vector<DependencyValidation> validations;
   std::vector<std::string> duplicates;
-  std::vector<std::string> missing_files;
   std::vector<std::string> lockfile_issues;
 
   [[nodiscard]] bool success() const noexcept {
-    if (!missing_files.empty()) {
-      return false;
-    }
-
     if (!lockfile_issues.empty()) {
       return false;
     }
