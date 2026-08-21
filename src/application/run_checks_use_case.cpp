@@ -1,4 +1,4 @@
-#include "sniffercommit/application/run_checks_use_case.hpp"
+#include "metis/application/run_checks_use_case.hpp"
 
 #include <fmt/format.h>
 
@@ -13,24 +13,24 @@
 #include <string_view>
 #include <vector>
 
-#include "sniffercommit/application/checks/build_check.hpp"
-#include "sniffercommit/application/checks/clang_format_check.hpp"
-#include "sniffercommit/application/checks/clang_static_analyzer_check.hpp"
-#include "sniffercommit/application/checks/clang_tidy_check.hpp"
-#include "sniffercommit/application/checks/compiler_check.hpp"
-#include "sniffercommit/application/checks/cppcheck_check.hpp"
-#include "sniffercommit/application/checks/gcc_analyzer_check.hpp"
-#include "sniffercommit/application/checks/git_diff_check.hpp"
-#include "sniffercommit/application/checks/iwyu_check.hpp"
-#include "sniffercommit/application/checks/shell_check.hpp"
-#include "sniffercommit/domain/check.hpp"
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/glob_match.hpp"
-#include "sniffercommit/spinner.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/application/checks/build_check.hpp"
+#include "metis/application/checks/clang_format_check.hpp"
+#include "metis/application/checks/clang_static_analyzer_check.hpp"
+#include "metis/application/checks/clang_tidy_check.hpp"
+#include "metis/application/checks/compiler_check.hpp"
+#include "metis/application/checks/cppcheck_check.hpp"
+#include "metis/application/checks/gcc_analyzer_check.hpp"
+#include "metis/application/checks/git_diff_check.hpp"
+#include "metis/application/checks/iwyu_check.hpp"
+#include "metis/application/checks/shell_check.hpp"
+#include "metis/domain/check.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/glob_match.hpp"
+#include "metis/spinner.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 
 namespace {
 
@@ -318,7 +318,7 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   for (const auto& check : cfg.checks) {
     if (!check.enabled) {
       if (opts.verbose) {
-        printer.print_verbose(fmt::format("[sniffercommit] [SKIP] {} (disabled)\n", check.name));
+        printer.print_verbose(fmt::format("[metis] [SKIP] {} (disabled)\n", check.name));
       }
       continue;
     }
@@ -332,7 +332,7 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
 
     if (matched.empty()) {
       if (opts.verbose) {
-        printer.print_verbose(fmt::format("[sniffercommit] [SKIP] {}\n", check.name));
+        printer.print_verbose(fmt::format("[metis] [SKIP] {}\n", check.name));
       }
       continue;
     }
@@ -435,14 +435,14 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
   bool has_config =
       std::filesystem::exists(".clang-format") || std::filesystem::exists("_clang-format");
   if (!has_config) {
-    printer.print_error("[ERROR] No .clang-format config found. Run 'sniffercommit init' first.\n");
+    printer.print_error("[ERROR] No .clang-format config found. Run 'metis init' first.\n");
     std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::CONFIG_ERROR);
   }
 
   auto format_files = filter_format_files(files);
   if (format_files.empty()) {
-    printer.print_verbose("[sniffercommit] [INFO] No format-eligible files found.\n");
+    printer.print_verbose("[metis] [INFO] No format-eligible files found.\n");
     std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::SUCCESS);
   }
@@ -458,7 +458,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
 
   if (opts.verbose) {
     printer.print_verbose(
-        fmt::format("[sniffercommit] [INFO] Formatting {} file(s)\n", format_files.size()));
+        fmt::format("[metis] [INFO] Formatting {} file(s)\n", format_files.size()));
   }
 
   Spinner spinner("Formatting files...");
@@ -500,15 +500,15 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
   if (exit_code == 0) {
     if (formatted_count > 0) {
       printer.print_verbose(
-          fmt::format("[sniffercommit] [INFO] Formatted {} file(s), {} already clean.\n",
+          fmt::format("[metis] [INFO] Formatted {} file(s), {} already clean.\n",
                       formatted_count, clean_count));
-      printer.print_verbose("[sniffercommit] [INFO] Stage changes with: git add -u\n");
+      printer.print_verbose("[metis] [INFO] Stage changes with: git add -u\n");
     }
   } else {
-    printer.print_error("[sniffercommit] [ERROR] Formatting failed on some files.\n");
+    printer.print_error("[metis] [ERROR] Formatting failed on some files.\n");
   }
 
   return exit_code;
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

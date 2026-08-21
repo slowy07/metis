@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/toml_config_repository.hpp"
+#include "metis/infrastructure/toml_config_repository.hpp"
 
 #include <fmt/format.h>
 
@@ -11,7 +11,7 @@
 #include <string_view>
 #include <toml++/toml.hpp>
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 
@@ -66,7 +66,7 @@ TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileS
                                            std::unique_ptr<domain::ports::IShellExecutor> shell)
     : fs_(std::move(fs)), shell_(std::move(shell)) {}
 
-// Parses a .sniffercommit.toml config file into a ProjectConfig struct.
+// Parses a .metis.toml config file into a ProjectConfig struct.
 //
 // Config structure:
 //   [project]        - project name
@@ -263,4 +263,4 @@ std::filesystem::path TomlConfigRepository::find_git_root() {
   throw std::runtime_error("Not inside a Git repository or git not in PATH");
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

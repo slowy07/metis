@@ -19,12 +19,12 @@ COPY . .
 RUN cmake -B build \
     -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
-    -DSNIFFERCOMMIT_USE_SYSTEM_FMT=ON \
-    -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF
+    -DMETIS_USE_SYSTEM_FMT=ON \
+    -DMETIS_USE_SYSTEM_TOMLPLUSPLUS=OFF
 
 RUN cmake --build build --parallel
 
 RUN mkdir -p /artifacts && \
-    cp build/bin/sniffercommit /artifacts/
+    cp build/bin/metis /artifacts/
 
 CMD ["sh"]

@@ -1,4 +1,4 @@
-#include "sniffercommit/util.hpp"
+#include "metis/util.hpp"
 
 #include <cstdlib>
 #include <exception>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #endif
 
-namespace sniffercommit::util {
+namespace metis::util {
 
 // Checks if a command exists in PATH.
 // lazy: duplicates ProcessShellExecutor::command_exists() — one should be deleted.
@@ -87,4 +87,4 @@ CwdGuard::~CwdGuard() {
   }
 }
 
-}  // namespace sniffercommit::util
+}  // namespace metis::util

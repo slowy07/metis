@@ -1,16 +1,16 @@
-#include "sniffercommit/application/checks/cppcheck_check.hpp"
+#include "metis/application/checks/cppcheck_check.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/check.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/check.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 
 CppcheckCheck::CppcheckCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
@@ -68,4 +68,4 @@ domain::CheckResult CppcheckCheck::execute(const std::vector<std::string>& files
   return {.exit_code = result.exit_code_, .output = output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

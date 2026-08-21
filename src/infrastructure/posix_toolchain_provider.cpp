@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/posix_toolchain_provider.hpp"
+#include "metis/infrastructure/posix_toolchain_provider.hpp"
 
 #include <fmt/format.h>
 
@@ -6,9 +6,9 @@
 #include <string>
 #include <utility>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 PosixToolchainProvider::PosixToolchainProvider(domain::ports::IShellExecutor* shell,
                                                std::string compiler, std::string version)
@@ -236,4 +236,4 @@ std::string PosixToolchainProvider::bin_path(PkgMgr pm) const {
   }
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

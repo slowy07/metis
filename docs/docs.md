@@ -1,8 +1,8 @@
-# sniffercommit
+# metis
 
 **Fast, C++20-powered pre-commit hook and CI generator.**
 
-sniffercommit is a static binary that replaces Python/Node-based pre-commit frameworks. It reads a TOML configuration file, generates a `.git/hooks/pre-commit` Bash script and/or a GitHub Actions / GitLab CI workflow, and can also execute checks directly via the `run` subcommand. It is designed for C/C++ projects that need clang-format, trailing-whitespace detection, or any arbitrary command-based linter, with zero runtime dependencies beyond the operating system.
+metis is a static binary that replaces Python/Node-based pre-commit frameworks. It reads a TOML configuration file, generates a `.git/hooks/pre-commit` Bash script and/or a GitHub Actions / GitLab CI workflow, and can also execute checks directly via the `run` subcommand. It is designed for C/C++ projects that need clang-format, trailing-whitespace detection, or any arbitrary command-based linter, with zero runtime dependencies beyond the operating system.
 
 ---
 
@@ -30,15 +30,15 @@ sniffercommit is a static binary that replaces Python/Node-based pre-commit fram
 ## Project Structure
 
 ```
-sniffercommit/
-├── .sniffercommit.toml           # Example/default configuration
+metis/
+├── .metis.toml           # Example/default configuration
 ├── CMakeLists.txt                # CMake build system definition
 ├── LICENSE                       # MIT License
 ├── README.md
 ├── cmake/
 │   └── config.hpp.in             # CMake configure_file template for build metadata
 ├── include/
-│   └── sniffercommit/
+│   └── metis/
 │       ├── argparse.hpp          # Interface-only CLI argument parser
 │       ├── glob_match.hpp        # Glob pattern matching
 │       ├── spinner.hpp           # Terminal spinner animation
@@ -142,7 +142,7 @@ sniffercommit/
 
 ## Architecture Overview
 
-sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear layer separation:
+metis follows a **hexagonal architecture** (ports & adapters) with clear layer separation:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -190,7 +190,7 @@ sniffercommit follows a **hexagonal architecture** (ports & adapters) with clear
 ## Namespace Structure
 
 ```
-sniffercommit
+metis
 ├── domain::config     : ProjectConfig, Check, config string generation
 ├── domain::check      : Check base class, CheckResult
 ├── domain::workflow   : Platform, WorkflowConfig, workflow generation
@@ -262,7 +262,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 
 # Debug build with sanitizers
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DMETIS_ENABLE_SANITIZERS=ON
 cmake --build build --parallel
 ```
 
@@ -270,10 +270,10 @@ cmake --build build --parallel
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | Enable AddressSanitizer + UndefinedBehaviorSanitizer (Debug only) |
-| `SNIFFERCOMMIT_BUILD_TESTS` | `ON` | Build unit test suite |
-| `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `OFF` | Use system-installed fmt instead of FetchContent |
-| `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system-installed tomlplusplus instead of FetchContent |
+| `METIS_ENABLE_SANITIZERS` | `OFF` | Enable AddressSanitizer + UndefinedBehaviorSanitizer (Debug only) |
+| `METIS_BUILD_TESTS` | `ON` | Build unit test suite |
+| `METIS_USE_SYSTEM_FMT` | `OFF` | Use system-installed fmt instead of FetchContent |
+| `METIS_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system-installed tomlplusplus instead of FetchContent |
 
 ### Compiler Warnings & Hardening
 
@@ -290,31 +290,31 @@ In MSVC builds:
 
 ### Platform Detection
 
-| `CMAKE_SYSTEM_NAME` | `SNIFFERCOMMIT_PLATFORM` | Define |
+| `CMAKE_SYSTEM_NAME` | `METIS_PLATFORM` | Define |
 |---------------------|--------------------------|--------|
 | `Linux` (no WSL) | `linux` | - |
-| `Linux` (WSL) | `wsl` | `SNIFFERCOMMIT_PLATFORM_WSL` |
-| `Darwin` | `macos` | `SNIFFERCOMMIT_PLATFORM_MACOS` |
-| `Windows` | `windows` | `SNIFFERCOMMIT_PLATFORM_WINDOWS` |
+| `Linux` (WSL) | `wsl` | `METIS_PLATFORM_WSL` |
+| `Darwin` | `macos` | `METIS_PLATFORM_MACOS` |
+| `Windows` | `windows` | `METIS_PLATFORM_WINDOWS` |
 
 ### Build Metadata
 
-During configuration, `cmake/config.hpp.in` is processed into `build/generated/sniffercommit/config_build.hpp`, embedding:
+During configuration, `cmake/config.hpp.in` is processed into `build/generated/metis/config_build.hpp`, embedding:
 - Version string (from `CMakeLists.txt`)
 - Platform (`linux`, `macos`, `windows`, `wsl`)
 - Compiler ID and version
 - Git commit hash (short)
 - Build timestamp
 
-These are accessible via `sniffercommit::BuildInfo`:
+These are accessible via `metis::BuildInfo`:
 
 ```cpp
 struct BuildInfo {
-  static constexpr const char *version = SNIFFERCOMMIT_VERSION;
-  static constexpr const char *platform = SNIFFERCOMMIT_PLATFORM;
-  static constexpr const char *compiler = SNIFFERCOMMIT_COMPILER;
-  static constexpr const char *git_commit = SNIFFERCOMMIT_GIT_COMMIT;
-  static constexpr const char *build_timestamp = SNIFFERCOMMIT_BUILD_TIMESTAMP;
+  static constexpr const char *version = METIS_VERSION;
+  static constexpr const char *platform = METIS_PLATFORM;
+  static constexpr const char *compiler = METIS_COMPILER;
+  static constexpr const char *git_commit = METIS_GIT_COMMIT;
+  static constexpr const char *build_timestamp = METIS_BUILD_TIMESTAMP;
 };
 ```
 
@@ -326,7 +326,7 @@ The CMakeLists.txt explicitly blocks in-source builds with a fatal error message
 
 ## Configuration Format
 
-sniffercommit uses a TOML configuration file (default: `.sniffercommit.toml` in the current working directory).
+metis uses a TOML configuration file (default: `.metis.toml` in the current working directory).
 
 ### Schema
 
@@ -377,13 +377,13 @@ parallel = true
 | `[[checks]]` | `severity` | string | `"error"` | `error`, `warning`, or `info` |
 | `[exclude]` | `paths` | string[] | `[]` | Path prefixes to exclude from checks |
 | `[output]` | `local_hook` | bool | `true` | Generate `.git/hooks/pre-commit` during `install` |
-| `[output]` | `github_actions` | bool | `false` | Generate `.github/workflows/sniffercommit.yml` during `install` |
+| `[output]` | `github_actions` | bool | `false` | Generate `.github/workflows/metis.yml` during `install` |
 | `[output]` | `gitlab_ci` | bool | `false` | Generate `.gitlab-ci.yml` during `install` |
 | `[execution]` | `parallel` | bool | `true` | Run checks concurrently (Bash background jobs) |
 
 ### Pattern Matching
 
-sniffercommit supports a limited set of glob patterns in `glob_match.cpp`:
+metis supports a limited set of glob patterns in `glob_match.cpp`:
 
 | Pattern | Semantics |
 |---------|-----------|
@@ -417,13 +417,13 @@ Validation errors return a descriptive error string. All validation is also avai
 ## CLI Interface
 
 ```
-sniffercommit - Fast C++20-powered pre-commit & CI generator
+metis - Fast C++20-powered pre-commit & CI generator
 
 Usage:
-  sniffercommit [OPTIONS] <SUBCOMMAND> [ARGS]
+  metis [OPTIONS] <SUBCOMMAND> [ARGS]
 
 Core Workflow:
-  init            Create default .sniffercommit.toml
+  init            Create default .metis.toml
   install         Generate & install .git/hooks/pre-commit
   generate-gha    Output GitHub Actions workflow
   generate-gitlab Output GitLab CI workflow
@@ -435,7 +435,7 @@ Core Workflow:
 Subcommands:
   init
       Create:
-        - .sniffercommit.toml
+        - .metis.toml
         - .clang-format
 
       Options:
@@ -464,11 +464,11 @@ Subcommands:
   install
       Generate and install:
         .git/hooks/pre-commit
-        .github/workflows/sniffercommit.yml  (if github_actions = true)
+        .github/workflows/metis.yml  (if github_actions = true)
         .gitlab-ci.yml                        (if gitlab_ci = true)
 
       Usage:
-        sniffercommit install
+        metis install
 
   run
       Execute configured checks.
@@ -478,23 +478,23 @@ Subcommands:
         <explicit files>
 
       Usage:
-        sniffercommit run --all-files
-        sniffercommit run src/main.cpp
-        sniffercommit run --format --all-files
+        metis run --all-files
+        metis run src/main.cpp
+        metis run --format --all-files
 
   generate-gha
       Generate GitHub Actions workflow.
 
       Usage:
-        sniffercommit generate-gha
-        sniffercommit generate-gha > .github/workflows/sniffercommit.yml
+        metis generate-gha
+        metis generate-gha > .github/workflows/metis.yml
 
   generate-gitlab
       Generate GitLab CI workflow.
 
       Usage:
-        sniffercommit generate-gitlab
-        sniffercommit generate-gitlab > .gitlab-ci.yml
+        metis generate-gitlab
+        metis generate-gitlab > .gitlab-ci.yml
 
   install-compiler
       Download and install a C++ toolchain.
@@ -508,9 +508,9 @@ Subcommands:
         --dry-run, -n
 
       Usage:
-        sniffercommit install-compiler
-        sniffercommit install-compiler --compiler gcc --cpp-standard 20
-        sniffercommit install-compiler --compiler clang --dry-run
+        metis install-compiler
+        metis install-compiler --compiler gcc --cpp-standard 20
+        metis install-compiler --compiler clang --dry-run
 
   test
       Run ctest and optional coverage checks.
@@ -521,9 +521,9 @@ Subcommands:
         <build-dir>                   [default: build]
 
       Usage:
-        sniffercommit test
-        sniffercommit test --coverage
-        sniffercommit test --verbose build/
+        metis test
+        metis test --coverage
+        metis test --verbose build/
 
   sanitizer
       Run sanitizer checks (ASan, UBSan, TSan, LSan).
@@ -532,11 +532,11 @@ Subcommands:
         --verbose, -V
 
       Usage:
-        sniffercommit sanitizer
-        sniffercommit sanitizer --verbose
+        metis sanitizer
+        metis sanitizer --verbose
 
 Global Options:
-  -c, --config <value>  Config file path [default: .sniffercommit.toml]
+  -c, --config <value>  Config file path [default: .metis.toml]
   -v, --version         Show version
   -h, --help            Show help message
 ```
@@ -545,7 +545,7 @@ Global Options:
 
 #### `init`
 
-Creates both `.sniffercommit.toml` and `.clang-format` with sensible defaults in the current directory. The `clang-format` check in the generated TOML includes `--fallback-style=<style>` matching the chosen formatter style.
+Creates both `.metis.toml` and `.clang-format` with sensible defaults in the current directory. The `clang-format` check in the generated TOML includes `--fallback-style=<style>` matching the chosen formatter style.
 
 **Options:**
 
@@ -570,7 +570,7 @@ Creates both `.sniffercommit.toml` and `.clang-format` with sensible defaults in
 | `--cmake-enable-sanitizers` | Enable AddressSanitizer + UBSan in Debug builds |
 | `--generate-src` | Generate `src/main.cpp` without CMake (implied by `--enable-cmake`) |
 
-When `--enable-clang-tidy` is used, three files are created: `.sniffercommit.toml`, `.clang-format`, and `.clang-tidy` with the chosen preset.
+When `--enable-clang-tidy` is used, three files are created: `.metis.toml`, `.clang-format`, and `.clang-tidy` with the chosen preset.
 
 Project name is auto-detected from the current working directory name if `--name` is not provided. Existing files are overwritten.
 
@@ -582,15 +582,15 @@ Project name is auto-detected from the current working directory name if `--name
 4. Writes it to `.git/hooks/pre-commit` with executable permissions.
 5. Optionally generates a GitHub Actions workflow and/or GitLab CI workflow.
 
-Requires a valid `.sniffercommit.toml` in the current directory.
+Requires a valid `.metis.toml` in the current directory.
 
 ```bash
-sniffercommit install
+metis install
 ```
 
 #### `generate-gha`
 
-Generates only the GitHub Actions workflow file (`.github/workflows/sniffercommit.yml`). Always writes regardless of the config's `github_actions` setting.
+Generates only the GitHub Actions workflow file (`.github/workflows/metis.yml`). Always writes regardless of the config's `github_actions` setting.
 
 The generated workflow includes:
 - Triggers on push and pull_request to all branches
@@ -599,11 +599,11 @@ The generated workflow includes:
 - 10-minute timeout
 - `actions/checkout@v4` with `fetch-depth: 0`
 - Conditional `clang-format` installation step (only if any check uses clang-format)
-- Runs `./sniffercommit run --all-files --verbose` with `set -euo pipefail`
+- Runs `./metis run --all-files --verbose` with `set -euo pipefail`
 
 ```bash
-sniffercommit generate-gha
-sniffercommit generate-gha > .github/workflows/sniffercommit.yml
+metis generate-gha
+metis generate-gha > .github/workflows/metis.yml
 ```
 
 #### `generate-gitlab`
@@ -611,8 +611,8 @@ sniffercommit generate-gha > .github/workflows/sniffercommit.yml
 Generates only the GitLab CI workflow file (`.gitlab-ci.yml`). Always writes regardless of the config's `gitlab_ci` setting.
 
 ```bash
-sniffercommit generate-gitlab
-sniffercommit generate-gitlab > .gitlab-ci.yml
+metis generate-gitlab
+metis generate-gitlab > .gitlab-ci.yml
 ```
 
 #### `run`
@@ -629,7 +629,7 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 
 **File source selection (mutually exclusive, listed in priority order):**
 
-1. **Explicit files**: Positional arguments: `sniffercommit run src/main.cpp src/foo.cpp`
+1. **Explicit files**: Positional arguments: `metis run src/main.cpp src/foo.cpp`
 2. **`--all-files`**: All git-tracked files
 3. **Default (no args)**: Staged files via `git diff --cached --name-only --diff-filter=ACM` (this is the implicit `--staged` mode)
 
@@ -639,7 +639,7 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 
 ### argparse.hpp: CLI Argument Parser
 
-**File:** `include/sniffercommit/argparse.hpp`
+**File:** `include/metis/argparse.hpp`
 
 A **header-only, template-based** argument parser. No external dependency.
 
@@ -659,9 +659,9 @@ The `Parsable` concept requires `std::assignable_from<T&, T>` and `std::default_
 
 #### config.hpp: Project Configuration
 
-**File:** `include/sniffercommit/domain/config.hpp`
+**File:** `include/metis/domain/config.hpp`
 
-Namespace: `sniffercommit::domain::config`
+Namespace: `metis::domain::config`
 
 ```cpp
 struct Check {
@@ -718,9 +718,9 @@ Free functions for config string generation (no I/O):
 
 #### check.hpp: Generic Check Abstraction
 
-**File:** `include/sniffercommit/domain/check.hpp`
+**File:** `include/metis/domain/check.hpp`
 
-Namespace: `sniffercommit::domain::check`
+Namespace: `metis::domain::check`
 
 All runnable checks derive from `Check`. The base holds the config-derived
 fields, provides getters, and defines the execution contract:
@@ -737,20 +737,20 @@ fields, provides getters, and defines the execution contract:
 
 #### workflow.hpp: CI/CD Workflow
 
-**File:** `include/sniffercommit/domain/workflow.hpp`
+**File:** `include/metis/domain/workflow.hpp`
 
-Namespace: `sniffercommit::domain::workflow`
+Namespace: `metis::domain::workflow`
 
 ```cpp
 enum class Platform : std::uint8_t { GithubAction, GitLabCI };
 
 struct WorkflowConfig {
   Platform platform = Platform::GithubAction;
-  std::string job_name = "Run sniffercommit checks";
+  std::string job_name = "Run metis checks";
   int timeout_minutes = 10;
   bool install_clang_format = false;
   bool install_clang_tidy = false;
-  std::string binary_path = "./sniffercommit";
+  std::string binary_path = "./metis";
 };
 ```
 
@@ -776,7 +776,7 @@ Seven port interfaces define the contracts between layers:
 
 #### error_codes.hpp: Typed Exit Codes
 
-**File:** `include/sniffercommit/domain/error_codes.hpp`
+**File:** `include/metis/domain/error_codes.hpp`
 
 Provides a typed enum with 20 exit code values for consistent error reporting.
 
@@ -784,7 +784,7 @@ Provides a typed enum with 20 exit code values for consistent error reporting.
 
 #### init_use_case.hpp
 
-**File:** `include/sniffercommit/application/init_use_case.hpp`
+**File:** `include/metis/application/init_use_case.hpp`
 
 ```cpp
 struct InitOptions {
@@ -820,11 +820,11 @@ class InitUseCase {
 };
 ```
 
-Creates `.sniffercommit.toml`, `.clang-format`, optionally `.clang-tidy`, `CMakeLists.txt`, and `src/main.cpp`.
+Creates `.metis.toml`, `.clang-format`, optionally `.clang-tidy`, `CMakeLists.txt`, and `src/main.cpp`.
 
 #### install_use_case.hpp
 
-**File:** `include/sniffercommit/application/install_use_case.hpp`
+**File:** `include/metis/application/install_use_case.hpp`
 
 ```cpp
 struct InstallResult {
@@ -846,7 +846,7 @@ Generates and installs the pre-commit hook and optionally CI workflows.
 
 #### run_checks_use_case.hpp
 
-**File:** `include/sniffercommit/application/run_checks_use_case.hpp`
+**File:** `include/metis/application/run_checks_use_case.hpp`
 
 ```cpp
 enum class FileSource : std::uint8_t { STAGED, ALL_REPO, EXPLICIT };
@@ -876,9 +876,9 @@ via `std::async` (`[execution] parallel`).
 
 #### checks/: Check Implementations
 
-**Files:** `include/sniffercommit/application/checks/` + `src/application/checks/`
+**Files:** `include/metis/application/checks/` + `src/application/checks/`
 
-Namespace: `sniffercommit::application::checks`
+Namespace: `metis::application::checks`
 
 Each concrete check subclasses `domain::Check`. The right class is selected by
 **command basename** in the `make_check` factory (`run_checks_use_case.cpp`);
@@ -898,7 +898,7 @@ Runner flow: `make_check(config)` → `validate()` (build time) → `execute()`
 
 #### generate_workflow_use_case.hpp
 
-**File:** `include/sniffercommit/application/generate_workflow_use_case.hpp`
+**File:** `include/metis/application/generate_workflow_use_case.hpp`
 
 ```cpp
 class GenerateWorkflowUseCase {
@@ -913,7 +913,7 @@ Single dependency: `IFileSystem`. Dispatches to platform-specific workflow gener
 
 #### install_toolchain_use_case.hpp
 
-**File:** `include/sniffercommit/application/install_toolchain_use_case.hpp`
+**File:** `include/metis/application/install_toolchain_use_case.hpp`
 
 ```cpp
 struct InstallToolchainOptions {
@@ -971,7 +971,7 @@ Ten adapters implement the port interfaces:
 
 ### Generators
 
-Stateless free functions in `sniffercommit::generators` namespace:
+Stateless free functions in `metis::generators` namespace:
 
 | Generator | Functions |
 |-----------|-----------|
@@ -996,7 +996,7 @@ main()
 │   ├── Manual argv loop for init flags
 │   ├── Wire TomlConfigRepository + OsFileSystem
 │   ├── InitUseCase(config_repo, fs).execute(cwd, opts)
-│   │   ├── Generates .sniffercommit.toml, .clang-format
+│   │   ├── Generates .metis.toml, .clang-format
 │   │   ├── [if tidy] Generates .clang-tidy
 │   │   ├── [if cmake] Generates CMakeLists.txt + src/main.cpp
 │   │   └── Writes files via IConfigRepository/IFileSystem
@@ -1047,10 +1047,10 @@ Scans `argv` for `-c` / `--config` before `ArgParser` processes arguments, avoid
 ### Run Flow
 
 ```
-User runs: sniffercommit run --all-files
+User runs: metis run --all-files
 
 main.cpp
-├── preparse_config_path() → ".sniffercommit.toml"
+├── preparse_config_path() → ".metis.toml"
 ├── ArgParser::parse() → recognizes "run" subcommand
 ├── Manual argv loop → detects --all-files
 ├── Wire infrastructure adapters
@@ -1072,10 +1072,10 @@ main.cpp
 ### Install Flow
 
 ```
-User runs: sniffercommit install
+User runs: metis install
 
 main.cpp
-├── preparse_config_path() → ".sniffercommit.toml"
+├── preparse_config_path() → ".metis.toml"
 ├── Wire TomlConfigRepository + OsFileSystem + CliGitRepository
 ├── TomlConfigRepository::load() → ProjectConfig
 ├── CliGitRepository::find_repo_root()
@@ -1095,7 +1095,7 @@ main.cpp
 
 ### Why a generated Bash hook instead of invoking the binary in the hook?
 
-The generated Bash hook is self-contained: it does not require the sniffercommit binary to be installed on every developer machine or CI runner. A `git clone` + `sniffercommit install` is sufficient for setup. The trade-off is that the hook script contains generated logic that must be re-generated when the configuration changes.
+The generated Bash hook is self-contained: it does not require the metis binary to be installed on every developer machine or CI runner. A `git clone` + `metis install` is sufficient for setup. The trade-off is that the hook script contains generated logic that must be re-generated when the configuration changes.
 
 ### Why hexagonal architecture?
 
@@ -1113,7 +1113,7 @@ The project has zero runtime dependencies. Using `popen()` to shell out to `git`
 
 `std::system()` is portable and simple. For a developer tool where checks are linters that run in <1 second, the overhead of `fork/exec` vs. `std::system()` is negligible. The generated Bash hook uses direct command execution, not `std::system()`.
 
-### Why does `init` generate a separate `.clang-format` alongside `.sniffercommit.toml`?
+### Why does `init` generate a separate `.clang-format` alongside `.metis.toml`?
 
 Some linters (notably `clang-format`) look for a `.clang-format` file in the project root to determine formatting rules. Generating both files from a single `init` command ensures that the `clang-format` check in the TOML (`--style=file` + `--fallback-style=<style>`) has a corresponding config file to read.
 
@@ -1125,7 +1125,7 @@ The `--config` option is registered globally on the `ArgParser`. Because `parse(
 
 ## Error Handling Patterns
 
-sniffercommit uses a consistent error handling strategy across all modules:
+metis uses a consistent error handling strategy across all modules:
 
 | Pattern | Where | Description |
 |---------|-------|-------------|
@@ -1154,7 +1154,7 @@ try {
 
 ### Testing Approach
 
-sniffercommit uses **GoogleTest** for unit testing. Tests are located in the `tests/` directory and are executed via CTest:
+metis uses **GoogleTest** for unit testing. Tests are located in the `tests/` directory and are executed via CTest:
 
 ```bash
 # Run all tests
@@ -1180,7 +1180,7 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 
 ### CI Pipeline
 
-A GitHub Actions workflow (generated by `sniffercommit generate-gha`) runs on every push and pull request:
+A GitHub Actions workflow (generated by `metis generate-gha`) runs on every push and pull request:
 
 1. **Build**: cmake configure + build (Release and Debug)
 2. **Lint**: `clang-tidy` with the project's own `.clang-tidy` config
@@ -1194,7 +1194,7 @@ A GitHub Actions workflow (generated by `sniffercommit generate-gha`) runs on ev
 ### Debug Build with Sanitizers
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DMETIS_ENABLE_SANITIZERS=ON
 cmake --build build --parallel
 ```
 
@@ -1202,7 +1202,7 @@ cmake --build build --parallel
 
 ```bash
 # Generate and install
-./build/sniffercommit install
+./build/metis install
 
 # Test the hook directly (outside git commit flow)
 bash .git/hooks/pre-commit
@@ -1215,16 +1215,16 @@ cat .git/hooks/pre-commit | less
 
 ```bash
 # All tracked files
-./build/sniffercommit run --all-files
+./build/metis run --all-files
 
 # Specific files
-./build/sniffercommit run src/main.cpp include/foo.hpp
+./build/metis run src/main.cpp include/foo.hpp
 
 # Dry-run (show what would be checked, no commands executed)
-./build/sniffercommit run --dry-run --all-files
+./build/metis run --dry-run --all-files
 
 # Verbose output (print each shell command before execution)
-./build/sniffercommit run --verbose src/main.cpp
+./build/metis run --verbose src/main.cpp
 ```
 
 ### Typical Workflow
@@ -1232,20 +1232,20 @@ cat .git/hooks/pre-commit | less
 ```bash
 # 1. Initialize a project
 cd my-project
-sniffercommit init --style google
+metis init --style google
 
 # 2. Run checks before committing
 echo "int main(){}" > main.cpp
-sniffercommit run main.cpp
+metis run main.cpp
 
 # 3. Install the hook for automatic checks
-sniffercommit install
+metis install
 
 # 4. Commit
 git add main.cpp
 git commit -m "feat: initial"
 
 # 5. (CI) Generate workflows (enable in config, then re-install)
-# Edit .sniffercommit.toml to set github_actions = true / gitlab_ci = true
-sniffercommit install  # regenerates hook and workflows
+# Edit .metis.toml to set github_actions = true / gitlab_ci = true
+metis install  # regenerates hook and workflows
 ```

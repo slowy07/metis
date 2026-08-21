@@ -1,14 +1,14 @@
-#include "sniffercommit/infrastructure/toolchain_factory.hpp"
+#include "metis/infrastructure/toolchain_factory.hpp"
 
 #include <cctype>
 #include <memory>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/domain/ports/toolchain_provider.hpp"
-#include "sniffercommit/infrastructure/posix_toolchain_provider.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/toolchain_provider.hpp"
+#include "metis/infrastructure/posix_toolchain_provider.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 std::unique_ptr<domain::ports::IToolchainProvider> ToolchainFactory::create(
     const std::string& compiler, const std::string& version, domain::ports::IShellExecutor* shell,
@@ -33,4 +33,4 @@ std::unique_ptr<domain::ports::IToolchainProvider> ToolchainFactory::create(
 #endif
   return nullptr;
 }
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

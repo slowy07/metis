@@ -1,4 +1,4 @@
-#include "sniffercommit/application/init_use_case.hpp"
+#include "metis/application/init_use_case.hpp"
 
 #include <fmt/format.h>
 
@@ -7,13 +7,13 @@
 #include <iostream>
 #include <string>
 
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/generators/clang_format_generator.hpp"
-#include "sniffercommit/generators/clang_tidy_generator.hpp"
-#include "sniffercommit/generators/cmake_generator.hpp"
-#include "sniffercommit/generators/conan_generator.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/generators/clang_format_generator.hpp"
+#include "metis/generators/clang_tidy_generator.hpp"
+#include "metis/generators/cmake_generator.hpp"
+#include "metis/generators/conan_generator.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 
 // Creates an InitUseCase with ownership of its dependencies.
 // config_repo is used for find_git_root() to resolve relative paths.
@@ -25,7 +25,7 @@ InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> confi
 // Main entry point for project initialization.
 //
 // Generates configuration files based on InitOptions:
-//   1. .sniffercommit.toml  — always (main config)
+//   1. .metis.toml  — always (main config)
 //   2. .clang-format        — always (formatter config)
 //   3. .clang-tidy          — if --enable-clang-tidy
 //   4. src/main.cpp         — if --generate-src (default with --enable-cmake)
@@ -39,8 +39,8 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
   std::string project_name =
       opts.project_name.empty() ? cwd.filename().string() : opts.project_name;
 
-  // Write .sniffercommit.toml
-  auto config_path = cwd / ".sniffercommit.toml";
+  // Write .metis.toml
+  auto config_path = cwd / ".metis.toml";
   std::string config_content;
   // Resolve repo root for relative path references in config.
   // e.g. .clang-tidy path in the clang-tidy check args.
@@ -121,7 +121,7 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
     constexpr std::string_view main_cpp_content = R"(#include <iostream>
 
 int main() {
-    std::cout << "sniffercommit says wello" << std::endl;
+    std::cout << "metis says wello" << std::endl;
     return 0;
 }
   )";
@@ -173,4 +173,4 @@ int main() {
   return result;
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

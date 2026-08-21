@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/clang_format_check.hpp"
+#include "metis/application/checks/clang_format_check.hpp"
 
 #include <fmt/format.h>
 
@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 namespace {
 bool is_format_eligible(const std::string& file) {
   static const std::vector<std::string> k_exts = {".cpp", ".cc", ".cxx", ".c++", ".hpp",
@@ -49,7 +49,7 @@ std::string ClangFormatCheck::validate(const std::filesystem::path& repo_root) c
   bool has_config = std::filesystem::exists(repo_root / ".clang-format") ||
                     std::filesystem::exists(repo_root / "_clang-format");
   if (!has_config) {
-    return "No .clang-format config found. Run 'sniffercommit init' first.";
+    return "No .clang-format config found. Run 'metis init' first.";
   }
   return "";
 }
@@ -130,4 +130,4 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
   return {.exit_code = 0, .output = output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

@@ -1,14 +1,14 @@
-#include "sniffercommit/application/checks/gcc_analyzer_check.hpp"
+#include "metis/application/checks/gcc_analyzer_check.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 GCCAnalyzerCheck::GCCAnalyzerCheck(const domain::config::Check& config)
     : domain::Check(config.name, config.description, config.enabled, config.patterns,
                     config.command, config.args, config.timeout, config.severity) {}
@@ -55,4 +55,4 @@ domain::CheckResult GCCAnalyzerCheck::execute(const std::vector<std::string>& fi
 
   return {.exit_code = last_exit, .output = combined_output};
 }
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

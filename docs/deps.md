@@ -1,12 +1,12 @@
 # Dependency Management
 
-sniffercommit supports adding external C++ dependencies to your project via CMake [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html). Dependencies are declared during `sniffercommit init` and validated before any files are created.
+metis supports adding external C++ dependencies to your project via CMake [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html). Dependencies are declared during `metis init` and validated before any files are created.
 
 ---
 
 ## Overview
 
-When you enable CMake scaffolding (`--enable-cmake` or interactive mode), sniffercommit can automatically generate `FetchContent_Declare` blocks in your `CMakeLists.txt`. Each dependency requires:
+When you enable CMake scaffolding (`--enable-cmake` or interactive mode), metis can automatically generate `FetchContent_Declare` blocks in your `CMakeLists.txt`. Each dependency requires:
 
 | Field | Description | Example |
 |-------|-------------|---------|
@@ -22,7 +22,7 @@ When you enable CMake scaffolding (`--enable-cmake` or interactive mode), sniffe
 
 ```bash
 cd my-project
-sniffercommit init
+metis init
 ```
 
 When prompted for CMake options, answer `y` to **add dependencies**:
@@ -50,7 +50,7 @@ Press **Enter** at `dep name` with no input to finish.
 ### Non-Interactive (CLI)
 
 ```bash
-sniffercommit init --enable-cmake \
+metis init --enable-cmake \
   --add-dep fmt:https://github.com/fmtlib/fmt.git:11.0.2 \
   --add-dep tomlplusplus:https://github.com/marzer/tomlplusplus.git:v3.4.0
 ```
@@ -64,7 +64,7 @@ The `--add-dep` format is:
 The `git_tag` is optional: if omitted, it defaults to `main`:
 
 ```bash
-sniffercommit init --enable-cmake \
+metis init --enable-cmake \
   --add-dep fmt:https://github.com/fmtlib/fmt.git
 ```
 
@@ -72,7 +72,7 @@ sniffercommit init --enable-cmake \
 
 ## Validation
 
-Before any file is created, sniffercommit validates every dependency:
+Before any file is created, metis validates every dependency:
 
 | Check | Error if failed |
 |-------|-----------------|
@@ -102,7 +102,7 @@ https://github.com/       # missing user/repo
 
 ## Generated CMakeLists.txt
 
-For each validated dependency, sniffercommit generates:
+For each validated dependency, metis generates:
 
 ```cmake
 include(FetchContent)
@@ -137,7 +137,7 @@ target_link_libraries(my-project PUBLIC
 
 ## Target Linking Convention
 
-sniffercommit assumes dependencies follow the standard CMake namespace convention:
+metis assumes dependencies follow the standard CMake namespace convention:
 
 ```cmake
 target_link_libraries(<your-target> PUBLIC
@@ -151,7 +151,7 @@ If a library uses a different namespace (e.g., `spdlog::spdlog_header_only`), yo
 
 ## Dependency Strategy
 
-Currently, sniffercommit only supports **FetchContent** for dependency management. The `CMakeConfig` struct reserves `DepedencyStrategy` for future expansion:
+Currently, metis only supports **FetchContent** for dependency management. The `CMakeConfig` struct reserves `DepedencyStrategy` for future expansion:
 
 | Strategy | Status | Description |
 |----------|--------|-------------|
@@ -167,7 +167,7 @@ Currently, sniffercommit only supports **FetchContent** for dependency managemen
 ### fmt + tomlplusplus (common stack)
 
 ```bash
-sniffercommit init --enable-cmake \
+metis init --enable-cmake \
   --add-dep fmt:https://github.com/fmtlib/fmt.git:11.0.2 \
   --add-dep tomlplusplus:https://github.com/marzer/tomlplusplus.git:v3.4.0
 ```
@@ -175,14 +175,14 @@ sniffercommit init --enable-cmake \
 ### Google Test for testing
 
 ```bash
-sniffercommit init --enable-cmake --cmake-enable-testing \
+metis init --enable-cmake --cmake-enable-testing \
   --add-dep googletest:https://github.com/google/googletest.git:v1.14.0
 ```
 
 ### spdlog (header-only friendly)
 
 ```bash
-sniffercommit init --enable-cmake --cmake-target-type header-only \
+metis init --enable-cmake --cmake-target-type header-only \
   --add-dep spdlog:https://github.com/gabime/spdlog.git:v1.13.0
 ```
 
@@ -202,7 +202,7 @@ sniffercommit init --enable-cmake --cmake-target-type header-only \
 
 ## Notes
 
-- **No network check at init time**: sniffercommit validates URL *format*, not reachability. The actual fetch happens at CMake configure time.
+- **No network check at init time**: metis validates URL *format*, not reachability. The actual fetch happens at CMake configure time.
 - **GIT_SHALLOW ON**: All FetchContent declarations use shallow clones for faster downloads.
 - **Order matters**: Dependencies are declared in the order you specify them. If `A` depends on `B`, declare `B` first.
 - **Manual edits welcome**: After `init`, you can freely edit `CMakeLists.txt` to add `FIND_PACKAGE_ARGS`, `CMAKE_ARGS`, or switch to `ExternalProject`.

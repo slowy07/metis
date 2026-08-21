@@ -1,4 +1,4 @@
-#include "sniffercommit/presentation/interactive_init.hpp"
+#include "metis/presentation/interactive_init.hpp"
 
 #include <array>
 #include <cctype>
@@ -9,9 +9,9 @@
 #include <string_view>
 #include <utility>
 
-#include "sniffercommit/application/init_use_case.hpp"
+#include "metis/application/init_use_case.hpp"
 
-namespace sniffercommit::presentation {
+namespace metis::presentation {
 
 namespace {
 
@@ -151,7 +151,7 @@ void run_interactive_init(application::InitOptions& opts) {
   enable_windows_ansi();
 #endif
   std::cout << "\n";
-  std::cout << bold << "  sniffercommit init" << reset << "\n";
+  std::cout << bold << "  metis init" << reset << "\n";
   std::cout << "  " << "enter to accept the default configs" << reset << "\n\n";
 
   opts.project_name = prompt_string("project name", opts.project_name);
@@ -236,7 +236,7 @@ void print_init_summary(const application::InitOptions& opts,
   };
 
   std::cout << "\n";
-  std::cout << bold << " sniffercommit initialized " << reset << "\n";
+  std::cout << bold << " metis initialized " << reset << "\n";
   std::cout << "  " << dim << result.project_config_path << reset << "\n\n";
 
   std::cout << "  " << bold << "project" << reset << "\n";
@@ -259,8 +259,8 @@ void print_init_summary(const application::InitOptions& opts,
     std::cout << "    " << green << check << reset << " conanfile.py\n";
   }
 
-  std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "sniffercommit install"
+  std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "metis install"
             << reset << " " << dim << "to set up pre-commit hooks" << reset << "\n\n";
 }
 
-}  // namespace sniffercommit::presentation
+}  // namespace metis::presentation

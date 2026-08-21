@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(sniffercommit
+project(metis
   LANGUAGES CXX
   VERSION 0.4.0
   DESCRIPTION "Fast, C++ pre-commit hook and CI generator"
-  HOMEPAGE_URL "https://github.com/slowy07/sniffercommit"
+  HOMEPAGE_URL "https://github.com/slowy07/metis"
 )
 
 # Build environment setup
@@ -32,62 +32,62 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # User options
-option(SNIFFERCOMMIT_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
-option(SNIFFERCOMMIT_BUILD_TESTS "Build unit tests" ON)
-option(SNIFFERCOMMIT_USE_SYSTEM_FMT "Use system-installed fmt" OFF)
-option(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" OFF)
+option(METIS_ENABLE_SANITIZERS "Enable Address/UB sanitizers (Debug only)" OFF)
+option(METIS_BUILD_TESTS "Build unit tests" ON)
+option(METIS_USE_SYSTEM_FMT "Use system-installed fmt" OFF)
+option(METIS_USE_SYSTEM_TOMLPLUSPLUS "Use system-installed tomlplusplus" OFF)
 
 # Platform detection
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  set(SNIFFERCOMMIT_PLATFORM "linux")
+  set(METIS_PLATFORM "linux")
   if(DEFINED ENV{WSL_DISTRO_NAME})
-    set(SNIFFERCOMMIT_PLATFORM "wsl")
+    set(METIS_PLATFORM "wsl")
   endif()
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  set(SNIFFERCOMMIT_PLATFORM "macos")
+  set(METIS_PLATFORM "macos")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(SNIFFERCOMMIT_PLATFORM "windows")
+  set(METIS_PLATFORM "windows")
 else()
   message(WARNING "Unknown platform: ${CMAKE_SYSTEM_NAME}")
-  set(SNIFFERCOMMIT_PLATFORM "unknown")
+  set(METIS_PLATFORM "unknown")
 endif()
 
 # Compiler detection
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(SNIFFERCOMMIT_COMPILER "gcc-${CMAKE_CXX_COMPILER_VERSION}")
+  set(METIS_COMPILER "gcc-${CMAKE_CXX_COMPILER_VERSION}")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(SNIFFERCOMMIT_COMPILER "clang-${CMAKE_CXX_COMPILER_VERSION}")
+  set(METIS_COMPILER "clang-${CMAKE_CXX_COMPILER_VERSION}")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(SNIFFERCOMMIT_COMPILER "msvc-${CMAKE_CXX_COMPILER_VERSION}")
+  set(METIS_COMPILER "msvc-${CMAKE_CXX_COMPILER_VERSION}")
 else()
-  set(SNIFFERCOMMIT_COMPILER "unknown")
+  set(METIS_COMPILER "unknown")
 endif()
 
 # Build metadata (git commit, timestamp)
 # Use UTC timestamp without shell expressions for portability
-string(TIMESTAMP SNIFFERCOMMIT_BUILD_TIMESTAMP "%Y-%m-%dT%H:%M:%SZ" UTC)
+string(TIMESTAMP METIS_BUILD_TIMESTAMP "%Y-%m-%dT%H:%M:%SZ" UTC)
 
 execute_process(
   COMMAND git rev-parse --short HEAD
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE SNIFFERCOMMIT_GIT_COMMIT
+  OUTPUT_VARIABLE METIS_GIT_COMMIT
   OUTPUT_STRIP_TRAILING_WHITESPACE
   ERROR_QUIET
 )
-if(NOT SNIFFERCOMMIT_GIT_COMMIT)
-  set(SNIFFERCOMMIT_GIT_COMMIT "unknown")
+if(NOT METIS_GIT_COMMIT)
+  set(METIS_GIT_COMMIT "unknown")
 endif()
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/cmake/config.hpp.in
-  ${CMAKE_BINARY_DIR}/generated/sniffercommit/config_build.hpp
+  ${CMAKE_BINARY_DIR}/generated/metis/config_build.hpp
   @ONLY
 )
 
 # Dependencies: fmt and tomlplusplus
 include(FetchContent)
 
-if(SNIFFERCOMMIT_USE_SYSTEM_FMT)
+if(METIS_USE_SYSTEM_FMT)
   find_package(fmt REQUIRED)
 else()
   FetchContent_Declare(
@@ -100,7 +100,7 @@ else()
   FetchContent_MakeAvailable(fmt)
 endif()
 
-if(SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS)
+if(METIS_USE_SYSTEM_TOMLPLUSPLUS)
   find_package(tomlplusplus REQUIRED)
 else()
   FetchContent_Declare(
@@ -114,7 +114,7 @@ else()
 endif()
 
 # Library target (core logic)
-set(SNIFFERCOMMIT_SOURCES
+set(METIS_SOURCES
   src/argparse.cpp
   src/domain/config.cpp
   src/domain/check.cpp
@@ -157,61 +157,61 @@ set(SNIFFERCOMMIT_SOURCES
   $<$<PLATFORM_ID:Windows>:src/infrastructure/windows_clang_provider.cpp>
 )
 
-set(SNIFFERCOMMIT_HEADERS
-  include/sniffercommit/argparse.hpp
-  include/sniffercommit/domain/config.hpp
-  include/sniffercommit/domain/workflow.hpp
-  include/sniffercommit/domain/error_codes.hpp
-  include/sniffercommit/domain/check.hpp
-  include/sniffercommit/domain/ports/config_repository.hpp
-  include/sniffercommit/domain/ports/shell_executor.hpp
-  include/sniffercommit/domain/ports/file_system.hpp
-  include/sniffercommit/domain/ports/toolchain_provider.hpp
-  include/sniffercommit/domain/ports/http_client.hpp
-  include/sniffercommit/domain/ports/archive_extractor.hpp
-  include/sniffercommit/domain/ports/git_repository.hpp
-  include/sniffercommit/application/init_use_case.hpp
-  include/sniffercommit/application/install_use_case.hpp
-  include/sniffercommit/application/run_checks_use_case.hpp
-  include/sniffercommit/application/generate_workflow_use_case.hpp
-  include/sniffercommit/application/install_toolchain_use_case.hpp
-  include/sniffercommit/application/checks/shell_check.hpp
-  include/sniffercommit/application/checks/clang_format_check.hpp
-  include/sniffercommit/application/checks/clang_tidy_check.hpp
-  include/sniffercommit/application/checks/compiler_check.hpp
-  include/sniffercommit/application/checks/build_check.hpp
-  include/sniffercommit/application/checks/git_diff_check.hpp
-  include/sniffercommit/application/run_checks_use_case.hpp
-  include/sniffercommit/application/sanitizer_checks_use_case.hpp
-  include/sniffercommit/application/test_checks_use_case.hpp
-  include/sniffercommit/application/checks/cppcheck_check.hpp
-  include/sniffercommit/application/checks/iwyu_check.hpp
-  include/sniffercommit/application/checks/clang_static_analyzer_check.hpp
-  include/sniffercommit/application/checks/gcc_analyzer_check.hpp
-  include/sniffercommit/infrastructure/toml_config_repository.hpp
-  include/sniffercommit/infrastructure/process_shell_executor.hpp
-  include/sniffercommit/infrastructure/os_file_system.hpp
-  include/sniffercommit/infrastructure/cli_git_repository.hpp
-  include/sniffercommit/infrastructure/curl_http_client.hpp
-  include/sniffercommit/infrastructure/posix_toolchain_provider.hpp
-  include/sniffercommit/infrastructure/tar_archive_extractor.hpp
-  include/sniffercommit/infrastructure/toolchain_factory.hpp
-  include/sniffercommit/infrastructure/windows_clang_provider.hpp
-  include/sniffercommit/infrastructure/windows_gcc_provider.hpp
-  include/sniffercommit/infrastructure/zip_archive_extractor.hpp
-  include/sniffercommit/generators/clang_format_generator.hpp
-  include/sniffercommit/generators/clang_tidy_generator.hpp
-  include/sniffercommit/generators/cmake_generator.hpp
-  include/sniffercommit/generators/conan_generator.hpp
-  include/sniffercommit/presentation/interactive_init.hpp
-  include/sniffercommit/spinner.hpp
-  include/sniffercommit/util.hpp
-  include/sniffercommit/glob_match.hpp
+set(METIS_HEADERS
+  include/metis/argparse.hpp
+  include/metis/domain/config.hpp
+  include/metis/domain/workflow.hpp
+  include/metis/domain/error_codes.hpp
+  include/metis/domain/check.hpp
+  include/metis/domain/ports/config_repository.hpp
+  include/metis/domain/ports/shell_executor.hpp
+  include/metis/domain/ports/file_system.hpp
+  include/metis/domain/ports/toolchain_provider.hpp
+  include/metis/domain/ports/http_client.hpp
+  include/metis/domain/ports/archive_extractor.hpp
+  include/metis/domain/ports/git_repository.hpp
+  include/metis/application/init_use_case.hpp
+  include/metis/application/install_use_case.hpp
+  include/metis/application/run_checks_use_case.hpp
+  include/metis/application/generate_workflow_use_case.hpp
+  include/metis/application/install_toolchain_use_case.hpp
+  include/metis/application/checks/shell_check.hpp
+  include/metis/application/checks/clang_format_check.hpp
+  include/metis/application/checks/clang_tidy_check.hpp
+  include/metis/application/checks/compiler_check.hpp
+  include/metis/application/checks/build_check.hpp
+  include/metis/application/checks/git_diff_check.hpp
+  include/metis/application/run_checks_use_case.hpp
+  include/metis/application/sanitizer_checks_use_case.hpp
+  include/metis/application/test_checks_use_case.hpp
+  include/metis/application/checks/cppcheck_check.hpp
+  include/metis/application/checks/iwyu_check.hpp
+  include/metis/application/checks/clang_static_analyzer_check.hpp
+  include/metis/application/checks/gcc_analyzer_check.hpp
+  include/metis/infrastructure/toml_config_repository.hpp
+  include/metis/infrastructure/process_shell_executor.hpp
+  include/metis/infrastructure/os_file_system.hpp
+  include/metis/infrastructure/cli_git_repository.hpp
+  include/metis/infrastructure/curl_http_client.hpp
+  include/metis/infrastructure/posix_toolchain_provider.hpp
+  include/metis/infrastructure/tar_archive_extractor.hpp
+  include/metis/infrastructure/toolchain_factory.hpp
+  include/metis/infrastructure/windows_clang_provider.hpp
+  include/metis/infrastructure/windows_gcc_provider.hpp
+  include/metis/infrastructure/zip_archive_extractor.hpp
+  include/metis/generators/clang_format_generator.hpp
+  include/metis/generators/clang_tidy_generator.hpp
+  include/metis/generators/cmake_generator.hpp
+  include/metis/generators/conan_generator.hpp
+  include/metis/presentation/interactive_init.hpp
+  include/metis/spinner.hpp
+  include/metis/util.hpp
+  include/metis/glob_match.hpp
 )
 
-add_library(sniffercommit_lib STATIC ${SNIFFERCOMMIT_SOURCES})
+add_library(metis_lib STATIC ${METIS_SOURCES})
 
-target_include_directories(sniffercommit_lib
+target_include_directories(metis_lib
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}/generated
@@ -220,35 +220,35 @@ target_include_directories(sniffercommit_lib
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_features(sniffercommit_lib PUBLIC cxx_std_20)
+target_compile_features(metis_lib PUBLIC cxx_std_20)
 
-target_compile_definitions(sniffercommit_lib
+target_compile_definitions(metis_lib
   PRIVATE
-    SNIFFERCOMMIT_VERSION="${PROJECT_VERSION}"
-    SNIFFERCOMMIT_PLATFORM="${SNIFFERCOMMIT_PLATFORM}"
-    SNIFFERCOMMIT_COMPILER="${SNIFFERCOMMIT_COMPILER}"
-    $<$<CONFIG:Debug>:SNIFFERCOMMIT_DEBUG>
-    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},wsl>:SNIFFERCOMMIT_PLATFORM_WSL>
-    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},macos>:SNIFFERCOMMIT_PLATFORM_MACOS>
-    $<$<STREQUAL:${SNIFFERCOMMIT_PLATFORM},windows>:SNIFFERCOMMIT_PLATFORM_WINDOWS>
+    METIS_VERSION="${PROJECT_VERSION}"
+    METIS_PLATFORM="${METIS_PLATFORM}"
+    METIS_COMPILER="${METIS_COMPILER}"
+    $<$<CONFIG:Debug>:METIS_DEBUG>
+    $<$<STREQUAL:${METIS_PLATFORM},wsl>:METIS_PLATFORM_WSL>
+    $<$<STREQUAL:${METIS_PLATFORM},macos>:METIS_PLATFORM_MACOS>
+    $<$<STREQUAL:${METIS_PLATFORM},windows>:METIS_PLATFORM_WINDOWS>
 )
 
-target_link_libraries(sniffercommit_lib
+target_link_libraries(metis_lib
   PRIVATE
     tomlplusplus::tomlplusplus
     fmt::fmt
 )
 
 # Executable target (CLI frontend)
-add_executable(sniffercommit src/main.cpp)
-target_link_libraries(sniffercommit
+add_executable(metis src/main.cpp)
+target_link_libraries(metis
   PRIVATE
-    sniffercommit_lib
+    metis_lib
     tomlplusplus::tomlplusplus
     fmt::fmt
 )
 
-target_include_directories(sniffercommit
+target_include_directories(metis
   PRIVATE
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_BINARY_DIR}/generated
@@ -257,14 +257,14 @@ target_include_directories(sniffercommit
     $<INSTALL_INTERFACE:include>
 )
 
-target_compile_features(sniffercommit PUBLIC cxx_std_20)
+target_compile_features(metis PUBLIC cxx_std_20)
 
-target_compile_definitions(sniffercommit
+target_compile_definitions(metis
   PRIVATE
-    SNIFFERCOMMIT_VERSION="${PROJECT_VERSION}"
-    SNIFFERCOMMIT_PLATFORM="${SNIFFERCOMMIT_PLATFORM}"
-    SNIFFERCOMMIT_COMPILER="${SNIFFERCOMMIT_COMPILER}"
-    $<$<CONFIG:Debug>:SNIFFERCOMMIT_DEBUG>
+    METIS_VERSION="${PROJECT_VERSION}"
+    METIS_PLATFORM="${METIS_PLATFORM}"
+    METIS_COMPILER="${METIS_COMPILER}"
+    $<$<CONFIG:Debug>:METIS_DEBUG>
 )
 
 # Compiler warnings & hardening (applied to both library and executable)
@@ -294,14 +294,14 @@ function(apply_warnings_and_hardening TARGET)
   endif()
 endfunction()
 
-apply_warnings_and_hardening(sniffercommit)
-apply_warnings_and_hardening(sniffercommit_lib)
+apply_warnings_and_hardening(metis)
+apply_warnings_and_hardening(metis_lib)
 
 # Sanitizers (Debug only, applied to both library and executable)
-if(SNIFFERCOMMIT_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(METIS_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
   if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     message(STATUS "Enabling AddressSanitizer + UndefinedBehaviorSanitizer")
-    foreach(target IN ITEMS sniffercommit sniffercommit_lib)
+    foreach(target IN ITEMS metis metis_lib)
       target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
       target_link_options(${target} PRIVATE -fsanitize=address,undefined)
     endforeach()
@@ -309,7 +309,7 @@ if(SNIFFERCOMMIT_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # Unit tests (Google Test)
-if(SNIFFERCOMMIT_BUILD_TESTS)
+if(METIS_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif()
@@ -317,18 +317,18 @@ endif()
 # Installation and CPack
 include(GNUInstallDirs)
 
-install(TARGETS sniffercommit RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS metis RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/sniffercommit/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sniffercommit
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/metis/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/metis
   FILES_MATCHING PATTERN "*.hpp"
 )
 
 install(FILES README.md DESTINATION ${CMAKE_INSTALL_DOCDIR})
-install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/sniffercommit)
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/licenses/metis)
 
 # CPack configuration
-set(CPACK_PACKAGE_NAME "sniffercommit")
+set(CPACK_PACKAGE_NAME "metis")
 set(CPACK_PACKAGE_VENDOR "slowy07")
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
@@ -337,13 +337,13 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 
 # Architecture detection for packages
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
-  set(SNIFFERCOMMIT_ARCH "amd64")
+  set(METIS_ARCH "amd64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-  set(SNIFFERCOMMIT_ARCH "arm64")
+  set(METIS_ARCH "arm64")
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-  set(SNIFFERCOMMIT_ARCH "armhf")
+  set(METIS_ARCH "armhf")
 else()
-  set(SNIFFERCOMMIT_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+  set(METIS_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -353,7 +353,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
   set(CPACK_DEBIAN_PACKAGE_DEPENDS "git, bash")
   set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "${SNIFFERCOMMIT_ARCH}")
+  set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "${METIS_ARCH}")
 elseif(APPLE)
   set(CPACK_GENERATOR "TGZ")
   if(NOT CMAKE_OSX_ARCHITECTURES)

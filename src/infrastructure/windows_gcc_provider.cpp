@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/windows_gcc_provider.hpp"
+#include "metis/infrastructure/windows_gcc_provider.hpp"
 
 #include <fmt/format.h>
 
@@ -9,11 +9,11 @@
 #include <optional>
 #include <string>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/domain/ports/toolchain_provider.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/toolchain_provider.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 std::optional<std::string> parse_sha256_token(const std::string& raw) {
@@ -187,10 +187,10 @@ std::filesystem::path WindowsGccProvider::default_install_prefix() const {
   }
 
   if (home == nullptr) {
-    return std::filesystem::path("C:\\") / "sniffercommit" / "toolchains" /
+    return std::filesystem::path("C:\\") / "metis" / "toolchains" /
            fmt::format("mingw-{}", version_);
   }
-  return std::filesystem::path(home) / ".sniffercommit" / "toolchains" /
+  return std::filesystem::path(home) / ".metis" / "toolchains" /
          fmt::format("mingw-{}", version_);
 }
 
@@ -245,4 +245,4 @@ int WindowsGccProvider::parse_major_version() const {
   }
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

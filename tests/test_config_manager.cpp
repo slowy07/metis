@@ -5,19 +5,19 @@
 #include <fstream>
 #include <memory>
 
-#include "sniffercommit/application/checks/compiler_check.hpp"
-#include "sniffercommit/application/checks/shell_check.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/infrastructure/os_file_system.hpp"
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
-#include "sniffercommit/infrastructure/toml_config_repository.hpp"
+#include "metis/application/checks/compiler_check.hpp"
+#include "metis/application/checks/shell_check.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
+#include "metis/infrastructure/toml_config_repository.hpp"
 
-using namespace sniffercommit;
+using namespace metis;
 
 class FileSystemTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    test_dir = std::filesystem::temp_directory_path() / "sniffercommit_fs_test";
+    test_dir = std::filesystem::temp_directory_path() / "metis_fs_test";
     std::filesystem::create_directories(test_dir);
   }
 
@@ -76,9 +76,9 @@ TEST_F(FileSystemTest, RemoveDeletesFile) {
 
 // Generic check abstraction: full field set parses from TOML.
 TEST(ConfigCheckTest, ParsesAllCheckFields) {
-  auto cfg_dir = std::filesystem::temp_directory_path() / "sniffercommit_check_test";
+  auto cfg_dir = std::filesystem::temp_directory_path() / "metis_check_test";
   std::filesystem::create_directories(cfg_dir);
-  auto cfg_path = cfg_dir / ".sniffercommit.toml";
+  auto cfg_path = cfg_dir / ".metis.toml";
   infrastructure::OsFileSystem fs;
   ASSERT_TRUE(fs.write_file(cfg_path,
                             "[project]\n"

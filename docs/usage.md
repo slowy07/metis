@@ -1,16 +1,16 @@
 # Usage
 
-sniffercommit is a single static binary that runs your project's checks before
+metis is a single static binary that runs your project's checks before
 commit. It reads a TOML config, installs a `.git/hooks/pre-commit` script, and
 can also run checks directly.
 
 ## Quick start
 
 ```bash
-sniffercommit init --enable-clang-tidy   # writes .sniffercommit.toml, .clang-format, .clang-tidy
-sniffercommit install                    # writes .git/hooks/pre-commit
+metis init --enable-clang-tidy   # writes .metis.toml, .clang-format, .clang-tidy
+metis install                    # writes .git/hooks/pre-commit
 git add . && git commit                  # hook fires automatically
-sniffercommit run --all-files            # run checks ad-hoc, no commit
+metis run --all-files            # run checks ad-hoc, no commit
 ```
 
 Exit code `0` = all checks passed, non-zero = at least one failed.
@@ -19,17 +19,17 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 
 | Command | Action |
 |---|---|
-| `init` | Generate `.sniffercommit.toml` + tooling configs |
+| `init` | Generate `.metis.toml` + tooling configs |
 | `install` | Install `.git/hooks/pre-commit` (and CI workflows if enabled in config) |
 | `run` | Execute configured checks on files |
-| `generate-gha` | Write `.github/workflows/sniffercommit.yml` |
+| `generate-gha` | Write `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write `.gitlab-ci.yml` |
 | `install-compiler` | Download and install a C++ toolchain |
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `-h, --help` / `-v, --version` | Help / version |
 
-Global flag: `-c, --config <path>` (default `.sniffercommit.toml`).
+Global flag: `-c, --config <path>` (default `.metis.toml`).
 
 ## init
 
@@ -37,7 +37,7 @@ With no flags, `init` starts an interactive wizard. Any flag disables it
 (`--interactive`/`-i` forces it back on).
 
 ```bash
-sniffercommit init --style google --enable-clang-tidy
+metis init --style google --enable-clang-tidy
 ```
 
 | Flag | Values | Default |
@@ -66,10 +66,10 @@ sniffercommit init --style google --enable-clang-tidy
 | `--compiler-werror` / `--compiler-no-werror` | flag | on |
 | `--compiler-debug-and-release` | flag | off |
 
-What `init` creates: `.sniffercommit.toml` always; `.clang-format` always;
+What `init` creates: `.metis.toml` always; `.clang-format` always;
 `.clang-tidy` with `--enable-clang-tidy`; `CMakeLists.txt` + `src/main.cpp`
 with `--enable-cmake`; `conanfile.py` with `--enable-conan`.
-With `--enable-compiler-checks`, `.sniffercommit.toml` gains `[[checks]]`
+With `--enable-compiler-checks`, `.metis.toml` gains `[[checks]]`
 entries that syntax-check each file with your compiler (`g++ -std=c++20 -Wall
 -Wextra -Wpedantic [-Werror] -fsyntax-only ...`). `--compiler-debug-and-release`
 emits two checks (`-O0 -g -D_DEBUG` / `-O2 -DNDEBUG`) instead of one.
@@ -77,17 +77,17 @@ emits two checks (`-O0 -g -D_DEBUG` / `-O2 -DNDEBUG`) instead of one.
 ## run
 
 ```bash
-sniffercommit run                     # staged files (default)
-sniffercommit run --all-files         # all tracked files
-sniffercommit run src/a.cpp include/b.hpp  # explicit files
-sniffercommit run --dry-run --all-files    # list files, don't execute
-sniffercommit run --verbose --all-files    # echo each shell command
-sniffercommit run --format            # run clang-format -i in-place
+metis run                     # staged files (default)
+metis run --all-files         # all tracked files
+metis run src/a.cpp include/b.hpp  # explicit files
+metis run --dry-run --all-files    # list files, don't execute
+metis run --verbose --all-files    # echo each shell command
+metis run --format            # run clang-format -i in-place
 ```
 
 ## Config file
 
-`.sniffercommit.toml` drives every check:
+`.metis.toml` drives every check:
 
 ```toml
 [project]

@@ -4,13 +4,13 @@
 #include <functional>
 #include <string>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/infrastructure/windows_gcc_provider.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/infrastructure/windows_gcc_provider.hpp"
 
 namespace {
 
-using namespace sniffercommit;
+using namespace metis;
 
 // Real SHA-256 of winlibs-x86_64-posix-seh-gcc-14.2.0-llvm-19.1.1-mingw-w64ucrt-12.0.0-r2.zip.
 constexpr char kRealHash[] = "12fa72d2566e641c3bf0213a946d33d8bef2e0757af2fb3ed60a995e05d74606";

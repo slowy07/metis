@@ -11,30 +11,30 @@
 #include <utility>
 #include <vector>
 
-#include "sniffercommit/application/generate_workflow_use_case.hpp"
-#include "sniffercommit/application/init_use_case.hpp"
-#include "sniffercommit/application/install_toolchain_use_case.hpp"
-#include "sniffercommit/application/install_use_case.hpp"
-#include "sniffercommit/application/run_checks_use_case.hpp"
-#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
-#include "sniffercommit/application/test_checks_use_case.hpp"
-#include "sniffercommit/argparse.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/domain/ports/toolchain_provider.hpp"
-#include "sniffercommit/domain/workflow.hpp"
-#include "sniffercommit/infrastructure/cli_git_repository.hpp"
-#include "sniffercommit/infrastructure/os_file_system.hpp"
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
-#include "sniffercommit/infrastructure/toml_config_repository.hpp"
-#include "sniffercommit/infrastructure/toolchain_factory.hpp"
+#include "metis/application/generate_workflow_use_case.hpp"
+#include "metis/application/init_use_case.hpp"
+#include "metis/application/install_toolchain_use_case.hpp"
+#include "metis/application/install_use_case.hpp"
+#include "metis/application/run_checks_use_case.hpp"
+#include "metis/application/sanitizer_checks_use_case.hpp"
+#include "metis/application/test_checks_use_case.hpp"
+#include "metis/argparse.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/domain/ports/toolchain_provider.hpp"
+#include "metis/domain/workflow.hpp"
+#include "metis/infrastructure/cli_git_repository.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
+#include "metis/infrastructure/toml_config_repository.hpp"
+#include "metis/infrastructure/toolchain_factory.hpp"
 #ifdef _WIN32
-#include "sniffercommit/infrastructure/zip_archive_extractor.hpp"
+#include "metis/infrastructure/zip_archive_extractor.hpp"
 #endif  // _WIN32
-#include "sniffercommit/domain/ports/archive_extractor.hpp"
-#include "sniffercommit/infrastructure/curl_http_client.hpp"
-#include "sniffercommit/infrastructure/tar_archive_extractor.hpp"
-#include "sniffercommit/presentation/interactive_init.hpp"
+#include "metis/domain/ports/archive_extractor.hpp"
+#include "metis/infrastructure/curl_http_client.hpp"
+#include "metis/infrastructure/tar_archive_extractor.hpp"
+#include "metis/presentation/interactive_init.hpp"
 
 namespace {
 
@@ -44,7 +44,7 @@ namespace {
 // lazy: duplicated parsing — ArgParser could support pre-parse hooks,
 // but that's more code for a one-off need.
 std::string preparse_config_path(std::span<char*> args) {
-  std::string config_path = ".sniffercommit.toml";
+  std::string config_path = ".metis.toml";
   for (size_t i = 1; i + 1 < args.size(); ++i) {
     std::string_view arg = args[i];
     if ((arg == "-c" || arg == "--config") && i + 1 < args.size()) {
@@ -60,7 +60,7 @@ std::string preparse_config_path(std::span<char*> args) {
 // This is a second parser that runs after ArgParser identifies the subcommand.
 // The two parsers could be unified, but ArgParser's add_option template
 // doesn't support all the init flags cleanly.
-bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOptions& opts) {
+bool parse_init_flags(std::span<char*> args, metis::application::InitOptions& opts) {
   auto to_lower = [](std::string s) {
     for (char& c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     return s;
@@ -137,16 +137,16 @@ bool parse_init_flags(std::span<char*> args, sniffercommit::application::InitOpt
 }  // namespace
 
 int main(int argc, char** argv) {
-  using namespace sniffercommit;
+  using namespace metis;
 
   auto argc_sz = static_cast<size_t>(argc);
   std::span<char*> args(argv, argc_sz);
   std::string config_path = preparse_config_path(args);
 
-  ArgParser app("sniffercommit", "Fast C++20-powered pre-commit & CI generator");
+  ArgParser app("metis", "Fast C++20-powered pre-commit & CI generator");
   app.set_version("0.4.0")
       .add_option("-c", "--config", "Config file path", config_path)
-      .add_subcommand("init", "Create default .sniffercommit.toml")
+      .add_subcommand("init", "Create default .metis.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
@@ -253,7 +253,7 @@ int main(int argc, char** argv) {
         return static_cast<int>(domain::ExitCode::WORKFLOW_GENERATION_ERROR);
       }
       std::cout << "[INFO] GitHub Actions workflow generated at "
-                << (repo_root / ".github" / "workflows" / "sniffercommit.yml").string() << "\n";
+                << (repo_root / ".github" / "workflows" / "metis.yml").string() << "\n";
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 

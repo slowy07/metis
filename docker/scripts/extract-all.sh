@@ -20,7 +20,7 @@ extract() {
   echo
 }
 
-extract sniffercommit-ubuntu /artifacts
-extract sniffercommit-fedora /artifacts
-extract sniffercommit-archlinux /home/builder/artifacts
-extract sniffercommit-alpine /artifacts
+extract metis-ubuntu /artifacts
+extract metis-fedora /artifacts
+extract metis-archlinux /home/builder/artifacts
+extract metis-alpine /artifacts

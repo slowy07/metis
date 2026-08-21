@@ -5,14 +5,14 @@
 #include <fstream>
 #include <memory>
 
-#include "sniffercommit/application/run_checks_use_case.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/infrastructure/cli_git_repository.hpp"
-#include "sniffercommit/infrastructure/os_file_system.hpp"
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
+#include "metis/application/run_checks_use_case.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/infrastructure/cli_git_repository.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
 
-using namespace sniffercommit;
+using namespace metis;
 
 class FormatModeTest : public ::testing::Test {
  protected:
@@ -22,7 +22,7 @@ class FormatModeTest : public ::testing::Test {
 
   void SetUp() override {
     orig_cwd_ = std::filesystem::current_path();
-    temp_dir_ = std::filesystem::temp_directory_path() / "sniffercommit_test_format";
+    temp_dir_ = std::filesystem::temp_directory_path() / "metis_test_format";
     repo_root_ = temp_dir_ / "repo";
     std::filesystem::create_directories(repo_root_);
     std::filesystem::create_directories(repo_root_ / ".git");

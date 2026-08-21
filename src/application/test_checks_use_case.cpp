@@ -1,4 +1,4 @@
-#include "sniffercommit/application/test_checks_use_case.hpp"
+#include "metis/application/test_checks_use_case.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -9,10 +9,10 @@
 #include <string>
 
 #include "fmt/format.h"
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 TestChecksUseCase::TestChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                      std::unique_ptr<domain::ports::IFileSystem> fs)
     : shell_(std::move(shell)), fs_(std::move(fs)) {}
@@ -192,4 +192,4 @@ void TestChecksUseCase::parse_coverage_xml(const std::string& xml_content, doubl
   }
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

@@ -3,14 +3,14 @@
 #include <filesystem>
 #include <string>
 
-#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/application/sanitizer_checks_use_case.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
 namespace {
 
-using namespace sniffercommit;
+using namespace metis;
 
 struct MockShell : domain::ports::IShellExecutor {
   std::string exec(const std::string&) override { return {}; }

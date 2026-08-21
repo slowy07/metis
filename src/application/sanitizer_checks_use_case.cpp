@@ -1,4 +1,4 @@
-#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
+#include "metis/application/sanitizer_checks_use_case.hpp"
 
 #include <fmt/format.h>
 
@@ -7,11 +7,11 @@
 #include <string>
 #include <utility>
 
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 SanitizerChecksUseCase::SanitizerChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                                std::unique_ptr<domain::ports::IFileSystem> fs)
     : shell_(std::move(shell)), fs_(std::move(fs)) {}
@@ -128,4 +128,4 @@ bool SanitizerChecksUseCase::run_sanitizer_tests(const std::filesystem::path& bu
   return result.exit_code_ == 0;
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

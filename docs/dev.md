@@ -3,18 +3,18 @@
 ## Build
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Debug -DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DMETIS_ENABLE_SANITIZERS=ON
 cmake --build build --parallel
 ```
 
-Binary lands at `build/bin/sniffercommit`; tests at `build/bin/sniffercommit_tests`.
+Binary lands at `build/bin/metis`; tests at `build/bin/metis_tests`.
 
 | Option | Default | Purpose |
 |---|---|---|
-| `SNIFFERCOMMIT_BUILD_TESTS` | `ON` | Build GoogleTest suite |
-| `SNIFFERCOMMIT_ENABLE_SANITIZERS` | `OFF` | ASan + UBSan (Debug only) |
-| `SNIFFERCOMMIT_USE_SYSTEM_FMT` | `OFF` | Use system fmt instead of FetchContent |
-| `SNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system tomlplusplus instead of FetchContent |
+| `METIS_BUILD_TESTS` | `ON` | Build GoogleTest suite |
+| `METIS_ENABLE_SANITIZERS` | `OFF` | ASan + UBSan (Debug only) |
+| `METIS_USE_SYSTEM_FMT` | `OFF` | Use system fmt instead of FetchContent |
+| `METIS_USE_SYSTEM_TOMLPLUSPLUS` | `OFF` | Use system tomlplusplus instead of FetchContent |
 
 ## Tests
 
@@ -30,8 +30,8 @@ naming, temp dirs in fixtures for git/fs-dependent tests.
 The project lints itself: `install.sh`-installed or built binary:
 
 ```bash
-build/bin/sniffercommit init --style google --enable-clang-tidy
-build/bin/sniffercommit install
+build/bin/metis init --style google --enable-clang-tidy
+build/bin/metis install
 ```
 
 The pre-commit hook runs clang-format, clang-tidy, and trailing-whitespace.
@@ -49,7 +49,7 @@ src/
   generators/                 clang-format / clang-tidy / cmake / conan templates
   infrastructure/             concrete adapters: toml, shell, fs, git, curl, tar, toolchain providers
   presentation/               interactive init wizard, output helpers
-include/sniffercommit/        public headers, mirrored under src/
+include/metis/        public headers, mirrored under src/
 ```
 
 Data flow: `main.cpp` parses args → builds adapters → injects into a use case
@@ -78,7 +78,7 @@ To add a new specialized check type:
 3. Override `validate(repo_root)` if the tool needs a config file or other
    precondition (see `ClangTidyCheck` for the pattern).
 4. Register the command basename in `make_check`.
-5. Add the new files to the `sniffercommit_lib` sources in `CMakeLists.txt`.
+5. Add the new files to the `metis_lib` sources in `CMakeLists.txt`.
 
 ```cpp
 class MyToolCheck final : public domain::check::Check {

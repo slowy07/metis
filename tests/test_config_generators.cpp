@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/config.hpp"
+#include "metis/domain/config.hpp"
 
-using namespace sniffercommit::domain::config;
+using namespace metis::domain::config;
 
 TEST(ConfigGeneratorTest, DefaultConfigContainsProjectName) {
   auto result = generate_default_config("my-proj");
