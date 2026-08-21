@@ -14,8 +14,8 @@
 
 namespace metis::application {
 TestChecksUseCase::TestChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                                     std::unique_ptr<domain::ports::IFileSystem> fs)
-    : shell_(std::move(shell)), fs_(std::move(fs)) {}
+                                     std::unique_ptr<domain::ports::IFileSystem> file_system)
+    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 TestResult TestChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
                                       const std::filesystem::path& repo_root, bool coverage,
@@ -24,7 +24,7 @@ TestResult TestChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
 
   auto build_dir = repo_root / cfg.test.build_dir;
 
-  if (!fs_->exists(build_dir)) {
+  if (!file_system_->exists(build_dir)) {
     result.output = fmt::format(
         "[ERROR] Build Directory does not exists: {}\n"
         "Run `cmake -B {} -S . && cmake --build {}` first\n",

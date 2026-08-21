@@ -64,13 +64,19 @@ metis/
 │       │   ├── test_checks_use_case.hpp     # TestChecksUseCase (test subcommand)
 │       │   ├── sanitizer_checks_use_case.hpp # SanitizerChecksUseCase (sanitizer subcommand)
 │       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
+│       │   ├── dependency_check_use_case.hpp  # DependencyCheckUseCase
+│       │   ├── dependency.hpp                 # Dependency, DependencyCheckResult
 │       │   └── checks/                      # concrete Check implementations
 │       │       ├── shell_check.hpp          # ShellCheck (custom commands)
 │       │       ├── clang_format_check.hpp   # ClangFormatCheck
 │       │       ├── clang_tidy_check.hpp     # ClangTidyCheck
 │       │       ├── compiler_check.hpp       # CompilerCheck
 │       │       ├── build_check.hpp          # BuildCheck
-│       │       └── git_diff_check.hpp       # GitDiffCheck
+│       │       ├── git_diff_check.hpp       # GitDiffCheck
+│       │       ├── cppcheck_check.hpp       # CppcheckCheck
+│       │       ├── gcc_analyzer_check.hpp   # GccAnalyzerCheck
+│       │       ├── clang_static_analyzer_check.hpp # ClangStaticAnalyzerCheck
+│       │       └── iwyu_check.hpp           # IwyuCheck
 │       ├── generators/
 │       │   ├── clang_format_generator.hpp   # .clang-format content generation
 │       │   ├── clang_tidy_generator.hpp     # .clang-tidy content generation
@@ -107,6 +113,7 @@ metis/
 │   │   ├── run_checks_use_case.cpp
 │   │   ├── test_checks_use_case.cpp
 │   │   ├── sanitizer_checks_use_case.cpp
+│   │   ├── dependency_check_use_case.cpp
 │   │   ├── generate_workflow_use_case.cpp
 │   │   └── checks/
 │   │       ├── shell_check.cpp
@@ -114,7 +121,11 @@ metis/
 │   │       ├── clang_tidy_check.cpp
 │   │       ├── compiler_check.cpp
 │   │       ├── build_check.cpp
-│   │       └── git_diff_check.cpp
+│   │       ├── git_diff_check.cpp
+│   │       ├── cppcheck_check.cpp
+│   │       ├── gcc_analyzer_check.cpp
+│   │       ├── clang_static_analyzer_check.cpp
+│   │       └── iwyu_check.cpp
 │   ├── generators/
 │   │   ├── clang_format_generator.cpp
 │   │   ├── clang_tidy_generator.cpp
@@ -152,6 +163,7 @@ metis follows a **hexagonal architecture** (ports & adapters) with clear layer s
 │                  application/                        │
 │   InitUseCase · InstallUseCase · RunChecksUseCase   │
 │   TestChecksUseCase · SanitizerChecksUseCase        │
+│   DependencyCheckUseCase                            │
 │    GenerateWorkflowUseCase · InstallToolchainUseCase │
 ├─────────────────────────────────────────────────────┤
 │                   domain/                            │
@@ -198,6 +210,7 @@ metis
 │                         IToolchainProvider, IHttpClient, IArchiveExtractor
 ├── application        : InitUseCase, InstallUseCase, RunChecksUseCase,
 │                         TestChecksUseCase, SanitizerChecksUseCase,
+│                         DependencyCheckUseCase,
 │                         GenerateWorkflowUseCase, InstallToolchainUseCase
 ├── application::checks: ShellCheck, ClangFormatCheck, ClangTidyCheck, CompilerCheck,
 │                         BuildCheck, GitDiffCheck
@@ -360,6 +373,19 @@ gitlab_ci = false
 
 [execution]
 parallel = true
+
+[test]
+build_dir = "build"
+coverage = false
+line_threshold = 80.0
+branch_threshold = 70.0
+function_threshold = 90.0
+
+[sanitizers]
+enabled = false
+types = ["address", "undefined"]
+build_dir = "build"
+timeout = 0
 ```
 
 ### Sections
@@ -380,6 +406,15 @@ parallel = true
 | `[output]` | `github_actions` | bool | `false` | Generate `.github/workflows/metis.yml` during `install` |
 | `[output]` | `gitlab_ci` | bool | `false` | Generate `.gitlab-ci.yml` during `install` |
 | `[execution]` | `parallel` | bool | `true` | Run checks concurrently (Bash background jobs) |
+| `[test]` | `build_dir` | string | `"build"` | CMake build directory for ctest |
+| `[test]` | `coverage` | bool | `false` | Run coverage reporting |
+| `[test]` | `line_threshold` | float | `80.0` | Minimum line coverage % |
+| `[test]` | `branch_threshold` | float | `70.0` | Minimum branch coverage % |
+| `[test]` | `function_threshold` | float | `90.0` | Minimum function coverage % |
+| `[sanitizers]` | `enabled` | bool | `false` | Enable sanitizer checks |
+| `[sanitizers]` | `types` | string[] | `["address", "undefined"]` | Sanitizer types to enable |
+| `[sanitizers]` | `build_dir` | string | `"build"` | Build directory for sanitizer builds |
+| `[sanitizers]` | `timeout` | int | `0` | Max seconds per sanitizer test (`0` = no limit) |
 
 ### Pattern Matching
 
@@ -431,6 +466,7 @@ Core Workflow:
   install-compiler Download and install a C++ toolchain
   test            Run test and optional coverage checks
   sanitizer       Run sanitizer checks (ASan, UBSan, TSan, LSan)
+  deps            Check project dependencies (Conan, vcpkg, CMake FetchContent)
 
 Subcommands:
   init
@@ -891,6 +927,10 @@ unknown commands fall back to `ShellCheck`.
 | `gcc`, `g++`, `clang`, `clang++`, `cc`, `c++` (incl. versioned) | `CompilerCheck` | Per-file syntax compile; forces `-fsyntax-only` unless a mode flag is set |
 | `cmake` | `BuildCheck` | Runs once, no file args (e.g. `cmake --build`) |
 | `git` | `GitDiffCheck` | Runs once against the working tree (e.g. `git diff --check`) |
+| `cppcheck` | `CppcheckCheck` | Static analysis via cppcheck; batches all files |
+| `gcc-analyzer` | `GccAnalyzerCheck` | GCC static analyzer (`-fanalyzer`); per-file |
+| `clang-static-analyzer` | `ClangStaticAnalyzerCheck` | Clang static analyzer; per-file |
+| `include-what-you-use`, `iwyu` | `IwyuCheck` | Include-what-you-use analysis; per-file |
 | anything else | `ShellCheck` | Custom shell command; inverts `grep`/`rg` exit codes; batches multi-file tools |
 
 Runner flow: `make_check(config)` → `validate()` (build time) → `execute()`
@@ -950,6 +990,30 @@ Downloads and installs a GCC toolchain. Flow:
 4. Extract via `IArchiveExtractor` (if downloaded)
 5. Install via `IToolchainProvider::install()`
 6. Verify compiler is in PATH after installation
+
+#### dependency_check_use_case.hpp
+
+**File:** `include/metis/application/dependency_check_use_case.hpp`
+
+```cpp
+struct DependencyCheckOptions {
+  bool verbose = false;
+  bool generate_graph = false;
+  std::string graph_output_path = "dependencies.dot";
+};
+
+class DependencyCheckUseCase {
+  DependencyCheckUseCase(std::unique_ptr<IShellExecutor>,
+                         std::unique_ptr<IFileSystem>);
+  [[nodiscard]] DependencyCheckResult execute(
+      const std::filesystem::path& repo_root,
+      const DependencyCheckOptions& opts);
+};
+```
+
+Parses Conan (`conanfile.py`), vcpkg (`vcpkg.json`), and CMake FetchContent
+(`CMakeLists.txt`) dependencies. Validates semver, detects duplicates across
+sources, and checks for missing lockfiles.
 
 ### Infrastructure Layer
 
@@ -1032,6 +1096,10 @@ main()
 │   ├── Wire TomlConfigRepository + OsFileSystem + ProcessShellExecutor
 │   ├── Load config
 │   └── SanitizerChecksUseCase(shell, fs).execute(cfg, repo_root, verbose)
+├── subcommand == "deps"
+│   ├── Wire TomlConfigRepository + OsFileSystem + ProcessShellExecutor
+│   ├── Load config
+│   └── DependencyCheckUseCase(shell, fs).execute(repo_root, opts)
 └── fallback
     └── show_help()
 ```
@@ -1169,12 +1237,15 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 | Test File | What it verifies |
 |-----------|-----------------|
 | `test_binary_runtime.cpp` | Binary version output and basic invocation |
+| `test_config_generators.cpp` | Config generator functions and ProjectConfig validation |
 | `test_config_manager.cpp` | TOML config loading and validation |
+| `test_dependency_checks.cpp` | Dependency check use case (Conan, CMake parsing, duplicates, lockfiles) |
 | `test_format_mode.cpp` | Format mode execution |
 | `test_glob_match.cpp` | Glob pattern matching |
 | `test_precommit_domain.cpp` | Pre-commit hook domain logic |
 | `test_sanitizer_checks.cpp` | Sanitizer checks use case (empty types, unknown type, missing build dir) |
 | `test_sha256_verification.cpp` | SHA-256 checksum verification for Windows installer |
+| `test_test_checks_use_case.cpp` | Test checks use case (missing build dir) |
 | `test_toolchain_install.cpp` | Toolchain installation flow |
 | `test_tooling_config.cpp` | Tooling configuration generation |
 

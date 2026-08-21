@@ -37,7 +37,7 @@ class RunChecksUseCase {
  public:
   RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
-                   std::unique_ptr<domain::ports::IFileSystem> fs);
+                   std::unique_ptr<domain::ports::IFileSystem> file_system);
 
   [[nodiscard]] int execute(const domain::config::ProjectConfig& cfg, const RunOptions& opts);
 
@@ -53,7 +53,7 @@ class RunChecksUseCase {
 
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
   std::unique_ptr<domain::ports::IGitRepository> git_repo_;
-  std::unique_ptr<domain::ports::IFileSystem> fs_;
+  std::unique_ptr<domain::ports::IFileSystem> file_system_;
 };
 
 }  // namespace metis::application

@@ -124,6 +124,7 @@ set(METIS_SOURCES
   src/application/run_checks_use_case.cpp
   src/application/generate_workflow_use_case.cpp
   src/application/install_toolchain_use_case.cpp
+  src/application/dependency_check_use_case.cpp
   src/application/checks/shell_check.cpp
   src/application/checks/clang_format_check.cpp
   src/application/checks/clang_tidy_check.cpp

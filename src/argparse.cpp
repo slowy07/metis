@@ -338,6 +338,20 @@ void ArgParser::show_help() const {
   std::cout << "        metis sanitizer\n";
   std::cout << "        metis sanitizer --verbose\n\n";
 
+  std::cout << "  deps\n";
+
+  std::cout << "      Validate project dependencies (conan, vcpkg, cmake).\n\n";
+
+  std::cout << "      Options:\n";
+
+  std::cout << "        --verbose, -V\n\n";
+  std::cout << "        --graph, -g    Generate Dependencies\n\n";
+
+  std::cout << "      Usage:\n";
+
+  std::cout << "        metis deps\n";
+  std::cout << "        metis deps --graph\n\n";
+
   print_section_title("Global Options");
 
   for (const auto& opt : options_) {

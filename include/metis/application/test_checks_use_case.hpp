@@ -23,18 +23,18 @@ struct TestResult {
 class TestChecksUseCase {
  public:
   TestChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
-                    std::unique_ptr<domain::ports::IFileSystem> fs);
+                    std::unique_ptr<domain::ports::IFileSystem> file_system);
   TestResult execute(const domain::config::ProjectConfig& cfg,
                      const std::filesystem::path& repo_root, bool coverage, bool verbose);
 
  private:
   TestResult run_ctest(const std::filesystem::path& build_dir, bool verbose, int timeout);
   TestResult run_coverage(const std::filesystem::path& build_dir, bool verbose);
-  void parse_coverage_xml(const std::string& xml_content, double& line_coverage,
-                          double& branch_coverage, double& function_coverage);
+  static void parse_coverage_xml(const std::string& xml_content, double& line_coverage,
+                                 double& branch_coverage, double& function_coverage);
 
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
-  std::unique_ptr<domain::ports::IFileSystem> fs_;
+  std::unique_ptr<domain::ports::IFileSystem> file_system_;
 };
 
 }  // namespace metis::application
