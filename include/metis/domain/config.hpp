@@ -54,6 +54,16 @@ struct ProjectConfig {
   };
   SanitizerConfig sanitizer;
 
+  struct PerfConfig {
+    bool enabled = false;
+    std::string build_dir = "build";
+    std::string binary_path = "";
+    std::size_t max_binary_size_mb = 0;
+    std::size_t max_build_time_sec = 0;
+    std::string benchmark_regex = "";
+  };
+  PerfConfig perf;
+
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept { return validate().empty(); }
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;
@@ -73,6 +83,10 @@ struct ProjectConfig {
     const std::string& compiler = "g++", const std::string& cpp_standard = "20",
     const std::vector<std::string>& warnings = {"Wall", "Wextra", "Wpedantic"}, bool werror = true,
     bool debug_and_release = false);
+[[nodiscard]] std::string generate_perf_config(const std::string& build_dir = "build",
+                                               std::size_t max_binary_size_mb = 0,
+                                               std::size_t max_build_time_sec = 0,
+                                               const std::string& benchmark_regex = "");
 [[nodiscard]] std::string generate_sanitizer_config(
     const std::vector<std::string>& types = {"address", "undefined"},
     const std::string& build_dir = "build", int timeout = 0);

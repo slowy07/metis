@@ -26,6 +26,14 @@ patterns = ["*"]
 [exclude]
 paths = ["build/", "third_party/", ".git/"]
 
+[perf]
+enabled = true
+build_dir = "build"
+binary_path = "build/bin/metis"
+max_binary_size_mb = 10
+max_build_time_sec = 60
+benchmark_regex = "benchmark"
+
 [output]
 local_hook = true
 github_actions = false

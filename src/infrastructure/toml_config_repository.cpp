@@ -143,6 +143,17 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
     cfg.generate_gitlab_ci = false;
   }
 
+  if (auto* perf_tbl = as_table_safe(safe_get(tbl, "perf"))) {
+    cfg.perf.enabled = get_bool_safe(*perf_tbl, "enabled", false);
+    cfg.perf.build_dir = get_string_safe(*perf_tbl, "build_dir", "build");
+    cfg.perf.binary_path = get_string_safe(*perf_tbl, "binary_path", "");
+    cfg.perf.max_binary_size_mb =
+        static_cast<std::size_t>(get_int_safe(*perf_tbl, "max_binary_size_mb", 0));
+    cfg.perf.max_build_time_sec =
+        static_cast<std::size_t>(get_int_safe(*perf_tbl, "max_build_time_sec", 0));
+    cfg.perf.benchmark_regex = get_string_safe(*perf_tbl, "benchmark_regex", "");
+  }
+
   if (auto* exec = as_table_safe(safe_get(tbl, "execution"))) {
     cfg.parallel = get_bool_safe(*exec, "parallel", true);
   } else {

@@ -290,4 +290,24 @@ severity = "warning"
 )CONFIG";
 }
 
+std::string generate_perf_config(const std::string& build_dir, std::size_t max_binary_size_mb,
+                                 std::size_t max_build_time_sec,
+                                 const std::string& benchmark_regex) {
+  std::string result = R"([perf]
+enabled = true
+build_dir = ")" + build_dir +
+                       "\"\n";
+
+  if (max_binary_size_mb > 0) {
+    result += "max_binary_size_mb = " + std::to_string(max_binary_size_mb) + "\n";
+  }
+  if (max_build_time_sec > 0) {
+    result += "max_build_time_sec = " + std::to_string(max_build_time_sec) + "\n";
+  }
+  if (!benchmark_regex.empty()) {
+    result += "benchmark_regex = \"" + benchmark_regex + "\"\n";
+  }
+  return result;
+}
+
 }  // namespace metis::domain::config

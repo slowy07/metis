@@ -125,6 +125,7 @@ set(METIS_SOURCES
   src/application/generate_workflow_use_case.cpp
   src/application/install_toolchain_use_case.cpp
   src/application/dependency_check_use_case.cpp
+  src/application/perf_checks_use_case.cpp
   src/application/checks/shell_check.cpp
   src/application/checks/clang_format_check.cpp
   src/application/checks/clang_tidy_check.cpp
@@ -178,6 +179,7 @@ set(METIS_HEADERS
   include/metis/application/run_checks_use_case.hpp
   include/metis/application/generate_workflow_use_case.hpp
   include/metis/application/install_toolchain_use_case.hpp
+  include/metis/application/perf_checks_use_case.hpp
   include/metis/application/checks/shell_check.hpp
   include/metis/application/checks/clang_format_check.hpp
   include/metis/application/checks/clang_tidy_check.hpp

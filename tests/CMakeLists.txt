@@ -23,6 +23,7 @@ set(TEST_SOURCES
   test_dependency_checks.cpp
   test_format_mode.cpp
   test_glob_match.cpp
+  test_perf_checks.cpp
   test_precommit_domain.cpp
   test_sanitizer_checks.cpp
   test_security_checks.cpp

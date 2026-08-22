@@ -16,6 +16,7 @@
 #include "metis/application/init_use_case.hpp"
 #include "metis/application/install_toolchain_use_case.hpp"
 #include "metis/application/install_use_case.hpp"
+#include "metis/application/perf_checks_use_case.hpp"
 #include "metis/application/run_checks_use_case.hpp"
 #include "metis/application/sanitizer_checks_use_case.hpp"
 #include "metis/application/test_checks_use_case.hpp"
@@ -157,7 +158,8 @@ int main(int argc, char** argv) {
       .add_subcommand("install-compiler", "Download and install a C++ toolchain")
       .add_subcommand("sanitizer", "Run sanitizer checks (ASan, UBSan, TSan, LSan)")
       .add_subcommand("test", "Run test and optional coverage checks")
-      .add_subcommand("deps", "Validate project dependencies (conan, vcpkg, cmake)");
+      .add_subcommand("deps", "Validate project dependencies (conan, vcpkg, cmake)")
+      .add_subcommand("perf", "Run perfomance checks (build time, binary size, benchmarks)");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -344,6 +346,33 @@ int main(int argc, char** argv) {
       }
 
       return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
+    if (subcmd == "perf") {
+      bool verbose = false;
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+        if (arg == "perf") {
+          continue;
+        }
+
+        if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        }
+
+        auto perf_use_case = application::PerfChecksUseCase(std::move(shell), std::move(fs));
+        auto result = perf_use_case.execute(cfg, repo_root, verbose);
+
+        if (!result.output.empty()) {
+          std::cout << result.output;
+        }
+
+        if (!result.success) {
+          return static_cast<int>(domain::ExitCode::PERF_CHECK_FAILURE);
+        }
+
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
     }
 
     if (subcmd == "run") {

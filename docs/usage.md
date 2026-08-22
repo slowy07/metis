@@ -28,6 +28,7 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
+| `perf` | Run performance checks (build time, binary size, benchmarks) |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.metis.toml`).
@@ -144,6 +145,25 @@ fails if any metric falls below.
 `[sanitizers]`: `types` accepts `address`, `undefined`, `thread`, `leak`.
 `build_dir` is where the sanitizer build is created. `timeout` is max seconds
 per test (`0` = no limit).
+
+# Perf config
+
+```toml
+[perf]
+enabled = false
+build_dir = "build"
+binary_path = ""
+max_binary_size_mb = 0
+max_build_time_sec = 0
+benchmark_regex = ""
+```
+
+`[perf]`: each check activates only when its threshold/target is set.
+`max_build_time_sec > 0` re-builds `build_dir` with `--clean-first` and fails
+if the measured wall time exceeds it. `binary_path` + `max_binary_size_mb > 0`
+fails if the binary exceeds the size. `benchmark_regex` runs
+`ctest --test-dir <build_dir> -R "<regex>" --output-on-failure`. Exit codes:
+`21` binary too large, `22` build too slow, `20` other perf failure.
 
 ## Check types
 
