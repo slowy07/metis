@@ -25,6 +25,7 @@ set(TEST_SOURCES
   test_glob_match.cpp
   test_precommit_domain.cpp
   test_sanitizer_checks.cpp
+  test_security_checks.cpp
   test_sha256_verification.cpp
   test_test_checks_use_case.cpp
   test_toolchain_install.cpp

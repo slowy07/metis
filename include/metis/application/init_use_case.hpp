@@ -40,6 +40,7 @@ struct InitOptions {
   std::vector<std::string> compiler_warnings = {"Wall", "Wextra", "Wpedantic"};
   bool compiler_werror = true;
   bool compiler_debug_and_release = false;
+  bool enable_security_checks = false;
 };
 
 /**

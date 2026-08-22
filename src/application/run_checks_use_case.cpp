@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <future>
@@ -19,9 +20,11 @@
 #include "metis/application/checks/clang_tidy_check.hpp"
 #include "metis/application/checks/compiler_check.hpp"
 #include "metis/application/checks/cppcheck_check.hpp"
+#include "metis/application/checks/dependency_security_check.hpp"
 #include "metis/application/checks/gcc_analyzer_check.hpp"
 #include "metis/application/checks/git_diff_check.hpp"
 #include "metis/application/checks/iwyu_check.hpp"
+#include "metis/application/checks/security_check.hpp"
 #include "metis/application/checks/shell_check.hpp"
 #include "metis/domain/check.hpp"
 #include "metis/domain/error_codes.hpp"
@@ -80,6 +83,12 @@ std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
   }
   if (basename == "gcc-analyzer") {
     return std::make_unique<checks::GCCAnalyzerCheck>(config);
+  }
+  if (basename == "metis-security") {
+    return std::make_unique<checks::SecurityCheck>(config);
+  }
+  if (basename == "metis-dep-security") {
+    return std::make_unique<checks::DependencySecurityCheck>(config);
   }
   return std::make_unique<checks::ShellCheck>(config);
 }
@@ -506,9 +515,8 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
 
   if (exit_code == 0) {
     if (formatted_count > 0) {
-      printer.print_verbose(
-          fmt::format("[metis] [INFO] Formatted {} file(s), {} already clean.\n",
-                      formatted_count, clean_count));
+      printer.print_verbose(fmt::format("[metis] [INFO] Formatted {} file(s), {} already clean.\n",
+                                        formatted_count, clean_count));
       printer.print_verbose("[metis] [INFO] Stage changes with: git add -u\n");
     }
   } else {

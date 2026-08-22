@@ -130,6 +130,8 @@ bool parse_init_flags(std::span<char*> args, metis::application::InitOptions& op
       opts.compiler_werror = false;
     } else if (arg == "--compiler-debug-and-release") {
       opts.compiler_debug_and_release = true;
+    } else if (arg == "--enable-security-checks" || arg == "--security-checks") {
+      opts.enable_security_checks = true;
     }
   }
   return true;

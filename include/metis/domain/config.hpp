@@ -76,6 +76,7 @@ struct ProjectConfig {
 [[nodiscard]] std::string generate_sanitizer_config(
     const std::vector<std::string>& types = {"address", "undefined"},
     const std::string& build_dir = "build", int timeout = 0);
+[[nodiscard]] std::string generate_security_checks_config();
 
 }  // namespace metis::domain::config
 

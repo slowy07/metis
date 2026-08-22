@@ -65,6 +65,10 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
         opts.compiler_debug_and_release);
   }
 
+  if (opts.enable_security_checks) {
+    config_content += domain::config::generate_security_checks_config();
+  }
+
   if (!file_system_->write_file(config_path, config_content)) {
     result.error_message = "Failed to create " + config_path.string();
     return result;

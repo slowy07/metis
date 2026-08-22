@@ -136,6 +136,8 @@ set(METIS_SOURCES
   src/application/checks/iwyu_check.cpp
   src/application/checks/clang_static_analyzer_check.cpp
   src/application/checks/gcc_analyzer_check.cpp
+  src/application/checks/security_check.cpp
+  src/application/checks/dependency_security_check.cpp
   src/infrastructure/toml_config_repository.cpp
   src/infrastructure/process_shell_executor.cpp
   src/infrastructure/os_file_system.cpp
@@ -189,6 +191,8 @@ set(METIS_HEADERS
   include/metis/application/checks/iwyu_check.hpp
   include/metis/application/checks/clang_static_analyzer_check.hpp
   include/metis/application/checks/gcc_analyzer_check.hpp
+  include/metis/application/checks/security_check.hpp
+  include/metis/application/checks/dependency_security_check.hpp
   include/metis/infrastructure/toml_config_repository.hpp
   include/metis/infrastructure/process_shell_executor.hpp
   include/metis/infrastructure/os_file_system.hpp

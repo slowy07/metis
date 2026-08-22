@@ -266,4 +266,28 @@ timeout = {}
       types_str, build_dir, timeout);
 }
 
+std::string generate_security_checks_config() {
+  return R"CONFIG(
+[[checks]]
+name = "security-scan"
+description = "Source security scan (dangerous functions, secrets, syscalls)"
+enabled = true
+command = "metis-security"
+args = []
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc", "*.c"]
+timeout = 0
+severity = "error"
+
+[[checks]]
+name = "dependency-security"
+description = "Dependency CVE scan and SBOM generation"
+enabled = true
+command = "metis-dep-security"
+args = []
+patterns = ["*"]
+timeout = 300
+severity = "warning"
+)CONFIG";
+}
+
 }  // namespace metis::domain::config
