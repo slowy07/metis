@@ -130,10 +130,12 @@ void parse_exclude(toml::table& tbl, domain::config::ProjectConfig& cfg) {
 
 // [output]: hook/CI generation toggles with local-hook-by-default.
 void parse_output(toml::table& tbl, domain::config::ProjectConfig& cfg) {
-  auto* output = as_table_safe(safe_get(tbl, "output"));
-  cfg.generate_local_hook = output != nullptr && get_bool_safe(*output, "local_hook", true);
-  cfg.generate_gha = output != nullptr && get_bool_safe(*output, "github_actions", false);
-  cfg.generate_gitlab_ci = output != nullptr && get_bool_safe(*output, "gitlab_ci", false);
+  // Struct defaults already match the absent-section case (local hook only).
+  if (auto* output = as_table_safe(safe_get(tbl, "output"))) {
+    cfg.generate_local_hook = get_bool_safe(*output, "local_hook", true);
+    cfg.generate_gha = get_bool_safe(*output, "github_actions", false);
+    cfg.generate_gitlab_ci = get_bool_safe(*output, "gitlab_ci", false);
+  }
 }
 
 // [perf]: performance budgets.

@@ -29,6 +29,9 @@ TEST(ClangFormatTest, GeneratesValidYaml) {
   EXPECT_NE(content.find("BasedOnStyle: Google"), std::string::npos);
   EXPECT_NE(content.find("IndentWidth: 2"), std::string::npos);
   EXPECT_NE(content.find("ColumnLimit: 100"), std::string::npos);
+  // "Latest" parses on every clang-format version; pinned values like Cpp20
+  // break older parsers (unknown enumerated scalar).
+  EXPECT_NE(content.find("Standard: Latest"), std::string::npos);
 }
 
 TEST(ClangFormatTest, InvalidConfigThrows) {
