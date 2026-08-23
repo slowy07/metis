@@ -74,6 +74,15 @@ class ArgParser {
   static void print_aligned(std::string_view left, std::string_view right);
   static void print_section_title(std::string_view title);
 
+  // Handles --help/-h and --version/-v; returns true if one was handled.
+  bool check_early_exit();
+  // Matches args_[1] against registered subcommands; returns true when one
+  // matched (parsing stops) or an unknown non-flag arg was rejected (error).
+  bool try_subcommand();
+  // Resolves args_[i] to a known option and applies it; advances i past any
+  // consumed value. Returns false on unknown option or missing value.
+  bool apply_option(size_t& i);
+
   std::string_view app_name_;
   std::string_view description_;
   std::string version_;

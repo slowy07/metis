@@ -42,6 +42,13 @@ using domain::ExitCode;
 // Column width for dotted alignment in check result output
 constexpr size_t k_result_col = 68;
 
+// Pairs a concrete check with its matched files.
+struct WorkItem {
+  std::unique_ptr<domain::Check> check;
+  std::vector<std::string> matched_files;
+  std::string config_error;
+};
+
 // Maps a config check to its concrete implementation by command basename.
 // Heuristic-based dispatch: clang-format/clang-tidy/compilers/cmake/git get
 // specialized behavior; everything else is a custom shell command.
@@ -215,9 +222,9 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 RunChecksUseCase::RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
                                    std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : shell_(std::move(shell)),
-      git_repo_(std::move(git_repo)),
-      file_system_(std::move(file_system)) {}
+  : shell_(std::move(shell))
+  , git_repo_(std::move(git_repo))
+  , file_system_(std::move(file_system)) {}
 
 // Collects the list of files to check based on the run mode:
 //   STAGED  - git staged files (default for pre-commit hook)
@@ -297,37 +304,12 @@ int RunChecksUseCase::execute(const domain::config::ProjectConfig& cfg, const Ru
   return execute_checks(repo_root, cfg, files, opts);
 }
 
-// Runs all configured checks against the collected files.
-//
-// Flow:
-// 1. Match files to checks using glob patterns
-// 2. Validate tool configs exist (clang-tidy, clang-format)
-// 3. Run checks either sequentially or in parallel via std::async
-//
-// The parallel path uses std::future + std::async. Output is serialized
-// through SyncPrinter's mutex to prevent interleaving.
-int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
-                                     const domain::config::ProjectConfig& cfg,
-                                     const std::vector<std::string>& files,
-                                     const RunOptions& opts) {
-  SyncPrinter printer;
-
-  if (opts.dry_run) {
-    printer.print_verbose(fmt::format("[DRY-RUN] Would check {} file(s):\n", files.size()));
-    for (const auto& file_name : files) {
-      printer.print_verbose(fmt::format(" {}\n", file_name));
-    }
-    return static_cast<int>(ExitCode::SUCCESS);
-  }
-
-  // A work item pairs a concrete check with its matched files.
-  // Config errors are pre-validated before any execution begins.
-  struct WorkItem {
-    std::unique_ptr<domain::Check> check;
-    std::vector<std::string> matched_files;
-    std::string config_error;
-  };
-
+// Matches enabled checks to files and pre-validates their configs.
+// Skipped checks (disabled or no matching files) are reported when verbose.
+std::vector<WorkItem> build_work_items(const domain::config::ProjectConfig& cfg,
+                                       const std::vector<std::string>& files,
+                                       const std::filesystem::path& repo_root,
+                                       const RunOptions& opts, SyncPrinter& printer) {
   std::vector<WorkItem> work_items;
   work_items.reserve(cfg.checks.size());
 
@@ -359,6 +341,77 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
                           .matched_files = std::move(matched),
                           .config_error = std::move(config_err)});
   }
+  return work_items;
+}
+
+int report_failures(SyncPrinter& printer, int exit_code) {
+  if (exit_code != 0) {
+    printer.print_error("One or more checks failed.\n");
+  }
+  return exit_code;
+}
+
+// Runs work items one at a time; returns the worst exit code seen.
+int run_sequential(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
+                   domain::ports::IShellExecutor* shell) {
+  int exit_code = static_cast<int>(ExitCode::SUCCESS);
+  for (auto& item : items) {
+    auto result =
+        run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell);
+    if (result.exit_code_ != 0) {
+      exit_code = result.exit_code_;
+    }
+  }
+  return report_failures(printer, exit_code);
+}
+
+// Runs each work item in its own std::async task; shell is thread-safe
+// (popen/fork per process), SyncPrinter serializes output.
+int run_parallel(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
+                 domain::ports::IShellExecutor* shell) {
+  std::vector<std::future<CheckResult>> futures;
+  futures.reserve(items.size());
+  for (auto& item : items) {
+    futures.push_back(std::async(std::launch::async, [item = std::move(item), &opts, &printer,
+                                                      shell]() mutable {
+      return run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell);
+    }));
+  }
+
+  int exit_code = static_cast<int>(ExitCode::SUCCESS);
+  for (auto& future : futures) {
+    auto result = future.get();
+    if (result.exit_code_ != 0) {
+      exit_code = result.exit_code_;
+    }
+  }
+  return report_failures(printer, exit_code);
+}
+
+// Runs all configured checks against the collected files.
+//
+// Flow:
+// 1. Match files to checks using glob patterns
+// 2. Validate tool configs exist (clang-tidy, clang-format)
+// 3. Run checks either sequentially or in parallel via std::async
+//
+// The parallel path uses std::future + std::async. Output is serialized
+// through SyncPrinter's mutex to prevent interleaving.
+int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
+                                     const domain::config::ProjectConfig& cfg,
+                                     const std::vector<std::string>& files,
+                                     const RunOptions& opts) {
+  SyncPrinter printer;
+
+  if (opts.dry_run) {
+    printer.print_verbose(fmt::format("[DRY-RUN] Would check {} file(s):\n", files.size()));
+    for (const auto& file_name : files) {
+      printer.print_verbose(fmt::format(" {}\n", file_name));
+    }
+    return static_cast<int>(ExitCode::SUCCESS);
+  }
+
+  auto work_items = build_work_items(cfg, files, repo_root, opts, printer);
 
   if (work_items.empty()) {
     return static_cast<int>(ExitCode::SUCCESS);
@@ -385,48 +438,9 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   // Single check or parallel disabled → run sequentially.
   // Sequential is simpler and avoids thread overhead for trivial workloads.
   if (!cfg.parallel || work_items.size() == 1) {
-    int exit_code = static_cast<int>(ExitCode::SUCCESS);
-    for (auto& item : work_items) {
-      auto result = run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
-                                        shell_.get());
-      if (result.exit_code_ != 0) {
-        exit_code = result.exit_code_;
-      }
-    }
-
-    if (exit_code != 0) {
-      printer.print_error("One or more checks failed.\n");
-    }
-    return exit_code;
+    return run_sequential(work_items, opts, printer, shell_.get());
   }
-
-  // Parallel execution: each check runs in its own std::async task.
-  // shell_ is thread-safe (popen/fork are per-process), so concurrent
-  // access is safe. SyncPrinter handles output serialization.
-  std::vector<std::future<CheckResult>> futures;
-  futures.reserve(work_items.size());
-
-  for (auto& item : work_items) {
-    futures.push_back(
-        std::async(std::launch::async, [item = std::move(item), &opts, &printer, this]() mutable {
-          return run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
-                                     shell_.get());
-        }));
-  }
-
-  int exit_code = static_cast<int>(ExitCode::SUCCESS);
-  for (auto& future : futures) {
-    auto result = future.get();
-    if (result.exit_code_ != 0) {
-      exit_code = result.exit_code_;
-    }
-  }
-
-  if (exit_code != 0) {
-    printer.print_error("One or more checks failed.\n");
-  }
-
-  return exit_code;
+  return run_parallel(work_items, opts, printer, shell_.get());
 }
 
 // Runs clang-format in-place on eligible C/C++ files.

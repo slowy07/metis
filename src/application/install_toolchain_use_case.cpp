@@ -10,10 +10,10 @@ InstallToolchainUseCase::InstallToolchainUseCase(
     std::unique_ptr<domain::ports::IHttpClient> http_client,
     std::unique_ptr<domain::ports::IArchiveExtractor> extractor,
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : provider_(std::move(provider)),
-      http_client_(std::move(http_client)),
-      extractor_(std::move(extractor)),
-      file_system_(std::move(file_system)) {}
+  : provider_(std::move(provider))
+  , http_client_(std::move(http_client))
+  , extractor_(std::move(extractor))
+  , file_system_(std::move(file_system)) {}
 
 InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOptions& opts) {
   InstallToolchainResult result;

@@ -1,6 +1,7 @@
 #ifndef METIS_DOMAIN_CHECK_HPP
 #define METIS_DOMAIN_CHECK_HPP
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -49,6 +50,15 @@ class Check {
   // All check types use the same shape, so command building lives here.
   [[nodiscard]] std::string command_line(const std::vector<std::string>& files) const;
 
+  // Constructor-time argument adjustment only; members are immutable after.
+  void add_argument(std::string arg) { arguments_.push_back(std::move(arg)); }
+  template <typename T>
+  void erase_argument(const T& arg) {
+    std::erase(arguments_, arg);
+  }
+
+ private:
+  // Immutable after construction; subclasses read via the accessors above.
   std::string name_;
   std::string description_;
   bool enabled_;

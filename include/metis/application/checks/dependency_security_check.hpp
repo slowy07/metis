@@ -25,8 +25,7 @@ class DependencySecurityCheck : public domain::Check {
     NONE,
   };
   [[nodiscard]] static Tool detect_tool(domain::ports::IShellExecutor* shell);
-  [[nodiscard]] static std::string run_cve_scan(domain::ports::IShellExecutor* shell,
-                                                bool verbose);
+  [[nodiscard]] static std::string run_cve_scan(domain::ports::IShellExecutor* shell, bool verbose);
   [[nodiscard]] static std::string run_sbom_generation(domain::ports::IShellExecutor* shell,
                                                        bool verbose);
 };

@@ -10,8 +10,8 @@
 
 namespace metis::application::checks {
 DependencySecurityCheck::DependencySecurityCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {}
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {}
 
 std::string DependencySecurityCheck::validate(const std::filesystem::path& repo_root) const {
   (void)repo_root;
@@ -31,7 +31,8 @@ DependencySecurityCheck::Tool DependencySecurityCheck::detect_tool(
   return Tool::NONE;
 }
 
-std::string DependencySecurityCheck::run_cve_scan(domain::ports::IShellExecutor* shell, bool verbose) {
+std::string DependencySecurityCheck::run_cve_scan(domain::ports::IShellExecutor* shell,
+                                                  bool verbose) {
   auto tool = detect_tool(shell);
   if (tool == Tool::NONE) {
     return "[WARN] No CVE scanner found (install osv-scanner or grype)\n";
@@ -59,7 +60,7 @@ std::string DependencySecurityCheck::run_cve_scan(domain::ports::IShellExecutor*
 }
 
 std::string DependencySecurityCheck::run_sbom_generation(domain::ports::IShellExecutor* shell,
-                                              bool verbose) {
+                                                         bool verbose) {
   if (!shell->command_exists("syft")) {
     return "[WARN] syft not found: skip SBOM generation\n";
   }

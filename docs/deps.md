@@ -38,11 +38,11 @@ When prompted for CMake options, answer `y` to **add dependencies**:
     ✓ added fmt
 
   dep name []: tomlplusplus
-  git url [https://github.com/tomlplusplus/tomlplusplus.git]: 
+  git url [https://github.com/tomlplusplus/tomlplusplus.git]:
   git tag [main]: v3.4.0
     ✓ added tomlplusplus
 
-  dep name []: 
+  dep name []:
 ```
 
 Press **Enter** at `dep name` with no input to finish.

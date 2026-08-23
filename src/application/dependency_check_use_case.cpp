@@ -2,11 +2,11 @@
 
 #include <fmt/format.h>
 
-#include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <fstream>
-#include <iostream>
 #include <map>
+#include <ostream>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -38,7 +38,8 @@ std::string normalize_name(std::string_view name) {
 DependencyCheckUseCase::DependencyCheckUseCase(
     std::unique_ptr<domain::ports::IShellExecutor> shell,
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
+  : shell_(std::move(shell))
+  , file_system_(std::move(file_system)) {}
 
 domain::DependencyCheckResult DependencyCheckUseCase::execute(
     const std::filesystem::path& repo_root, const DependencyCheckOptions& opts) {
@@ -53,6 +54,10 @@ domain::DependencyCheckResult DependencyCheckUseCase::execute(
 
   auto cmake_deps = parse_cmake_fetchcontent(repo_root);
   all_deps.insert(all_deps.end(), cmake_deps.begin(), cmake_deps.end());
+
+  if (opts.display_tree) {
+    display_tree(all_deps);
+  }
 
   for (const auto& dep : all_deps) {
     domain::DependencyValidation deps_validation;
@@ -150,7 +155,6 @@ std::vector<domain::Dependency> DependencyCheckUseCase::parse_vcpkg_json(
     return out;
   }
 
-  // ponytail: regex over the array slice; vcpkg dependency objects are flat, a
   // nested-object manifest needs a real JSON parser
   const std::string slice = content.substr(arr_start, arr_end - arr_start + 1);
 
@@ -329,6 +333,50 @@ void DependencyCheckUseCase::generate_dot_graph(const std::vector<domain::Depend
   if (ofs) {
     ofs << dot.str();
   }
+}
+
+void DependencyCheckUseCase::display_tree(const std::vector<domain::Dependency>& all,
+                                          std::ostream& out) {
+  if (all.empty()) {
+    out << "No dependencies found.\n";
+    return;
+  }
+
+  std::map<std::string, std::vector<domain::Dependency>> by_source;
+  for (const auto& dep : all) {
+    by_source[dep.source].push_back(dep);
+  }
+
+  out << "\nDependecy Tree:\n\n";
+  out << "Project\n";
+
+  std::size_t source_idx = 0;
+  const std::size_t source_count = by_source.size();
+
+  for (const auto& [source, deps] : by_source) {
+    const bool is_last_source = (source_idx + 1 == source_count);
+    const std::string src_branch = is_last_source ? "└── " : "├── ";
+    const std::string src_indent = is_last_source ? "    " : "│   ";
+
+    out << src_branch << source << "\n";
+
+    for (std::size_t i = 0; i < deps.size(); ++i) {
+      const bool is_last_dep = (i + 1 == deps.size());
+      const std::string dep_branch = is_last_dep ? "└── " : "├── ";
+
+      out << src_indent << dep_branch << deps[i].name;
+
+      if (!deps[i].version.empty()) {
+        out << " @ " << deps[i].version;
+      }
+
+      out << "\n";
+    }
+
+    ++source_idx;
+  }
+
+  out << "\n";
 }
 
 }  // namespace metis::application

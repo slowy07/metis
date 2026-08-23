@@ -109,7 +109,9 @@ std::string prompt_choice(std::string_view label, std::string_view default_val,
             << " (";
   bool first = true;
   for (auto choice : choices) {
-    if (!first) std::cout << "|";
+    if (!first) {
+      std::cout << "|";
+    }
     first = false;
     std::cout << choice;
   }
@@ -130,13 +132,24 @@ void prompt_dependencies(application::InitOptions& opts) {
   while (true) {
     std::cout << "\n";
     std::string name = prompt_string("  dep name", "");
-    if (name.empty()) break;
+    if (name.empty()) {
+      break;
+    }
 
-    std::string default_url = "https://github.com/" + name + "/" + name + ".git";
+    std::string default_url = "https://github.com/";
+    default_url += name;
+    default_url += '/';
+    default_url += name;
+    default_url += ".git";
     std::string url = prompt_string("  git url", default_url);
     std::string tag = prompt_string("  git tag", "main");
-    opts.dependencies.push_back(name + ":" + url + ":" + tag);
-    std::cout << "    " << green << check << reset << " added " << name << "\n";
+    std::string dep = name;
+    dep += ':';
+    dep += url;
+    dep += ':';
+    dep += tag;
+    opts.dependencies.push_back(std::move(dep));
+    std::cout << "    " << green << check << reset << " added " << name << '\n';
   }
 }
 
@@ -225,13 +238,27 @@ void print_init_summary(const application::InitOptions& opts,
     for (char chr : s) {
       lower += static_cast<char>(std::tolower(static_cast<unsigned char>(chr)));
     }
-    if (lower == "google") return "Google";
-    if (lower == "llvm") return "LLVM";
-    if (lower == "chromium") return "Chromium";
-    if (lower == "mozilla") return "Mozilla";
-    if (lower == "webkit") return "WebKit";
-    if (lower == "microsoft") return "Microsoft";
-    if (lower == "gnu") return "GNU";
+    if (lower == "google") {
+      return "Google";
+    }
+    if (lower == "llvm") {
+      return "LLVM";
+    }
+    if (lower == "chromium") {
+      return "Chromium";
+    }
+    if (lower == "mozilla") {
+      return "Mozilla";
+    }
+    if (lower == "webkit") {
+      return "WebKit";
+    }
+    if (lower == "microsoft") {
+      return "Microsoft";
+    }
+    if (lower == "gnu") {
+      return "GNU";
+    }
     return s;
   };
 
@@ -259,8 +286,8 @@ void print_init_summary(const application::InitOptions& opts,
     std::cout << "    " << green << check << reset << " conanfile.py\n";
   }
 
-  std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "metis install"
-            << reset << " " << dim << "to set up pre-commit hooks" << reset << "\n\n";
+  std::cout << "\n  " << cyan << arrow << reset << " next: " << bold << "metis install" << reset
+            << " " << dim << "to set up pre-commit hooks" << reset << "\n\n";
 }
 
 }  // namespace metis::presentation

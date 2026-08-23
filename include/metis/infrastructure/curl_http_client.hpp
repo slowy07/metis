@@ -21,7 +21,7 @@ class CurlHttpClient : public domain::ports::IHttpClient {
 
   [[nodiscard]] bool has_curl() const;
   [[nodiscard]] bool has_wget() const;
-  [[nodiscard]] std::string basename_for_url(const std::string& url) const;
+  [[nodiscard]] static std::string basename_for_url(const std::string& url);
 };
 }  // namespace metis::infrastructure
 

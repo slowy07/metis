@@ -129,8 +129,11 @@ exit $EXIT_CODE
 // On Windows, always returns true (bash validation not available).
 bool validate_bash_syntax(const std::string& content) {
 #ifndef _WIN32
-  char tmp_template[] = "/tmp/metis_hook_XXXXXX";
-  int fd = ::mkstemp(tmp_template);
+  // mkstemp needs a mutable char buffer; vector<char> avoids the C-array.
+  std::string tpl = "/tmp/metis_hook_XXXXXX";
+  std::vector<char> tmp_template(tpl.begin(), tpl.end());
+  tmp_template.push_back('\0');
+  int fd = ::mkstemp(tmp_template.data());
   if (fd == -1) {
     return false;
   }
@@ -138,7 +141,9 @@ bool validate_bash_syntax(const std::string& content) {
   struct TempFileGuard {
     std::string path;
     int fd;
-    explicit TempFileGuard(std::string p, int f) : path(std::move(p)), fd(f) {}
+    explicit TempFileGuard(std::string p, int f)
+      : path(std::move(p))
+      , fd(f) {}
     ~TempFileGuard() {
       ::close(fd);
       std::error_code ec;
@@ -146,11 +151,13 @@ bool validate_bash_syntax(const std::string& content) {
     }
     TempFileGuard(const TempFileGuard&) = delete;
     TempFileGuard& operator=(const TempFileGuard&) = delete;
+    TempFileGuard(TempFileGuard&&) = delete;
+    TempFileGuard& operator=(TempFileGuard&&) = delete;
   };
-  TempFileGuard guard(tmp_template, fd);
+  TempFileGuard guard(tmp_template.data(), fd);
 
   {
-    std::ofstream out(tmp_template);
+    std::ofstream out(tmp_template.data());
     if (!out) {
       return false;
     }
@@ -161,8 +168,9 @@ bool validate_bash_syntax(const std::string& content) {
     }
   }
 
-  std::string cmd = "bash -n " + std::string(tmp_template) + " 2>/dev/null";
-  return std::system(cmd.c_str()) == 0;
+  std::string cmd = "bash -n " + std::string(tmp_template.data()) + " 2>/dev/null";
+  // one-liner vs hand-rolled fork/exec for a syntax check.
+  return std::system(cmd.c_str()) == 0;  // NOLINT(bugprone-command-processor)
 #else
   (void)content;
   return true;
@@ -173,7 +181,8 @@ bool validate_bash_syntax(const std::string& content) {
 
 InstallUseCase::InstallUseCase(std::unique_ptr<domain::ports::IFileSystem> file_system,
                                std::unique_ptr<domain::ports::IGitRepository> git_repo)
-    : file_system_(std::move(file_system)), git_repo_(std::move(git_repo)) {}
+  : file_system_(std::move(file_system))
+  , git_repo_(std::move(git_repo)) {}
 
 // Installs pre-commit hook and/or CI workflow files.
 //

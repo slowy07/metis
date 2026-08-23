@@ -61,7 +61,7 @@ ColumnLimit: {}
 PointerAlignment: {}
 BreakBeforeBraces: {}
 
-Standard: Cpp20
+Standard: Latest
 
 SortIncludes: true
 ReflowComments: true

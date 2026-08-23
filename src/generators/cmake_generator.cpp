@@ -2,7 +2,6 @@
 
 #include <fmt/format.h>
 
-#include <algorithm>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -21,17 +20,29 @@ std::string normalize(std::string_view input) {
 
 std::string target_type_cmake(std::string_view type) {
   auto norm = normalize(type);
-  if (norm == "executable" || norm == "exe") return "EXECUTABLE";
-  if (norm == "static" || norm == "staticlib") return "STATIC";
-  if (norm == "shared" || norm == "sharedlib") return "SHARED";
-  if (norm == "header-only" || norm == "interface") return "INTERFACE";
+  if (norm == "executable" || norm == "exe") {
+    return "EXECUTABLE";
+  }
+  if (norm == "static" || norm == "staticlib") {
+    return "STATIC";
+  }
+  if (norm == "shared" || norm == "sharedlib") {
+    return "SHARED";
+  }
+  if (norm == "header-only" || norm == "interface") {
+    return "INTERFACE";
+  }
   return "EXECUTABLE";
 }
 
 std::string cpp_standard_val(std::string_view std_str) {
   auto norm = normalize(std_str);
-  if (norm == "17" || norm == "c++17") return "17";
-  if (norm == "23" || norm == "c++23") return "23";
+  if (norm == "17" || norm == "c++17") {
+    return "17";
+  }
+  if (norm == "23" || norm == "c++23") {
+    return "23";
+  }
   return "20";
 }
 
@@ -63,7 +74,9 @@ std::string generate_cmake_lists(std::string_view project_name, std::string_view
       for (const auto& dep : dependencies) {
         // dep format: "name:url:tag" — first colon splits name, last splits tag
         auto first_colon = dep.find(':');
-        if (first_colon == std::string::npos) continue;
+        if (first_colon == std::string::npos) {
+          continue;
+        }
         auto last_colon = dep.rfind(':');
         std::string name = dep.substr(0, first_colon);
         std::string url = dep.substr(first_colon + 1, last_colon - first_colon - 1);

@@ -20,7 +20,8 @@ namespace metis::application {
 // file_system is used for all file writes (config, .clang-format, etc.)
 InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> config_repo,
                          std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : config_repo_(std::move(config_repo)), file_system_(std::move(file_system)) {}
+  : config_repo_(std::move(config_repo))
+  , file_system_(std::move(file_system)) {}
 
 // Main entry point for project initialization.
 //
@@ -34,6 +35,34 @@ InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> confi
 //
 // Each file write is independent; failure on one doesn't prevent others.
 // The result struct accumulates paths and any error messages.
+namespace {
+
+// Writes content to path; on failure fills result.error_message.
+bool write_or_fail(metis::domain::ports::IFileSystem& fs, InitResult& result,
+                   const std::filesystem::path& path, const std::string& content) {
+  if (fs.write_file(path, content)) {
+    return true;
+  }
+  result.error_message = "Failed to create " + path.string();
+  return false;
+}
+
+// Generates content via make_content and writes it; generator exceptions and
+// write failures both land in result.error_message.
+template <typename Make>
+bool generate_and_write(metis::domain::ports::IFileSystem& fs, InitResult& result,
+                        const std::filesystem::path& path, const char* what,
+                        const Make& make_content) {
+  try {
+    return write_or_fail(fs, result, path, make_content());
+  } catch (const std::exception& e) {
+    result.error_message = std::string("Failed to generate ") + what + ": " + e.what();
+    return false;
+  }
+}
+
+}  // namespace
+
 InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOptions& opts) {
   InitResult result;
   std::string project_name =
@@ -69,52 +98,40 @@ InitResult InitUseCase::execute(const std::filesystem::path& cwd, const InitOpti
     config_content += domain::config::generate_security_checks_config();
   }
 
-  if (!file_system_->write_file(config_path, config_content)) {
-    result.error_message = "Failed to create " + config_path.string();
+  if (!write_or_fail(*file_system_, result, config_path, config_content)) {
     return result;
   }
   result.project_config_path = config_path.string();
 
   // Write .clang-format
   auto clang_path = cwd / ".clang-format";
-  try {
-    auto clang_content = generators::generate_clang_format(
-        opts.style, opts.indent_width, opts.column_limit, opts.pointer_alignment, opts.brace_style);
-    if (!file_system_->write_file(clang_path, clang_content)) {
-      result.error_message = "Failed to create " + clang_path.string();
-      return result;
-    }
-  } catch (const std::exception& e) {
-    result.error_message = std::string("Failed to generate .clang-format: ") + e.what();
+  const auto clang_ok = generate_and_write(*file_system_, result, clang_path, ".clang-format", [&] {
+    return generators::generate_clang_format(opts.style, opts.indent_width, opts.column_limit,
+                                             opts.pointer_alignment, opts.brace_style);
+  });
+  if (!clang_ok) {
     return result;
   }
   result.tooling_config_path = clang_path.string();
 
   // Write .clang-tidy
   if (opts.enable_clang_tidy) {
-    auto tidy_path = cwd / ".clang-tidy";
-    try {
-      auto tidy_content = generators::generate_clang_tidy(opts.tidy_preset, opts.tidy_severity,
-                                                          opts.tidy_header_filter);
-      if (!file_system_->write_file(tidy_path, tidy_content)) {
-        result.error_message = "Failed to create " + tidy_path.string();
-        return result;
-      }
-    } catch (const std::exception& e) {
-      result.error_message = std::string("Failed to generate .clang-tidy: ") + e.what();
+    const auto tidy_path = cwd / ".clang-tidy";
+    if (!generate_and_write(*file_system_, result, tidy_path, ".clang-tidy", [&] {
+          return generators::generate_clang_tidy(opts.tidy_preset, opts.tidy_severity,
+                                                 opts.tidy_header_filter);
+        })) {
       return result;
     }
   }
 
   // Write src/main.cpp
   if (opts.generate_source) {
-    auto src_dir = cwd / "src";
+    const auto src_dir = cwd / "src";
     try {
-      if (!file_system_->exists(src_dir)) {
-        if (!file_system_->create_directories(src_dir)) {
-          result.error_message = "Failed to create src/ directory";
-          return result;
-        }
+      if (!file_system_->exists(src_dir) && !file_system_->create_directories(src_dir)) {
+        result.error_message = "Failed to create src/ directory";
+        return result;
       }
     } catch (const std::exception& e) {
       result.error_message = std::string("Failed to create src/ directory: ") + e.what();
@@ -130,8 +147,7 @@ int main() {
 }
   )";
 
-    if (!file_system_->write_file(main_cpp_path, std::string(main_cpp_content))) {
-      result.error_message = "Failed to create " + main_cpp_path.string();
+    if (!write_or_fail(*file_system_, result, main_cpp_path, std::string(main_cpp_content))) {
       return result;
     }
     result.src_path = main_cpp_path.string();
@@ -139,18 +155,13 @@ int main() {
 
   // Write CMakeLists.txt
   if (opts.enable_cmake) {
-    auto cmake_path = cwd / "CMakeLists.txt";
-    try {
-      auto cmake_content = generators::generate_cmake_lists(
-          project_name, opts.cmake_cpp_standard, opts.cmake_target_type, opts.cmake_enable_testing,
-          opts.cmake_enable_sanitizers, opts.cmake_enable_warnings, opts.enable_clang_tidy,
-          opts.enable_conan, opts.dependencies);
-      if (!file_system_->write_file(cmake_path, cmake_content)) {
-        result.error_message = "Failed to create " + cmake_path.string();
-        return result;
-      }
-    } catch (const std::exception& e) {
-      result.error_message = std::string("Failed to generate CMakeLists.txt: ") + e.what();
+    const auto cmake_path = cwd / "CMakeLists.txt";
+    if (!generate_and_write(*file_system_, result, cmake_path, "CMakeLists.txt", [&] {
+          return generators::generate_cmake_lists(
+              project_name, opts.cmake_cpp_standard, opts.cmake_target_type,
+              opts.cmake_enable_testing, opts.cmake_enable_sanitizers, opts.cmake_enable_warnings,
+              opts.enable_clang_tidy, opts.enable_conan, opts.dependencies);
+        })) {
       return result;
     }
     result.cmake_config_path = cmake_path.string();
@@ -158,16 +169,11 @@ int main() {
 
   // Write conanfile.py
   if (opts.enable_conan) {
-    auto conan_path = cwd / "conanfile.py";
-    try {
-      auto conan_content = generators::generate_conanfile(project_name, opts.cmake_enable_testing,
-                                                          opts.dependencies);
-      if (!file_system_->write_file(conan_path, conan_content)) {
-        result.error_message = "Failed to create " + conan_path.string();
-        return result;
-      }
-    } catch (const std::exception& e) {
-      result.error_message = std::string("Failed to generate conanfile.py: ") + e.what();
+    const auto conan_path = cwd / "conanfile.py";
+    if (!generate_and_write(*file_system_, result, conan_path, "conanfile.py", [&] {
+          return generators::generate_conanfile(project_name, opts.cmake_enable_testing,
+                                                opts.dependencies);
+        })) {
       return result;
     }
     result.conan_config_path = conan_path.string();

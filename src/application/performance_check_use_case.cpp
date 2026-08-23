@@ -3,14 +3,8 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <regex>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,6 +24,18 @@ std::string format_bytes(double bytes) {
   return fmt::format("{:.2f} {}", size, units[unit_idx]);
 }
 
+std::string trim(std::string_view s) {
+  size_t a = 0;
+  while (a < s.size() && std::isspace(static_cast<unsigned char>(s[a]))) {
+    ++a;
+  }
+  size_t b = s.size();
+  while (b > a && std::isspace(static_cast<unsigned char>(s[b - 1]))) {
+    --b;
+  }
+  return std::string(s.substr(a, b - a));
+}
+
 bool parse_baseline_line(std::string_view line, std::string& out_key, double& out_val) {
   auto eq = line.find('=');
 
@@ -47,18 +53,6 @@ bool parse_baseline_line(std::string_view line, std::string& out_key, double& ou
   } catch (...) {
     return false;
   }
-}
-
-std::string trim(std::string_view s) {
-  size_t a = 0;
-  while (a < s.size() && std::isspace(static_cast<unsigned char>(s[a]))) {
-    ++a;
-  }
-  size_t b = s.size();
-  while (b > a && std::isspace(static_cast<unsigned char>(s[b - 1]))) {
-    --b;
-  }
-  return std::string(s.substr(a, b - a));
 }
 
 }  // namespace

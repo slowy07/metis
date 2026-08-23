@@ -27,7 +27,8 @@ class PerfChecksUseCase {
   PerfChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                     std::unique_ptr<domain::ports::IFileSystem> file_system);
 
-  PerfResult execute(const domain::config::ProjectConfig& cfg, const std::filesystem::path& repo_root, bool verbose);
+  PerfResult execute(const domain::config::ProjectConfig& cfg,
+                     const std::filesystem::path& repo_root, bool verbose);
 
  private:
   bool measure_build_time(const std::filesystem::path& build_dir, bool verbose, double& out_seconds,

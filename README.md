@@ -62,6 +62,11 @@ metis run --all-files
 | `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
 | `generate-gha` | Write GitHub Actions workflow to `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write GitLab CI workflow to `.gitlab-ci.yml` |
+| `install-compiler` | Download and install a C++ toolchain |
+| `test` | Run ctest and optional coverage checks |
+| `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
+| `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
+| `perf` | Run performance checks (build time, binary size, benchmarks) |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 

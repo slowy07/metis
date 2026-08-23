@@ -33,7 +33,7 @@ std::vector<std::string> split_lines(const std::string& output) {
       lines.emplace_back(output.substr(start, pos - start));
     }
 
-    start = pos += 1;
+    start = pos + 1;
   }
 
   if (start < output.size()) {
@@ -46,7 +46,7 @@ std::vector<std::string> split_lines(const std::string& output) {
 }  // namespace
 
 CliGitRepository::CliGitRepository(std::unique_ptr<domain::ports::IShellExecutor> shell)
-    : shell_(std::move(shell)) {}
+  : shell_(std::move(shell)) {}
 
 // Lists files staged for commit (git diff --cached --name-only --diff-filter=ACM).
 // ACM = Added, Copied, Modified (excludes deleted files).
@@ -74,7 +74,7 @@ std::filesystem::path CliGitRepository::find_repo_root(const std::filesystem::pa
     std::string cmd = "git -C " + util::shell_escape(start.string()) + " rev-parse --show-toplevel";
     std::string out = shell_->exec(cmd);
     if (!out.empty()) {
-      return std::filesystem::path(out);
+      return {out};
     }
   } catch (const std::exception&) {
     // fallthrough

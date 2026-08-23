@@ -10,8 +10,8 @@
 
 namespace metis::application::checks {
 GCCAnalyzerCheck::GCCAnalyzerCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {}
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {}
 
 domain::CheckResult GCCAnalyzerCheck::execute(const std::vector<std::string>& files,
                                               domain::ports::IShellExecutor* shell, bool verbose,
@@ -37,7 +37,7 @@ domain::CheckResult GCCAnalyzerCheck::execute(const std::vector<std::string>& fi
   for (const auto& file : files) {
     std::string full_cmd = actual_cmd + " -fanalyzer -c " + util::shell_escape(file);
 
-    for (const auto& arguments : arguments_) {
+    for (const auto& arguments : arguments()) {
       full_cmd += " " + arguments;
     }
 

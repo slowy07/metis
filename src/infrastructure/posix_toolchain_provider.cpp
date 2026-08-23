@@ -12,11 +12,11 @@ namespace metis::infrastructure {
 
 PosixToolchainProvider::PosixToolchainProvider(domain::ports::IShellExecutor* shell,
                                                std::string compiler, std::string version)
-    : shell_(shell), compiler_(std::move(compiler)), version_(std::move(version)) {}
+  : shell_(shell)
+  , compiler_(std::move(compiler))
+  , version_(std::move(version)) {}
 
-bool PosixToolchainProvider::is_installed() const {
-  return shell_->command_exists(compiler_.c_str());
-}
+bool PosixToolchainProvider::is_installed() const { return shell_->command_exists(compiler_); }
 
 std::optional<std::string> PosixToolchainProvider::get_version() const {
   if (!is_installed()) {
@@ -161,7 +161,7 @@ int PosixToolchainProvider::parse_major_version() const {
   }
 }
 
-bool PosixToolchainProvider::is_macos() const {
+bool PosixToolchainProvider::is_macos() {
 #ifdef __APPLE__
   return true;
 #else
@@ -170,7 +170,7 @@ bool PosixToolchainProvider::is_macos() const {
 }
 
 bool PosixToolchainProvider::has(std::string_view cmd) const {
-  return shell_->command_exists(std::string(cmd).c_str());
+  return shell_->command_exists(std::string(cmd));
 }
 
 PosixToolchainProvider::PkgMgr PosixToolchainProvider::detect() const {

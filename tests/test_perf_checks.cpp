@@ -15,7 +15,6 @@ namespace {
 
 using namespace metis;
 
-// ponytail: copies report into one fixture-owned string so assertions survive
 // the use case taking ownership of a copy.
 struct MockShell : domain::ports::IShellExecutor {
   int exit_code = 0;
@@ -110,7 +109,6 @@ TEST_F(PerfChecksTest, FailedBuildMarksBuildTimeNotOk) {
 TEST_F(PerfChecksTest, FastBuildPassesAndEchoesCommandWhenVerbose) {
   cfg.perf.max_build_time_sec = 600;
 
-  // ponytail: wall-clock timing around a mocked exec can't exceed an integer
   // second threshold without sleeping >1s; only the pass branch is asserted.
   auto result = run(/*verbose=*/true);
 

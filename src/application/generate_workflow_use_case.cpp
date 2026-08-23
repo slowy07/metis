@@ -8,7 +8,7 @@ namespace metis::application {
 
 GenerateWorkflowUseCase::GenerateWorkflowUseCase(
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : file_system_(std::move(file_system)) {}
+  : file_system_(std::move(file_system)) {}
 
 bool GenerateWorkflowUseCase::execute(const domain::config::ProjectConfig& cfg,
                                       const std::filesystem::path& repo_root,

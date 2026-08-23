@@ -27,8 +27,12 @@ std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy
   }
 
   std::string packages;
-  if (need_clang_format) packages += "clang-format";
-  if (need_clang_tidy) packages += (packages.empty() ? "" : " ") + std::string("clang-tidy");
+  if (need_clang_format) {
+    packages += "clang-format";
+  }
+  if (need_clang_tidy) {
+    packages += (packages.empty() ? "" : " ") + std::string("clang-tidy");
+  }
 
   return fmt::format(
       R"yaml(      - name: Install LLVM tooling
@@ -49,8 +53,12 @@ std::string generate_gitlab_before_script(bool need_clang_format, bool need_clan
   }
 
   std::string pkgs;
-  if (need_clang_format) pkgs += " clang-format";
-  if (need_clang_tidy) pkgs += " clang-tidy";
+  if (need_clang_format) {
+    pkgs += " clang-format";
+  }
+  if (need_clang_tidy) {
+    pkgs += " clang-tidy";
+  }
 
   return fmt::format(
       R"yaml(  before_script:

@@ -59,9 +59,9 @@ bool Spinner::is_stdout_tty() noexcept {
 
 Spinner::Spinner(std::string_view message, Mode mode, std::vector<std::string> frames,
                  std::chrono::milliseconds interval_ms)
-    : message_(message),
-      frames_(frames.empty() ? default_frames() : std::move(frames)),
-      interval_ms_(interval_ms) {
+  : message_(message)
+  , frames_(frames.empty() ? default_frames() : std::move(frames))
+  , interval_ms_(interval_ms) {
 #ifdef _WIN32
   enable_windows_ansi();
   set_utf8_console();
@@ -108,7 +108,7 @@ void Spinner::stop(std::string_view final_message) {
   stop_requested_.store(true, std::memory_order_relaxed);
 
   {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::scoped_lock lock(mutex_);
   }
 
   cv_.notify_all();

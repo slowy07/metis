@@ -1,7 +1,9 @@
 #ifndef METIS_APPLICATION_DEPENDENCY_CHECK_USE_CASE_HPP
 #define METIS_APPLICATION_DEPENDENCY_CHECK_USE_CASE_HPP
 
+#include <iostream>
 #include <memory>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,6 +17,7 @@ namespace metis::application {
 struct DependencyCheckOptions {
   bool verbose = false;
   bool generate_graph = false;
+  bool display_tree = false;
   std::string graph_output_path = "dependencies.dot";
 };
 
@@ -25,6 +28,9 @@ class DependencyCheckUseCase {
 
   [[nodiscard]] domain::DependencyCheckResult execute(const std::filesystem::path& repo_root,
                                                       const DependencyCheckOptions& opts);
+
+  static void display_tree(const std::vector<domain::Dependency>& all,
+                           std::ostream& out = std::cout);
 
  private:
   std::vector<domain::Dependency> parse_conanfile(const std::filesystem::path& repo_root);

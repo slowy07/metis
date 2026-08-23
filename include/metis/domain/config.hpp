@@ -57,10 +57,10 @@ struct ProjectConfig {
   struct PerfConfig {
     bool enabled = false;
     std::string build_dir = "build";
-    std::string binary_path = "";
+    std::string binary_path;
     std::size_t max_binary_size_mb = 0;
     std::size_t max_build_time_sec = 0;
-    std::string benchmark_regex = "";
+    std::string benchmark_regex;
   };
   PerfConfig perf;
 

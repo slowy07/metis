@@ -8,7 +8,8 @@
 #include "metis/domain/ports/shell_executor.hpp"
 
 namespace metis::infrastructure {
-CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell) : shell_(shell) {}
+CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell)
+  : shell_(shell) {}
 
 domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
                                                        const std::filesystem::path& dest_dir,
@@ -53,7 +54,7 @@ bool CurlHttpClient::has_curl() const { return shell_->command_exists("curl"); }
 
 bool CurlHttpClient::has_wget() const { return shell_->command_exists("wget"); }
 
-std::string CurlHttpClient::basename_for_url(const std::string& url) const {
+std::string CurlHttpClient::basename_for_url(const std::string& url) {
   size_t last_slash = url.find_last_of('/');
   if (last_slash != std::string::npos && last_slash + 1 < url.size()) {
     return url.substr(last_slash + 1);

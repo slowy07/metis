@@ -9,7 +9,8 @@
 
 namespace metis::infrastructure {
 
-TarArchiveExtractor::TarArchiveExtractor(domain::ports::IShellExecutor* shell) : shell_(shell) {}
+TarArchiveExtractor::TarArchiveExtractor(domain::ports::IShellExecutor* shell)
+  : shell_(shell) {}
 
 domain::ports::ExtractionResult TarArchiveExtractor::extract(
     const std::filesystem::path& archive_path, const std::filesystem::path& dest_dir) {

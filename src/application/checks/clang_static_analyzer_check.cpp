@@ -12,28 +12,28 @@
 namespace metis::application::checks {
 
 ClangStaticAnalyzerCheck::ClangStaticAnalyzerCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {}
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {}
 
 domain::CheckResult ClangStaticAnalyzerCheck::execute(const std::vector<std::string>& /*files*/,
                                                       domain::ports::IShellExecutor* shell,
                                                       bool verbose, bool dry_run) {
-  if (!shell->command_exists(command_)) {
+  if (!shell->command_exists(command())) {
     return {.exit_code = 1,
             .output = fmt::format("`{}` not found in PATH. install it or check your configuration",
-                                  command_)};
+                                  command())};
   }
 
   if (dry_run) {
     return {.exit_code = 0, .output = ""};
   }
 
-  std::string full_cmd = command_;
-  for (const auto& arguments : arguments_) {
+  std::string full_cmd = command();
+  for (const auto& arguments : arguments()) {
     full_cmd += " " + arguments;
   }
 
-  if (arguments_.empty()) {
+  if (arguments().empty()) {
     full_cmd += " --status-bugs";
   }
 

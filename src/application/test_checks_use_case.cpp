@@ -15,7 +15,8 @@
 namespace metis::application {
 TestChecksUseCase::TestChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                      std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
+  : shell_(std::move(shell))
+  , file_system_(std::move(file_system)) {}
 
 TestResult TestChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
                                       const std::filesystem::path& repo_root, bool coverage,

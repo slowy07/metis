@@ -8,7 +8,8 @@
 namespace metis {
 
 ArgParser::ArgParser(std::string_view name, std::string_view desc)
-    : app_name_(name), description_(desc) {}
+  : app_name_(name)
+  , description_(desc) {}
 
 // Registers a boolean flag (no value).
 // When the flag is present, storage is set to true.
@@ -44,6 +45,76 @@ ArgParser& ArgParser::set_version(std::string_view ver) {
 // Returns true if a subcommand was matched, false for help/version/unknown.
 // lazy: doesn't support combined short flags (-abc) or --key=value syntax.
 // These haven't been needed.
+// Scans for --help/-h/--version/-v before anything else.
+bool ArgParser::check_early_exit() {
+  for (size_t i = 1; i < args_.size(); ++i) {
+    std::string_view arg = args_[i];
+    if (arg == "--help" || arg == "-h") {
+      show_help();
+      return true;
+    }
+    if (!version_.empty() && (arg == "--version" || arg == "-v")) {
+      std::cout << app_name_ << " " << version_ << "\n";
+      return true;
+    }
+  }
+  return false;
+}
+
+// First positional argument selects a subcommand when one matches; unknown
+// positionals are rejected here so later loops only see options.
+bool ArgParser::try_subcommand() {
+  if (subcommands_.empty() || args_.size() < 2 || std::string_view(args_[1]).starts_with("-")) {
+    return false;
+  }
+  std::string_view first_arg = args_[1];
+  auto found = std::ranges::find_if(subcommands_,
+                                    [first_arg](const auto& cmd) { return cmd.name == first_arg; });
+
+  if (found == subcommands_.end()) {
+    std::cerr << "[ERROR] Unknown subcommand: " << first_arg << "\n\n";
+    show_help();
+    return true;
+  }
+  active_subcommand_ = found->name;
+  return true;
+}
+
+// Applies the option at index i (value store or flag store), consuming its
+// value argument when required. Unknown options are tolerated while a
+// subcommand is active — those own their flags.
+bool ArgParser::apply_option(size_t& i) {
+  std::string_view arg = args_[i];
+  auto opt_it = std::ranges::find_if(
+      options_, [arg](const Option& opt) { return opt.short_flag == arg || opt.long_flag == arg; });
+
+  if (opt_it == options_.end()) {
+    if (!active_subcommand_.empty()) {
+      return true;
+    }
+    std::cerr << "[ERROR] Unknown option: " << arg << "\n\n";
+    show_help();
+    return false;
+  }
+
+  const auto opt_idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
+  if (!opt_it->has_value) {
+    if (opt_idx < flag_stores_.size() && flag_stores_.at(opt_idx) != nullptr) {
+      *flag_stores_.at(opt_idx) = true;
+    }
+    return true;
+  }
+
+  if (i + 1 >= args_.size()) {
+    std::cerr << "[ERROR] Option " << arg << " requires value\n";
+    return false;
+  }
+  if (opt_idx < option_stores_.size()) {
+    option_stores_.at(opt_idx)(std::string(args_[++i]));
+  }
+  return true;
+}
+
 bool ArgParser::parse(int argc, char** argv) {
   auto argc_sz = static_cast<size_t>(argc);
   if (argc_sz < 2) {
@@ -52,68 +123,20 @@ bool ArgParser::parse(int argc, char** argv) {
   }
   args_ = std::span(argv, argc_sz);
 
-  for (size_t i = 1; i < argc_sz; ++i) {
-    std::string_view arg = args_.data()[i];
-    if (arg == "--help" || arg == "-h") {
-      show_help();
-      return false;
-    }
-    if (!version_.empty() && (arg == "--version" || arg == "-v")) {
-      std::cout << app_name_ << " " << version_ << "\n";
-      return false;
-    }
+  if (check_early_exit()) {
+    return false;
   }
-
-  if (!subcommands_.empty()) {
-    std::string_view first_arg = args_.data()[1];
-    if (!first_arg.starts_with("-")) {
-      auto found = std::ranges::find_if(
-          subcommands_, [first_arg](const auto& cmd) { return cmd.name == first_arg; });
-
-      if (found != subcommands_.end()) {
-        active_subcommand_ = found->name;
-        return true;
-      }
-      std::cerr << "[ERROR] Unknown subcommand: " << first_arg << "\n\n";
-      show_help();
-      return false;
-    }
+  if (try_subcommand()) {
+    // Unknown subcommand already reported: reject unless one actually matched.
+    return !active_subcommand_.empty();
   }
 
   for (size_t i = 0; i < args_.size(); ++i) {
-    std::string_view arg = args_.data()[i];
-    if (!arg.starts_with('-')) {
+    if (!std::string_view(args_[i]).starts_with('-')) {
       continue;
     }
-
-    auto opt_it = std::ranges::find_if(options_, [arg](const Option& opt) {
-      return opt.short_flag == arg || opt.long_flag == arg;
-    });
-
-    if (opt_it == options_.end()) {
-      if (!active_subcommand_.empty()) {
-        continue;
-      }
-      std::cerr << "[ERROR] Unknown option: " << arg << "\n\n";
-      show_help();
+    if (!apply_option(i)) {
       return false;
-    }
-
-    if (opt_it->has_value) {
-      if (i + 1 >= args_.size()) {
-        std::cerr << "[ERROR] Option " << arg << " requires value\n";
-        return false;
-      }
-      std::string value = std::string(args_.data()[++i]);
-      auto opt_idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
-      if (opt_idx < option_stores_.size()) {
-        option_stores_.at(opt_idx)(value);
-      }
-    } else {
-      auto opt_idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
-      if (opt_idx < flag_stores_.size() && flag_stores_.at(opt_idx) != nullptr) {
-        *flag_stores_.at(opt_idx) = true;
-      }
     }
   }
 

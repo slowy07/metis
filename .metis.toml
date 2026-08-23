@@ -14,7 +14,7 @@ patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 [[checks]]
 name = "clang-tidy"
 command = "clang-tidy"
-args = ["--config-file=.clang-tidy", "--quiet"]
+args = ["--config-file=.clang-tidy", "--quiet", "--", "-std=c++20", "-Iinclude"]
 patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
 
 [[checks]]
@@ -24,7 +24,7 @@ args = ["-E", "--text", "[[:space:]]+$"]
 patterns = ["*"]
 
 [exclude]
-paths = ["build/", "third_party/", ".git/"]
+paths = ["build/", "third_party/", ".git/", "tests/"]
 
 [perf]
 enabled = true

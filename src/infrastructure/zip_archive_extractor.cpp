@@ -5,7 +5,8 @@
 #include "metis/domain/ports/archive_extractor.hpp"
 
 namespace metis::infrastructure {
-ZipArchiveExtractor::ZipArchiveExtractor(domain::ports::IShellExecutor* shell) : shell_(shell) {}
+ZipArchiveExtractor::ZipArchiveExtractor(domain::ports::IShellExecutor* shell)
+  : shell_(shell) {}
 
 domain::ports::ExtractionResult ZipArchiveExtractor::extract(
     const std::filesystem::path& archive_path, const std::filesystem::path& dest_dir) {

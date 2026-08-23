@@ -65,6 +65,7 @@ metis/
 │       │   ├── sanitizer_checks_use_case.hpp # SanitizerChecksUseCase (sanitizer subcommand)
 │       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
 │       │   ├── dependency_check_use_case.hpp  # DependencyCheckUseCase
+│       │   ├── perf_checks_use_case.hpp     # PerfChecksUseCase (perf subcommand)
 │       │   ├── dependency.hpp                 # Dependency, DependencyCheckResult
 │       │   └── checks/                      # concrete Check implementations
 │       │       ├── shell_check.hpp          # ShellCheck (custom commands)
@@ -163,7 +164,7 @@ metis follows a **hexagonal architecture** (ports & adapters) with clear layer s
 │                  application/                        │
 │   InitUseCase · InstallUseCase · RunChecksUseCase   │
 │   TestChecksUseCase · SanitizerChecksUseCase        │
-│   DependencyCheckUseCase                            │
+│   DependencyCheckUseCase · PerfChecksUseCase        │
 │    GenerateWorkflowUseCase · InstallToolchainUseCase │
 ├─────────────────────────────────────────────────────┤
 │                   domain/                            │
@@ -210,7 +211,7 @@ metis
 │                         IToolchainProvider, IHttpClient, IArchiveExtractor
 ├── application        : InitUseCase, InstallUseCase, RunChecksUseCase,
 │                         TestChecksUseCase, SanitizerChecksUseCase,
-│                         DependencyCheckUseCase,
+│                         DependencyCheckUseCase, PerfChecksUseCase,
 │                         GenerateWorkflowUseCase, InstallToolchainUseCase
 ├── application::checks: ShellCheck, ClangFormatCheck, ClangTidyCheck, CompilerCheck,
 │                         BuildCheck, GitDiffCheck
@@ -247,6 +248,9 @@ metis
 | `17` | `COVERAGE_THRESHOLD_NOT_MET` | Coverage below configured threshold |
 | `18` | `SANITIZER_BUILD_FAILURE` | Build with sanitizer failed |
 | `19` | `SANITIZER_TEST_FAILURE` | Tests with sanitizer failed |
+| `20` | `PERF_CHECK_FAILURE` | Perf check failed (missing build dir, failed build, benchmark failure) |
+| `21` | `PERF_BINARY_TOO_LARGE` | Binary exceeds `max_binary_size_mb` |
+| `22` | `PERF_BUILD_TOO_SLOW` | Build time exceeds `max_build_time_sec` |
 
 ---
 
@@ -386,6 +390,14 @@ enabled = false
 types = ["address", "undefined"]
 build_dir = "build"
 timeout = 0
+
+[perf]
+enabled = false
+build_dir = "build"
+binary_path = ""
+max_binary_size_mb = 0
+max_build_time_sec = 0
+benchmark_regex = ""
 ```
 
 ### Sections
@@ -415,6 +427,12 @@ timeout = 0
 | `[sanitizers]` | `types` | string[] | `["address", "undefined"]` | Sanitizer types to enable |
 | `[sanitizers]` | `build_dir` | string | `"build"` | Build directory for sanitizer builds |
 | `[sanitizers]` | `timeout` | int | `0` | Max seconds per sanitizer test (`0` = no limit) |
+| `[perf]` | `enabled` | bool | `false` | Enable performance checks |
+| `[perf]` | `build_dir` | string | `"build"` | Build directory to time and benchmark |
+| `[perf]` | `binary_path` | string | `""` | Binary to size-check (relative to repo root) |
+| `[perf]` | `max_binary_size_mb` | int | `0` | Max binary size in MiB (`0` = skip check) |
+| `[perf]` | `max_build_time_sec` | int | `0` | Max build seconds (`0` = skip check) |
+| `[perf]` | `benchmark_regex` | string | `""` | ctest `-R` regex; empty skips benchmarks |
 
 ### Pattern Matching
 
@@ -467,6 +485,7 @@ Core Workflow:
   test            Run test and optional coverage checks
   sanitizer       Run sanitizer checks (ASan, UBSan, TSan, LSan)
   deps            Check project dependencies (Conan, vcpkg, CMake FetchContent)
+  perf            Run performance checks (build time, binary size, benchmarks)
 
 Subcommands:
   init

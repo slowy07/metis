@@ -31,7 +31,7 @@ class PosixToolchainProvider : public domain::ports::IToolchainProvider {
   std::string compiler_;
   std::string version_;
 
-  [[nodiscard]] bool is_macos() const;
+  [[nodiscard]] static bool is_macos();
   [[nodiscard]] bool has(std::string_view cmd) const;
 
   // RPM-based (dnf, zypper), Arch (pacman), macOS (brew, port).

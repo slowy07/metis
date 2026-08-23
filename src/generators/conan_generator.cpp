@@ -2,7 +2,6 @@
 
 #include <fmt/format.h>
 
-#include <algorithm>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -38,8 +37,8 @@ std::string generate_conanfile(std::string_view project_name, bool enable_testin
   conan += "import os\n\n\n";
 
   std::string safe_name;
-  for (char c : project_name) {
-    safe_name += (c == '-') ? '_' : c;
+  for (char chr : project_name) {
+    safe_name += (chr == '-') ? '_' : chr;
   }
   conan += fmt::format("class {}Conan(ConanFile):\n", safe_name);
   conan += fmt::format("    name = \"{}\"\n", project_name);

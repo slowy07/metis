@@ -16,7 +16,8 @@
 namespace metis::application {
 PerfChecksUseCase::PerfChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                      std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
+  : shell_(std::move(shell))
+  , file_system_(std::move(file_system)) {}
 
 PerfResult PerfChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
                                       const std::filesystem::path& repo_root, bool verbose) {

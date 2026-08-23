@@ -65,9 +65,15 @@ std::vector<std::string> preset_checks_impl(std::string_view preset) {
 
 std::string severity_warnings_as_errors(std::string_view sev) {
   auto norm = normalize(sev);
-  if (norm == "note") return "";
-  if (norm == "warning") return "clang-diagnostic-*";
-  if (norm == "error") return "*";
+  if (norm == "note") {
+    return "";
+  }
+  if (norm == "warning") {
+    return "clang-diagnostic-*";
+  }
+  if (norm == "error") {
+    return "*";
+  }
   return "*";
 }
 
@@ -86,7 +92,9 @@ std::string generate_clang_tidy(std::string_view preset, std::string_view severi
 
   std::string check_str;
   for (size_t i = 0; i < checks.size(); ++i) {
-    if (i > 0) check_str += ",";
+    if (i > 0) {
+      check_str += ",";
+    }
     check_str += checks.at(i);
   }
 
