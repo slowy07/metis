@@ -481,6 +481,11 @@ int main(int argc, char** argv) {
             "Run metis run --verbose for details, or git commit --no-verify to skip");
       }
 
+      if (opts.verbose) {
+        Console::print_success_block(
+            fmt::format("[metis] [INFO] completed int {:.2f}s\n", elapsed.count()));
+      }
+
       return exit_code;
     }
 

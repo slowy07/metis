@@ -6,7 +6,7 @@
 #include <vector>
 namespace metis::util {
 [[nodiscard]] bool glob_match(std::string_view file, std::string_view pattern) noexcept;
-[[nodiscard]] bool matches_any_pattern(const std::string& file,
+[[nodiscard]] bool matches_any_pattern(std::string_view file,
                                        const std::vector<std::string>& patterns);
 }  // namespace metis::util
 

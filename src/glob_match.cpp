@@ -37,7 +37,7 @@
 
 // Returns true if the file matches any of the given patterns.
 // Empty pattern list means "match everything".
-[[nodiscard]] bool metis::util::matches_any_pattern(const std::string& file,
+[[nodiscard]] bool metis::util::matches_any_pattern(std::string_view file,
                                                     const std::vector<std::string>& patterns) {
   if (patterns.empty()) {
     return true;

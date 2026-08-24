@@ -19,6 +19,7 @@ struct Option {
   std::string_view description;
   std::string default_value;
   bool has_value = true;
+  std::size_t store_index = 0;
 };
 
 class ArgParser {
@@ -39,7 +40,8 @@ class ArgParser {
                                  .long_flag = long_flag,
                                  .description = desc,
                                  .default_value = std::move(default_str),
-                                 .has_value = true});
+                                 .has_value = true,
+                                 .store_index = flag_stores_.size()});
     option_stores_.emplace_back([&storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
@@ -49,6 +51,7 @@ class ArgParser {
         storage = val;
       }
     });
+
     return *this;
   }
 

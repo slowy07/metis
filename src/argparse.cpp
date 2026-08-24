@@ -99,8 +99,8 @@ bool ArgParser::apply_option(size_t& i) {
 
   const auto opt_idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
   if (!opt_it->has_value) {
-    if (opt_idx < flag_stores_.size() && flag_stores_.at(opt_idx) != nullptr) {
-      *flag_stores_.at(opt_idx) = true;
+    if (opt_idx < flag_stores_.size() && flag_stores_.at(opt_it->store_index) != nullptr) {
+      *flag_stores_.at(opt_it->store_index) = true;
     }
     return true;
   }
@@ -109,8 +109,8 @@ bool ArgParser::apply_option(size_t& i) {
     std::cerr << "[ERROR] Option " << arg << " requires value\n";
     return false;
   }
-  if (opt_idx < option_stores_.size()) {
-    option_stores_.at(opt_idx)(std::string(args_[++i]));
+  if (opt_it->store_index < option_stores_.size()) {
+    option_stores_.at(opt_it->store_index)(std::string(args_[++i]));
   }
   return true;
 }
