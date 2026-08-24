@@ -154,6 +154,8 @@ set(METIS_SOURCES
   src/generators/cmake_generator.cpp
   src/generators/conan_generator.cpp
   src/presentation/interactive_init.cpp
+  src/presentation/console.cpp
+  src/presentation/summary_reporter.cpp
   src/spinner.cpp
   src/util.cpp
   src/glob_match.cpp

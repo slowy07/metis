@@ -66,6 +66,7 @@ metis/
 │       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
 │       │   ├── dependency_check_use_case.hpp  # DependencyCheckUseCase
 │       │   ├── perf_checks_use_case.hpp     # PerfChecksUseCase (perf subcommand)
+│       │   ├── performance_check_use_case.hpp # PerformanceCheckUseCase (individual perf runs)
 │       │   ├── dependency.hpp                 # Dependency, DependencyCheckResult
 │       │   └── checks/                      # concrete Check implementations
 │       │       ├── shell_check.hpp          # ShellCheck (custom commands)
@@ -77,7 +78,9 @@ metis/
 │       │       ├── cppcheck_check.hpp       # CppcheckCheck
 │       │       ├── gcc_analyzer_check.hpp   # GccAnalyzerCheck
 │       │       ├── clang_static_analyzer_check.hpp # ClangStaticAnalyzerCheck
-│       │       └── iwyu_check.hpp           # IwyuCheck
+│       │       ├── iwyu_check.hpp           # IwyuCheck
+│       │       ├── security_check.hpp       # SecurityCheck (hardcoded-secret scan)
+│       │       └── dependency_security_check.hpp # DependencySecurityCheck (osv-scanner/grype)
 │       ├── generators/
 │       │   ├── clang_format_generator.hpp   # .clang-format content generation
 │       │   ├── clang_tidy_generator.hpp     # .clang-tidy content generation
@@ -96,7 +99,9 @@ metis/
 │       │   ├── windows_clang_provider.hpp   # LLVM/Clang download + install
 │       │   └── toolchain_factory.hpp        # Platform-conditional provider factory
 │       └── presentation/
-│           └── interactive_init.hpp         # TUI prompts for init wizard
+│           ├── interactive_init.hpp         # TUI prompts for init wizard
+│           ├── console.hpp                  # Console output primitives (blocks, bullets)
+│           └── summary_reporter.hpp         # Structured summaries (deps, init)
 ├── src/
 │   ├── main.cpp                  # Entry point, CLI dispatch
 │   ├── glob_match.cpp
@@ -116,6 +121,7 @@ metis/
 │   │   ├── sanitizer_checks_use_case.cpp
 │   │   ├── dependency_check_use_case.cpp
 │   │   ├── generate_workflow_use_case.cpp
+│   │   ├── performance_check_use_case.cpp
 │   │   └── checks/
 │   │       ├── shell_check.cpp
 │   │       ├── clang_format_check.cpp
@@ -126,7 +132,9 @@ metis/
 │   │       ├── cppcheck_check.cpp
 │   │       ├── gcc_analyzer_check.cpp
 │   │       ├── clang_static_analyzer_check.cpp
-│   │       └── iwyu_check.cpp
+│   │       ├── iwyu_check.cpp
+│   │       ├── security_check.cpp
+│   │       └── dependency_security_check.cpp
 │   ├── generators/
 │   │   ├── clang_format_generator.cpp
 │   │   ├── clang_tidy_generator.cpp
@@ -145,7 +153,9 @@ metis/
 │   │   ├── windows_clang_provider.cpp
 │   │   └── toolchain_factory.cpp
 │   └── presentation/
-│       └── interactive_init.cpp
+│       ├── interactive_init.cpp
+│       ├── console.cpp
+│       └── summary_reporter.cpp
 └── docs/
     └── docs.md                   # This file
 ```
@@ -158,36 +168,36 @@ metis follows a **hexagonal architecture** (ports & adapters) with clear layer s
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                  presentation/                       │
+│                  presentation/                      │
 │         interactive_init (TUI prompts)              │
 ├─────────────────────────────────────────────────────┤
-│                  application/                        │
+│                  application/                       │
 │   InitUseCase · InstallUseCase · RunChecksUseCase   │
 │   TestChecksUseCase · SanitizerChecksUseCase        │
 │   DependencyCheckUseCase · PerfChecksUseCase        │
-│    GenerateWorkflowUseCase · InstallToolchainUseCase │
+│    GenerateWorkflowUseCase · InstallToolchainUseCase│
 ├─────────────────────────────────────────────────────┤
-│                   domain/                            │
-│   ProjectConfig · Check · Workflow · ExitCode        │
-│                    ports/                            │
-│   IConfigRepository · IFileSystem · IGitRepository   │
+│                   domain/                           │
+│   ProjectConfig · Check · Workflow · ExitCode       │
+│                    ports/                           │
+│   IConfigRepository · IFileSystem · IGitRepository  │
 │   IShellExecutor · IToolchainProvider               │
 │   IHttpClient · IArchiveExtractor                   │
 ├─────────────────────────────────────────────────────┤
-│               infrastructure/                        │
+│               infrastructure/                       │
 │  TomlConfigRepository · OsFileSystem                │
 │  CliGitRepository · ProcessShellExecutor            │
 │  CurlHttpClient · TarArchiveExtractor               │
-│  ZipArchiveExtractor · PosixToolchainProvider      │
-│  WindowsGccProvider · WindowsClangProvider         │
-│  ToolchainFactory                                  │
+│  ZipArchiveExtractor · PosixToolchainProvider       │
+│  WindowsGccProvider · WindowsClangProvider          │
+│  ToolchainFactory                                   │
 ├─────────────────────────────────────────────────────┤
-│                 generators/                          │
+│                 generators/                         │
 │  clang_format · clang_tidy · cmake · conan          │
-│            (pure string generation)                  │
+│            (pure string generation)                 │
 ├─────────────────────────────────────────────────────┤
-│              src/main.cpp (CLI entry)                │
-│         ArgParser · subcommand dispatch              │
+│              src/main.cpp (CLI entry)               │
+│         ArgParser · subcommand dispatch             │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -950,6 +960,8 @@ unknown commands fall back to `ShellCheck`.
 | `gcc-analyzer` | `GccAnalyzerCheck` | GCC static analyzer (`-fanalyzer`); per-file |
 | `clang-static-analyzer` | `ClangStaticAnalyzerCheck` | Clang static analyzer; per-file |
 | `include-what-you-use`, `iwyu` | `IwyuCheck` | Include-what-you-use analysis; per-file |
+| `metis-security` | `SecurityCheck` | Hardcoded-secret scan (`password=`, `api_key=`, tokens, ...); per-file |
+| `metis-dep-security` | `DependencySecurityCheck` | Dependency vulnerability scan via `osv-scanner`, falls back to `grype`; runs once |
 | anything else | `ShellCheck` | Custom shell command; inverts `grep`/`rg` exit codes; batches multi-file tools |
 
 Runner flow: `make_check(config)` → `validate()` (build time) → `execute()`
@@ -1260,6 +1272,8 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 | `test_config_manager.cpp` | TOML config loading and validation |
 | `test_dependency_checks.cpp` | Dependency check use case (Conan, CMake parsing, duplicates, lockfiles) |
 | `test_format_mode.cpp` | Format mode execution |
+| `test_perf_checks.cpp` | Perf checks use case (thresholds, mocks) |
+| `test_security_checks.cpp` | Security check execution and pattern reporting |
 | `test_glob_match.cpp` | Glob pattern matching |
 | `test_precommit_domain.cpp` | Pre-commit hook domain logic |
 | `test_sanitizer_checks.cpp` | Sanitizer checks use case (empty types, unknown type, missing build dir) |

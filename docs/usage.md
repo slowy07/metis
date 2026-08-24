@@ -28,7 +28,7 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
-| `perf` | Run performance checks (build time, binary size, benchmarks) |
+| `perf` | Run performance checks (build time, binary size, benchmarks); bare `metis perf` runs all enabled checks |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.metis.toml`).
@@ -182,6 +182,8 @@ as a custom shell check.
 | `include-what-you-use`, `iwyu` | Include-what-you-use analysis; per-file | per-file |
 | `cmake` | Build command (e.g. `cmake --build build`); file list omitted | once |
 | `git` | e.g. `git diff --check`; runs against the whole working tree; file list omitted | once |
+| `metis-security` | Scans files for hardcoded secrets (`password=`, `api_key=`, tokens, ...); match fails the check | per-file |
+| `metis-dep-security` | Vulnerability scan of dependencies via `osv-scanner` (falls back to `grype`); needs either installed | once |
 | anything else | Custom shell command; file list appended | per-file (batched for `clang-format`, `clang-tidy`, `grep`, `egrep`, `rg`, `cppcheck`) |
 
 Notes:
@@ -192,7 +194,10 @@ Notes:
   needs `.clang-format` or `_clang-format`: otherwise the check fails before
   anything runs. Stage the fixes with `git add -u`.
 - **clang-tidy** fails before execution if `.clang-tidy` is missing, unless
-  `args` includes `--config-file=<path>`.
+  `args` includes `--config-file=<path>`. A bare `--` in `args` separates
+  tidy options from compiler flags (e.g.
+  `args = ["--quiet", "--", "-std=c++20", "-Iinclude"]`); source files are
+  inserted between them. Without a `--`, files are appended after the options.
 - **compiler checks** compile each file with `-fsyntax-only`, so no object
   files ever land in the repo.
 - Dispatch matches `clang-format`/`clang-tidy`/`cmake`/`git` by **exact

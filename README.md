@@ -66,7 +66,7 @@ metis run --all-files
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
-| `perf` | Run performance checks (build time, binary size, benchmarks) |
+| `perf` | Run performance checks (build time, binary size, benchmarks); bare `metis perf` runs all enabled checks |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 

@@ -72,31 +72,12 @@ metis init --enable-cmake \
 
 ## Validation
 
-Before any file is created, metis validates every dependency:
+metis performs **no format validation** on `--add-dep` entries at init time.
+The CMake generator splits each entry on the first and last colon; an entry
+without any colon is skipped silently. A missing tag falls back to `main`.
 
-| Check | Error if failed |
-|-------|-----------------|
-| Name is non-empty | `Dependency name cannot be empty` |
-| URL is non-empty | ``Dependency `fmt` missing git_url`` |
-| URL format is valid | ``Dependency `fmt` has invalid git_url: bad-url`` |
-| Tag is non-empty | ``Dependency `fmt` missing git_tag`` |
-
-**Valid URL formats:**
-
-```
-https://github.com/user/repo.git
-https://gitlab.com/user/repo.git
-https://bitbucket.org/user/repo.git
-git@github.com:user/repo.git
-```
-
-**Invalid URLs (rejected):**
-
-```
-not-a-url.git           # missing scheme
-https://github.com/repo  # missing .git suffix
-https://github.com/       # missing user/repo
-```
+Use `metis deps` to validate resolved dependencies (versions, local
+availability, lockfiles, duplicates).
 
 ---
 
@@ -111,27 +92,20 @@ FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG 11.0.2
-  GIT_SHALLOW ON
 )
 
 FetchContent_Declare(
   tomlplusplus
   GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
   GIT_TAG v3.4.0
-  GIT_SHALLOW ON
-)
-
-FetchContent_MakeAvailable(fmt tomlplusplus)
-```
-
-And links them to your target:
-
-```cmake
-target_link_libraries(my-project PUBLIC
-  fmt::fmt
-  tomlplusplus::tomlplusplus
 )
 ```
+
+`FetchContent_MakeAvailable(...)` and `target_link_libraries(...)` lines are
+not generated — add them to suit your target setup.
+
+With `--enable-conan`, `find_package(<name> REQUIRED)` is emitted instead of
+FetchContent blocks, and a `conanfile.py` is generated.
 
 ---
 
@@ -156,8 +130,7 @@ Currently, metis only supports **FetchContent** for dependency management. The `
 | Strategy | Status | Description |
 |----------|--------|-------------|
 | `FetchContent` | Supported | CMake-native, no external tools |
-| `FindPackage` | TODO | System packages via `find_package()` |
-| `Conan` | TODO | Conan package manager integration |
+| `Conan` | Supported (`--enable-conan`) | Generates `conanfile.py` + `find_package` calls |
 | `Vcpkg` | TODO | Microsoft vcpkg toolchain |
 
 ---
@@ -192,8 +165,9 @@ metis init --enable-cmake --cmake-target-type header-only \
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| `[ERROR] Dependency 'x' has invalid git_url` | URL missing `https://` or `.git` | Use full Git URL |
-| `[ERROR] Dependency 'x' missing git_tag` | Tag field empty | Provide branch/tag/commit |
+| `✖ <dep>  [missing version]` | Dependency declared without a version | Add a version to the dep |
+| `✖ <dep>  [invalid semver: x]` | Version is not valid semver | Use e.g. `10.2.1` |
+| `✖ <dep>  [not installed locally]` | Conan/vcpkg manifest lists it but it is not available to CMake | Run `conan install` / `vcpkg install` |
 | CMake configure fails with "FetchContent_Declare not found" | CMake < 3.11 | Upgrade to CMake ≥ 3.20 |
 | `target_link_libraries` fails | Wrong namespace | Edit `CMakeLists.txt` to match library's exported target |
 | Build fails after `FetchContent_MakeAvailable` | Network unreachable / private repo | Check connectivity or use SSH key auth |
@@ -202,7 +176,6 @@ metis init --enable-cmake --cmake-target-type header-only \
 
 ## Notes
 
-- **No network check at init time**: metis validates URL *format*, not reachability. The actual fetch happens at CMake configure time.
-- **GIT_SHALLOW ON**: All FetchContent declarations use shallow clones for faster downloads.
+- **No network check at init time**: metis checks neither format nor reachability; the fetch happens at CMake configure time.
 - **Order matters**: Dependencies are declared in the order you specify them. If `A` depends on `B`, declare `B` first.
 - **Manual edits welcome**: After `init`, you can freely edit `CMakeLists.txt` to add `FIND_PACKAGE_ARGS`, `CMAKE_ARGS`, or switch to `ExternalProject`.
