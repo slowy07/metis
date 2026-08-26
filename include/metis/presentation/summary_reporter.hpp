@@ -9,17 +9,6 @@
 namespace metis::presentation {
 class SummaryReporter {
  public:
-  struct RunSummary {
-    int total_checks = 0;
-    int passed = 0;
-    int failed = 0;
-    int skipped = 0;
-    double duration_sec = 0.0;
-    bool parallel = false;
-  };
-
-  static void print_run_summary(const RunSummary& summary);
-
   struct TestSummary {
     bool success = false;
     int total_tests = 0;
@@ -63,9 +52,6 @@ class SummaryReporter {
   };
 
   static void print_init_summary(const InitSummary& summary);
-
-  static void print_empty_line();
-  static void print_done();
 };
 }  // namespace metis::presentation
 

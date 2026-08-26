@@ -335,26 +335,20 @@ int main(int argc, char** argv) {
       return static_cast<int>(domain::ExitCode::CONFIG_ERROR);
     }
 
-    if (subcmd == "generate-gha") {
+    if (subcmd == "generate-gha" || subcmd == "generate-gitlab") {
+      auto platform = subcmd == "generate-gha" ? domain::workflow::Platform::GithubAction
+                                               : domain::workflow::Platform::GitLabCI;
+      auto label = subcmd == "generate-gha" ? "GitHub Actions" : "GitLab CI";
       application::GenerateWorkflowUseCase gen_use_case(std::move(fs));
-      if (!gen_use_case.execute(cfg, repo_root)) {
-        Console::print_error_block("Failed to write GitHub Actions workflow",
-                                   "Check write permissions for .github/workflows/");
+      if (!gen_use_case.execute(cfg, repo_root, platform)) {
+        Console::print_error_block("Failed to write " + std::string(label) + " workflow");
         return static_cast<int>(domain::ExitCode::WORKFLOW_GENERATION_ERROR);
       }
-      Console::print_success_block("GitHub Actions workflow generated");
-      Console::print_bullet((repo_root / ".github" / "workflows" / "metis.yml").string());
-      return static_cast<int>(domain::ExitCode::SUCCESS);
-    }
-
-    if (subcmd == "generate-gitlab") {
-      application::GenerateWorkflowUseCase gen_use_case(std::move(fs));
-      if (!gen_use_case.execute(cfg, repo_root, domain::workflow::Platform::GitLabCI)) {
-        Console::print_error_block("Failed to write GitLab CI workflow");
-        return static_cast<int>(domain::ExitCode::WORKFLOW_GENERATION_ERROR);
-      }
-      Console::print_success_block("GitLab CI workflow generated");
-      Console::print_bullet((repo_root / ".gitlab-ci.yml").string());
+      Console::print_success_block(std::string(label) + " workflow generated");
+      auto path = platform == domain::workflow::Platform::GithubAction
+                      ? repo_root / ".github" / "workflows" / "metis.yml"
+                      : repo_root / ".gitlab-ci.yml";
+      Console::print_bullet(path.string());
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 

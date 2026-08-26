@@ -18,7 +18,7 @@ namespace metis::application {
 // Creates an InitUseCase with ownership of its dependencies.
 // config_repo is used for find_git_root() to resolve relative paths.
 // file_system is used for all file writes (config, .clang-format, etc.)
-InitUseCase::InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> config_repo,
+InitUseCase::InitUseCase(std::unique_ptr<infrastructure::TomlConfigRepository> config_repo,
                          std::unique_ptr<domain::ports::IFileSystem> file_system)
   : config_repo_(std::move(config_repo))
   , file_system_(std::move(file_system)) {}

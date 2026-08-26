@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "metis/domain/ports/config_repository.hpp"
 #include "metis/domain/ports/file_system.hpp"
+#include "metis/infrastructure/toml_config_repository.hpp"
 
 namespace metis::application {
 
@@ -70,7 +70,7 @@ class InitUseCase {
    * @param config_repo Repository used to persists project configuration
    * @param file_system Filesystem abstraction used to create files and directories
    */
-  InitUseCase(std::unique_ptr<domain::ports::IConfigRepository> config_repo,
+  InitUseCase(std::unique_ptr<infrastructure::TomlConfigRepository> config_repo,
               std::unique_ptr<domain::ports::IFileSystem> file_system);
 
   /**
@@ -88,7 +88,7 @@ class InitUseCase {
 
  private:
   /// Repository used to persist project configuration
-  std::unique_ptr<domain::ports::IConfigRepository> config_repo_;
+  std::unique_ptr<infrastructure::TomlConfigRepository> config_repo_;
 
   /// Filesystem abstraction used for all file operations
   std::unique_ptr<domain::ports::IFileSystem> file_system_;

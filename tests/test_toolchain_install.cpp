@@ -73,7 +73,6 @@ struct MockFileSystem : domain::ports::IFileSystem {
     return true;
   }
   std::string read_file(const std::filesystem::path& /*path*/) override { return {}; }
-  bool remove(const std::filesystem::path& /*path*/) override { return true; }
   bool set_permissions(const std::filesystem::path& /*path*/, std::filesystem::perms /*perms*/,
                        std::filesystem::perm_options /*opts*/) override {
     return true;

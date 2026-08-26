@@ -42,7 +42,6 @@ struct MockFs : domain::ports::IFileSystem {
     auto found = files_.find(path);
     return found != files_.end() ? found->second : "";
   }
-  bool remove(const std::filesystem::path& path) override { return files_.erase(path) > 0; }
   bool set_permissions(const std::filesystem::path& path, std::filesystem::perms perms,
                        std::filesystem::perm_options options) override {
     (void)path;

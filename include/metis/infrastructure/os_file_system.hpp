@@ -12,7 +12,6 @@ class OsFileSystem : public domain::ports::IFileSystem {
   [[nodiscard]] bool write_file(const std::filesystem::path& path,
                                 const std::string& content) override;
   [[nodiscard]] std::string read_file(const std::filesystem::path& path) override;
-  [[nodiscard]] bool remove(const std::filesystem::path& path) override;
   [[nodiscard]] bool set_permissions(const std::filesystem::path& path,
                                      std::filesystem::perms perms,
                                      std::filesystem::perm_options opts) override;

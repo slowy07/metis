@@ -78,17 +78,6 @@ TEST_F(FileSystemTest, ExistsDetectsFile) {
   EXPECT_TRUE(fs.exists(file_path));
 }
 
-TEST_F(FileSystemTest, RemoveDeletesFile) {
-  infrastructure::OsFileSystem fs;
-  auto file_path = test_dir / "remove_test.txt";
-
-  ASSERT_TRUE(fs.write_file(file_path, "content"));
-  EXPECT_TRUE(fs.exists(file_path));
-
-  ASSERT_TRUE(fs.remove(file_path));
-  EXPECT_FALSE(fs.exists(file_path));
-}
-
 // Generic check abstraction: full field set parses from TOML.
 TEST(ConfigCheckTest, ParsesAllCheckFields) {
   auto cfg_dir = std::filesystem::temp_directory_path() / "metis_check_test";
