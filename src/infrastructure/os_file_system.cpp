@@ -75,11 +75,6 @@ std::string OsFileSystem::read_file(const std::filesystem::path& path) {
   return stringstream.str();
 }
 
-bool OsFileSystem::remove(const std::filesystem::path& path) {
-  std::error_code err_code;
-  return std::filesystem::remove(path, err_code);
-}
-
 bool OsFileSystem::set_permissions(const std::filesystem::path& path, std::filesystem::perms perms,
                                    std::filesystem::perm_options opts) {
   std::error_code err_code;

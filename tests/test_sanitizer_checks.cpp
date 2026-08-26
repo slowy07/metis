@@ -24,7 +24,6 @@ struct MockFs : domain::ports::IFileSystem {
   bool create_directories(const std::filesystem::path&) override { return true; }
   bool write_file(const std::filesystem::path&, const std::string&) override { return true; }
   std::string read_file(const std::filesystem::path&) override { return {}; }
-  bool remove(const std::filesystem::path&) override { return true; }
   bool set_permissions(const std::filesystem::path&, std::filesystem::perms,
                        std::filesystem::perm_options) override {
     return true;

@@ -10,39 +10,6 @@
 
 namespace metis::presentation {
 
-void SummaryReporter::print_run_summary(const RunSummary& summary) {
-  std::vector<std::string> box_lines;
-
-  if (summary.failed == 0) {
-    box_lines.push_back(Console::green("All checks passed") + "  " +
-                        Console::dim(fmt::format("({} checked, {:.1f}s)", summary.total_checks,
-                                                 summary.duration_sec)));
-  } else {
-    box_lines.push_back(Console::red("Checks failed") + "  " +
-                        Console::dim(fmt::format("({} passed, {} failed, {} skipped)",
-                                                 summary.passed, summary.failed, summary.skipped)));
-  }
-
-  if (summary.parallel) {
-    box_lines.push_back(Console::dim("Executed in parallel mode"));
-  }
-
-  Console::print_summary_box(box_lines);
-
-  if (summary.failed > 0) {
-    Console::print_next_steps({
-        "Fix the failing checks above",
-        "Run " + Console::bold("metis run --verbose") + " for full output",
-        "Skip temporarily with " + Console::bold("git commit --no-verify") + " (not recommended)",
-    });
-  } else {
-    Console::print_next_steps({
-        "Stage your changes: " + Console::bold("git add -u"),
-        "Commit: " + Console::bold("git commit -m \"your message\""),
-    });
-  }
-}
-
 void SummaryReporter::print_test_summary(const TestSummary& summary) {
   std::vector<std::string> box_lines;
 
@@ -149,9 +116,5 @@ void SummaryReporter::print_init_summary(const InitSummary& summary) {
       Console::bold("git add . && git commit -m \"init\"") + " — first commit",
   });
 }
-
-void SummaryReporter::print_empty_line() { std::cout << "\n"; }
-
-void SummaryReporter::print_done() { std::cout << "\n" << Console::green("Done.") << "\n"; }
 
 }  // namespace metis::presentation

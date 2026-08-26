@@ -7,9 +7,7 @@
 namespace metis::domain::ports {
 
 // Interface for filesystem operations.
-// lazy: wraps std::filesystem 1:1. Exists primarily for test mocking,
-// but only 6 of 8 methods are actually used in production code.
-// read_file() and remove() are dead via this interface.
+// lazy: wraps std::filesystem 1:1. Exists primarily for test mocking.
 struct IFileSystem {
   virtual ~IFileSystem() = default;
 
@@ -18,7 +16,6 @@ struct IFileSystem {
   [[nodiscard]] virtual bool write_file(const std::filesystem::path& path,
                                         const std::string& content) = 0;
   [[nodiscard]] virtual std::string read_file(const std::filesystem::path& path) = 0;
-  [[nodiscard]] virtual bool remove(const std::filesystem::path& path) = 0;
   [[nodiscard]] virtual bool set_permissions(const std::filesystem::path& path,
                                              std::filesystem::perms perms,
                                              std::filesystem::perm_options opts) = 0;
