@@ -40,3 +40,9 @@ github_actions = false
 
 [execution]
 parallel = true
+
+[[checks]]
+name = "format"
+command = "clang-format"
+args = ["--dry-run", "--Werror"]
+enabled = true

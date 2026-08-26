@@ -59,6 +59,7 @@ metis run --all-files
 |---------|--------|
 | `init` | Generate `.metis.toml`, `.clang-format` (plus `.clang-tidy` / `CMakeLists.txt` with `--enable-*` flags) |
 | `install` | Install pre-commit hook + optional CI workflow |
+| `sync` | Refresh hooks/workflows, generate missing tool configs, validate all checks |
 | `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
 | `generate-gha` | Write GitHub Actions workflow to `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write GitLab CI workflow to `.gitlab-ci.yml` |
@@ -66,7 +67,7 @@ metis run --all-files
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
-| `perf` | Run performance checks (build time, binary size, benchmarks); bare `metis perf` runs all enabled checks |
+| `perf` | Run performance checks (build time, binary size, benchmarks); `--level quick` = binary size only; default: `full` |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 

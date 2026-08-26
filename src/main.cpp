@@ -1,13 +1,13 @@
 #include <fmt/format.h>
 
 #include <algorithm>
-#include <array>
 #include <cctype>
 #include <cstring>
 #include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <regex>
 #include <span>
 #include <string>
 #include <string_view>
@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "metis/application/build_use_case.hpp"
 #include "metis/application/dependency_check_use_case.hpp"
 #include "metis/application/generate_workflow_use_case.hpp"
 #include "metis/application/init_use_case.hpp"
@@ -29,6 +30,8 @@
 #include "metis/domain/error_codes.hpp"
 #include "metis/domain/ports/toolchain_provider.hpp"
 #include "metis/domain/workflow.hpp"
+#include "metis/generators/clang_format_generator.hpp"
+#include "metis/generators/clang_tidy_generator.hpp"
 #include "metis/infrastructure/cli_git_repository.hpp"
 #include "metis/infrastructure/os_file_system.hpp"
 #include "metis/infrastructure/process_shell_executor.hpp"
@@ -155,6 +158,7 @@ int main(int argc, char** argv) {
       .add_option("-c", "--config", "Config file path", config_path)
       .add_subcommand("init", "Create default .metis.toml")
       .add_subcommand("install", "Generate & install .git/hooks/pre-commit")
+      .add_subcommand("sync", "Sync environment: refresh hooks/workflows + validate checks")
       .add_subcommand("generate-gha", "Output GitHub Actions workflow")
       .add_subcommand("generate-gitlab", "Output GitLab CI workflow")
       .add_subcommand("run", "Execute checks on files")
@@ -162,7 +166,10 @@ int main(int argc, char** argv) {
       .add_subcommand("sanitizer", "Run sanitizer checks (ASan, UBSan, TSan, LSan)")
       .add_subcommand("test", "Run test and optional coverage checks")
       .add_subcommand("deps", "Validate project dependencies (conan, vcpkg, cmake)")
-      .add_subcommand("perf", "Run performance checks (build time, binary size, benchmarks)");
+      .add_subcommand("build", "Configure and build the project with CMake")
+      .add_subcommand("perf",
+                      "Run performance checks (build time, binary size, benchmarks); "
+                      "--level quick = binary size only [default: full]");
 
   if (!app.parse(argc, argv)) {
     return 0;
@@ -264,6 +271,68 @@ int main(int argc, char** argv) {
           "Commit to trigger checks: " + Console::bold("git commit -m <message>"),
       });
       return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
+    if (subcmd == "sync") {
+      // Refresh hooks/workflows per [output] config (idempotent), then
+      // validate every enabled check's tool/config presence.
+      application::InstallUseCase install_use_case(std::move(fs), std::move(git_repo));
+      auto installed = install_use_case.execute(repo_root, cfg);
+      if (!installed.error_message.empty()) {
+        Console::print_error_block(installed.error_message);
+        return static_cast<int>(domain::ExitCode::HOOK_INSTALL_ERROR);
+      }
+      if (installed.hook_installed) {
+        Console::print_success_block("Pre-commit hook synced");
+        Console::print_bullet("Location: " + installed.hook_path);
+      }
+      if (installed.workflow_installed) {
+        Console::print_success_block("CI workflow synced");
+        Console::print_bullet("Location: " + installed.workflow_path);
+      }
+
+      // Self-heal: generate missing tooling configs from init defaults.
+      // Never overwrites existing files — those are user-owned by now.
+      namespace gen = metis::generators;
+      auto sync_fs = std::make_unique<infrastructure::OsFileSystem>();
+      const auto ensure_file = [&](const std::filesystem::path& path, const std::string& content) {
+        if (sync_fs->exists(path)) {
+          return;
+        }
+        if (!sync_fs->write_file(path, content)) {
+          Console::print_error_block("Failed to write " + path.string());
+          std::exit(static_cast<int>(domain::ExitCode::GENERAL_ERROR));
+        }
+        Console::print_success_block("Generated " + path.string());
+      };
+
+      int problems = 0;
+      for (const auto& check_cfg : cfg.checks) {
+        if (!check_cfg.enabled) {
+          continue;
+        }
+        const auto base = std::filesystem::path(check_cfg.command).filename().string();
+        if (base == "clang-format") {
+          ensure_file(repo_root / ".clang-format",
+                      gen::generate_clang_format("Google", 2, 100, "Left", "Attach"));
+        } else if (base == "clang-tidy") {
+          ensure_file(repo_root / ".clang-tidy", gen::generate_clang_tidy("standard", "error", 1));
+        }
+
+        auto impl = application::make_check(check_cfg);
+        auto error = impl->validate(repo_root);
+        if (!error.empty()) {
+          Console::print_warning_block(error);
+          ++problems;
+        }
+      }
+
+      if (problems == 0) {
+        Console::print_success_block("Environment is in sync");
+        return static_cast<int>(domain::ExitCode::SUCCESS);
+      }
+      std::cerr << "[ERROR] " << problems << " check(s) need attention\n";
+      return static_cast<int>(domain::ExitCode::CONFIG_ERROR);
     }
 
     if (subcmd == "generate-gha") {
@@ -381,6 +450,8 @@ int main(int argc, char** argv) {
 
     if (subcmd == "perf") {
       bool verbose = false;
+      auto level = application::PerfLevel::FULL;
+      // third level exists.
       for (size_t i = 1; i < args.size(); ++i) {
         std::string_view arg = args[i];
         if (arg == "perf") {
@@ -388,6 +459,10 @@ int main(int argc, char** argv) {
         }
         if (arg == "--verbose" || arg == "-V") {
           verbose = true;
+        }
+        if (arg == "--level" && i + 1 < args.size()) {
+          level = std::string_view(args[++i]) == "quick" ? application::PerfLevel::QUICK
+                                                         : application::PerfLevel::FULL;
         }
       }
 
@@ -398,7 +473,7 @@ int main(int argc, char** argv) {
       }
 
       auto perf_use_case = application::PerfChecksUseCase(std::move(shell), std::move(fs));
-      auto result = perf_use_case.execute(cfg, repo_root, verbose);
+      auto result = perf_use_case.execute(cfg, repo_root, verbose, level);
 
       if (!result.output.empty()) {
         std::cout << result.output;
@@ -407,7 +482,7 @@ int main(int argc, char** argv) {
       SummaryReporter::PhaseSummary summary;
       summary.phase_name = "Performance checks";
       summary.success = result.success;
-      if (cfg.perf.max_build_time_sec > 0) {
+      if (cfg.perf.max_build_time_sec > 0 && result.build_time_sec > 0) {
         summary.details.push_back(fmt::format("Build time: {:.1f}s", result.build_time_sec));
       }
       if (cfg.perf.max_binary_size_mb > 0) {
@@ -582,6 +657,55 @@ int main(int argc, char** argv) {
       return static_cast<int>(domain::ExitCode::SUCCESS);
     }
 
+    if (subcmd == "build") {
+      bool verbose = false;
+      bool clean = false;
+      std::string build_dir = "build";
+      int jobs = 0;
+
+      for (size_t i = 1; i < args.size(); ++i) {
+        std::string_view arg = args[i];
+
+        if (arg == "build") {
+          continue;
+        }
+
+        if (arg == "--verbose" || arg == "-V") {
+          verbose = true;
+        } else if (arg == "--clean") {
+          clean = true;
+        } else if (arg == "--build-dir" && i + 1 < args.size()) {
+          build_dir = args[++i];
+        } else if ((arg == "-j" || arg == "--jobs") && i + 1 < args.size()) {
+          jobs = std::stoi(args[++i]);
+        }
+      }
+
+      auto build_uc =
+          application::BuildUseCase(std::make_unique<infrastructure::ProcessShellExecutor>(),
+                                    std::make_unique<infrastructure::OsFileSystem>());
+
+      auto result = build_uc.execute(repo_root, build_dir, clean, verbose, jobs);
+
+      if (!result.output.empty()) {
+        std::cout << result.output;
+      }
+
+      SummaryReporter::PhaseSummary summary;
+      summary.phase_name = "Build";
+      summary.success = result.success;
+      summary.details.push_back(fmt::format("Configure: {:.1f}s", result.configure_time_sec));
+      summary.details.push_back(fmt::format("Build:     {:.1f}s", result.build_time_sec));
+
+      SummaryReporter::print_phase_summary(summary);
+
+      if (!result.success) {
+        return static_cast<int>(domain::ExitCode::BUILD_FAILURE);
+      }
+
+      return static_cast<int>(domain::ExitCode::SUCCESS);
+    }
+
     if (subcmd == "deps") {
       application::DependencyCheckOptions dep_opts;
 
@@ -615,7 +739,7 @@ int main(int argc, char** argv) {
           }
 
           for (const auto& res_validation : result.validations) {
-            std::cout << "  " << (res_validation.ok ? Console::green("✔") : Console::red("✖"))
+            std::cout << "  " << (res_validation.ok ? Console::green("✓") : Console::red("✖"))
                       << " " << res_validation.dep.name
                       << std::string(name_width - res_validation.dep.name.size(), ' ');
 

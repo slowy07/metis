@@ -69,7 +69,7 @@ std::string Console::magenta(std::string_view text) { return wrap(text, k_magent
 // TODO: implemented only for make sure console interactive will work
 // next maybe clean it into interactive wrapper
 std::string Console::success(std::string_view text) {
-  return supports_color() ? green("✔  ") + green(text) : std::string("[OK] ") + std::string(text);
+  return supports_color() ? green("✓ ") + green(text) : std::string("[OK] ") + std::string(text);
 }
 
 std::string Console::error(std::string_view text) {
@@ -101,7 +101,7 @@ void Console::print_subheader(std::string_view title) {
 void Console::print_separator() { std::cout << std::string(60, '-') << "\n"; }
 
 void Console::print_success_block(std::string_view message) {
-  std::cout << "\n" << green("✔  ") << bold(std::string(message)) << "\n";
+  std::cout << "\n" << green("✓  ") << bold(std::string(message)) << "\n";
 }
 
 void Console::print_error_block(std::string_view message,
@@ -182,7 +182,7 @@ void Console::print_bullet(std::string_view text, int indent) {
 
 void Console::print_check_item(std::string_view label, bool ok,
                                std::optional<std::string_view> detail) {
-  std::cout << "  " << (ok ? green("✔") : red("✖")) << " " << label;
+  std::cout << "  " << (ok ? green("✓") : red("✖")) << " " << label;
   if (detail) {
     std::cout << " " << dim(std::string(*detail));
   }

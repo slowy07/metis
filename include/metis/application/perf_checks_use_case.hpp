@@ -12,6 +12,9 @@
 #include "metis/domain/ports/shell_executor.hpp"
 
 namespace metis::application {
+// quick = instant checks only (binary size); full = everything (default).
+enum class PerfLevel : std::uint8_t { FULL, QUICK };
+
 struct PerfResult {
   bool success = true;
   bool binary_size_ok = true;
@@ -28,7 +31,8 @@ class PerfChecksUseCase {
                     std::unique_ptr<domain::ports::IFileSystem> file_system);
 
   PerfResult execute(const domain::config::ProjectConfig& cfg,
-                     const std::filesystem::path& repo_root, bool verbose);
+                     const std::filesystem::path& repo_root, bool verbose,
+                     PerfLevel level = PerfLevel::FULL);
 
  private:
   bool measure_build_time(const std::filesystem::path& build_dir, bool verbose, double& out_seconds,

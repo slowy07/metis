@@ -375,6 +375,17 @@ void ArgParser::show_help() const {
   std::cout << "        metis deps\n";
   std::cout << "        metis deps --graph\n\n";
 
+  std::cout << "  build\n";
+  std::cout << "      Configure and build the project with CMake.\n\n";
+  std::cout << "      Options:\n";
+  std::cout << "        --build-dir <dir>            [default: build]\n";
+  std::cout << "        --clean                      Clean before build\n";
+  std::cout << "        --verbose, -V\n";
+  std::cout << "        -j, --jobs <n>               Parallel jobs\n\n";
+  std::cout << "      Usage:\n";
+  std::cout << "        metis build\n";
+  std::cout << "        metis build --clean --jobs 8\n\n";
+
   print_section_title("Global Options");
 
   for (const auto& opt : options_) {

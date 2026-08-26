@@ -29,6 +29,7 @@ enum class ExitCode : std::uint8_t {
   PERF_CHECK_FAILURE = 20,
   PERF_BINARY_TOO_LARGE = 21,
   PERF_BUILD_TOO_SLOW = 22,
+  BUILD_FAILURE = 23,
 };
 
 }  // namespace metis::domain

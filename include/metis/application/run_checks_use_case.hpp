@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "metis/application/checks/shell_check.hpp"
 #include "metis/domain/config.hpp"
 #include "metis/domain/ports/file_system.hpp"
 #include "metis/domain/ports/git_repository.hpp"
@@ -32,6 +33,11 @@ struct RunOptions {
   bool dry_run = false;
   RunMode mode = RunMode::CHECK;
 };
+
+// Maps a config check to its concrete implementation by command basename
+// (clang-format/clang-tidy/compilers/cmake/git/...; else custom shell command).
+// Shared by RunChecksUseCase and `metis sync` environment validation.
+[[nodiscard]] std::unique_ptr<domain::Check> make_check(const domain::config::Check& config);
 
 class RunChecksUseCase {
  public:

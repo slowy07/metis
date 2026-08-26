@@ -178,4 +178,27 @@ TEST_F(PerfChecksTest, BenchmarkFailureFails) {
   EXPECT_NE(result.output.find("[ERROR] Benchmark execution failed"), std::string::npos);
 }
 
+TEST_F(PerfChecksTest, QuickLevelRunsSizeCheckOnly) {
+  cfg.perf.max_build_time_sec = 10;
+  cfg.perf.benchmark_regex = "bench_";
+  fs.existing.clear();  // quick mode must not require a build dir
+
+  application::PerfChecksUseCase use_case(std::make_unique<MockShell>(shell),
+                                          std::make_unique<MockFs>(fs));
+  auto result = use_case.execute(cfg, root, false, application::PerfLevel::QUICK);
+
+  EXPECT_TRUE(result.success);
+  EXPECT_TRUE(last_cmd.empty());  // no shell work: no rebuild, no ctest
+}
+
+TEST_F(PerfChecksTest, DefaultLevelIsFull) {
+  cfg.perf.max_build_time_sec = 10;
+  cfg.perf.benchmark_regex = "bench_";
+
+  auto result = run();  // no level argument
+
+  EXPECT_NE(last_cmd.find("ctest --test-dir"), std::string::npos);
+  EXPECT_TRUE(result.success);
+}
+
 }  // namespace

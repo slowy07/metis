@@ -112,7 +112,7 @@ void SummaryReporter::print_phase_summary(const PhaseSummary& summary) {
   std::vector<std::string> box_lines;
 
   if (summary.success) {
-    box_lines.push_back(Console::green("✔ ") + Console::bold(summary.phase_name) + "  " +
+    box_lines.push_back(Console::green("✓ ") + Console::bold(summary.phase_name) + "  " +
                         Console::dim("passed"));
   } else {
     box_lines.push_back(Console::red("✖ ") + Console::bold(summary.phase_name) + "  " +

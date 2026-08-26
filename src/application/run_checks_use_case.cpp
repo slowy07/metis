@@ -53,6 +53,8 @@ struct WorkItem {
 // Heuristic-based dispatch: clang-format/clang-tidy/compilers/cmake/git get
 // specialized behavior; everything else is a custom shell command.
 // config if the heuristics start misrouting checks.
+}  // namespace
+
 bool is_compiler(const std::string& basename) {
   static const std::vector<std::string> k_prefixes = {"gcc",     "g++", "clang",
                                                       "clang++", "cc",  "c++"};
@@ -99,6 +101,8 @@ std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
   }
   return std::make_unique<checks::ShellCheck>(config);
 }
+
+namespace {
 
 // Thread-safe printer for concurrent check output.
 // Checks run in parallel via std::async; without a mutex, output from

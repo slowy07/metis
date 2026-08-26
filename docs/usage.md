@@ -21,6 +21,7 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 |---|---|
 | `init` | Generate `.metis.toml` + tooling configs |
 | `install` | Install `.git/hooks/pre-commit` (and CI workflows if enabled in config) |
+| `sync` | Refresh hooks/workflows, generate missing tool configs, validate all checks |
 | `run` | Execute configured checks on files |
 | `generate-gha` | Write `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write `.gitlab-ci.yml` |
@@ -28,7 +29,7 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
-| `perf` | Run performance checks (build time, binary size, benchmarks); bare `metis perf` runs all enabled checks |
+| `perf` | Run performance checks (build time, binary size, benchmarks); `--level quick` = binary size only; default: `full` |
 | `-h, --help` / `-v, --version` | Help / version |
 
 Global flag: `-c, --config <path>` (default `.metis.toml`).

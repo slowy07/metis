@@ -126,6 +126,7 @@ set(METIS_SOURCES
   src/application/install_toolchain_use_case.cpp
   src/application/dependency_check_use_case.cpp
   src/application/perf_checks_use_case.cpp
+  src/application/build_use_case.cpp
   src/application/checks/shell_check.cpp
   src/application/checks/clang_format_check.cpp
   src/application/checks/clang_tidy_check.cpp
@@ -191,6 +192,7 @@ set(METIS_HEADERS
   include/metis/application/run_checks_use_case.hpp
   include/metis/application/sanitizer_checks_use_case.hpp
   include/metis/application/test_checks_use_case.hpp
+  include/metis/application/build_use_case.hpp
   include/metis/application/checks/cppcheck_check.hpp
   include/metis/application/checks/iwyu_check.hpp
   include/metis/application/checks/clang_static_analyzer_check.hpp

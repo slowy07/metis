@@ -125,7 +125,7 @@ void prompt_dependencies(application::InitOptions& opts) {
     std::string tag = prompt_string("  Git tag", "main");
     std::string dep = fmt::format("{}:{}:{}", name, url, tag);
     opts.dependencies.push_back(std::move(dep));
-    std::cout << "    " << C::green("✔") << " Added " << C::bold(name) << "\n";
+    std::cout << "    " << C::green("✓") << " Added " << C::bold(name) << "\n";
   }
 }
 

@@ -4,10 +4,12 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <typeinfo>
 
 #include "metis/application/checks/clang_tidy_check.hpp"
 #include "metis/application/checks/compiler_check.hpp"
 #include "metis/application/checks/shell_check.hpp"
+#include "metis/application/run_checks_use_case.hpp"
 #include "metis/domain/config.hpp"
 #include "metis/infrastructure/os_file_system.hpp"
 #include "metis/infrastructure/process_shell_executor.hpp"
@@ -138,6 +140,24 @@ TEST(ConfigCheckTest, ExecuteRunsCommand) {
 
   EXPECT_EQ(result.exit_code, 3);
   EXPECT_NE(result.output.find("hello"), std::string::npos);
+}
+
+// Command basename -> concrete check class dispatch used by run and sync.
+TEST(MakeCheckTest, DispatchesByCommandBasename) {
+  domain::config::Check base;
+  auto classify = [&base](const std::string& command) {
+    base.command = command;
+    return std::string(typeid(*application::make_check(base)).name());
+  };
+
+  EXPECT_NE(classify("clang-format").find("ClangFormatCheck"), std::string::npos);
+  EXPECT_NE(classify("clang-tidy").find("ClangTidyCheck"), std::string::npos);
+  EXPECT_NE(classify("g++").find("CompilerCheck"), std::string::npos);
+  EXPECT_NE(classify("gcc-14").find("CompilerCheck"), std::string::npos);
+  EXPECT_NE(classify("cmake").find("BuildCheck"), std::string::npos);
+  EXPECT_NE(classify("metis-security").find("SecurityCheck"), std::string::npos);
+  // Unknown commands fall back to a generic shell check.
+  EXPECT_NE(classify("my-linter").find("ShellCheck"), std::string::npos);
 }
 
 // Regression: config args may carry a bare "--" separating clang-tidy

@@ -495,7 +495,10 @@ Core Workflow:
   test            Run test and optional coverage checks
   sanitizer       Run sanitizer checks (ASan, UBSan, TSan, LSan)
   deps            Check project dependencies (Conan, vcpkg, CMake FetchContent)
-  perf            Run performance checks (build time, binary size, benchmarks)
+  sync            Sync environment: refresh hooks/workflows + validate checks
+  build           Configure and build the project with CMake
+  perf            Run performance checks (build time, binary size, benchmarks);
+                  --level quick = binary size only [default: full]
 
 Subcommands:
   init
@@ -534,6 +537,13 @@ Subcommands:
 
       Usage:
         metis install
+
+  sync
+      Refresh hooks/workflows per config, generate missing tool configs
+      (.clang-format/.clang-tidy), validate every enabled check.
+
+      Usage:
+        metis sync
 
   run
       Execute configured checks.
@@ -599,6 +609,24 @@ Subcommands:
       Usage:
         metis sanitizer
         metis sanitizer --verbose
+
+  build
+      Configure and build the project with CMake.
+
+      Usage:
+        metis build
+
+  perf
+      Run performance checks: build time, binary size, benchmarks.
+      Each runs only if configured in [perf].
+
+      Options:
+        --level <full|quick>           [default: full]
+                                       quick = binary size check only
+
+      Usage:
+        metis perf
+        metis perf --level quick
 
 Global Options:
   -c, --config <value>  Config file path [default: .metis.toml]
@@ -1101,6 +1129,10 @@ main()
 │   ├── InstallUseCase(fs, git).execute(repo_root, cfg)
 │   │   ├── [if local_hook] Generate + validate + install hook
 │   │   └── [if gha/gitlab] Generate + install CI workflow
+├── subcommand == "sync"
+│   ├── InstallUseCase(...).execute(repo_root, cfg)   (refresh hooks/workflows)
+│   ├── Generate missing .clang-format / .clang-tidy from init defaults
+│   └── make_check(check).validate(repo_root) for every enabled check
 ├── subcommand == "generate-gha"
 │   ├── Wire TomlConfigRepository + OsFileSystem + CliGitRepository
 │   ├── Load config, find git root
@@ -1269,10 +1301,10 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 |-----------|-----------------|
 | `test_binary_runtime.cpp` | Binary version output and basic invocation |
 | `test_config_generators.cpp` | Config generator functions and ProjectConfig validation |
-| `test_config_manager.cpp` | TOML config loading and validation |
+| `test_config_manager.cpp` | TOML config loading and validation, command-basename check dispatch (`MakeCheckTest`) |
 | `test_dependency_checks.cpp` | Dependency check use case (Conan, CMake parsing, duplicates, lockfiles) |
 | `test_format_mode.cpp` | Format mode execution |
-| `test_perf_checks.cpp` | Perf checks use case (thresholds, mocks) |
+| `test_perf_checks.cpp` | Perf checks use case (thresholds, mocks, `--level quick/full`) |
 | `test_security_checks.cpp` | Security check execution and pattern reporting |
 | `test_glob_match.cpp` | Glob pattern matching |
 | `test_precommit_domain.cpp` | Pre-commit hook domain logic |

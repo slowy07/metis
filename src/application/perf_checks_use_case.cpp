@@ -20,7 +20,8 @@ PerfChecksUseCase::PerfChecksUseCase(std::unique_ptr<domain::ports::IShellExecut
   , file_system_(std::move(file_system)) {}
 
 PerfResult PerfChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
-                                      const std::filesystem::path& repo_root, bool verbose) {
+                                      const std::filesystem::path& repo_root, bool verbose,
+                                      PerfLevel level) {
   PerfResult result;
 
   if (!cfg.perf.enabled) {
@@ -30,7 +31,8 @@ PerfResult PerfChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
 
   auto build_dir = repo_root / cfg.perf.build_dir;
 
-  if (!file_system_->exists(build_dir)) {
+  // Build dir only matters for the shell-driven checks; size check stats a file.
+  if (level == PerfLevel::FULL && !file_system_->exists(build_dir)) {
     result.success = false;
     result.output = fmt::format(
         "[ERROR] Build Directory does not exists: {}\n"
@@ -38,9 +40,7 @@ PerfResult PerfChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
         build_dir.string(), cfg.perf.build_dir, cfg.perf.build_dir);
   }
 
-  // INFO: build time checking
-  // need some i tweak again after this implement finished
-  if (cfg.perf.max_build_time_sec > 0) {
+  if (level == PerfLevel::FULL && cfg.perf.max_build_time_sec > 0) {
     double build_time = 0.0;
     std::string build_output;
     bool ok = measure_build_time(build_dir, verbose, build_time, build_output);
@@ -82,7 +82,7 @@ PerfResult PerfChecksUseCase::execute(const domain::config::ProjectConfig& cfg,
     }
   }
 
-  if (!cfg.perf.benchmark_regex.empty()) {
+  if (level == PerfLevel::FULL && !cfg.perf.benchmark_regex.empty()) {
     std::string bench_output;
     bool ok = run_benchmarks(build_dir, cfg.perf.benchmark_regex, verbose, bench_output);
     result.output += bench_output;
