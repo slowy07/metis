@@ -41,7 +41,7 @@ class ArgParser {
                                  .description = desc,
                                  .default_value = std::move(default_str),
                                  .has_value = true,
-                                 .store_index = flag_stores_.size()});
+                                 .store_index = option_stores_.size()});
     option_stores_.emplace_back([&storage](const std::string& val) {
       if constexpr (std::is_same_v<T, bool>) {
         storage = (val == "true" || val == "1");
@@ -60,6 +60,8 @@ class ArgParser {
 
   ArgParser& add_subcommand(std::string_view name, std::string_view desc);
 
+  ArgParser& set_subcommand_help(std::string_view name, std::string_view help_text);
+
   ArgParser& set_version(std::string_view ver);
 
   bool parse(int argc, char** argv);
@@ -68,10 +70,13 @@ class ArgParser {
 
   void show_help() const;
 
+  void show_subcommand_help(std::string_view name) const;
+
  private:
   struct Subcommand {
     std::string name;
     std::string description;
+    std::string help_text;
   };
 
   static void print_aligned(std::string_view left, std::string_view right);

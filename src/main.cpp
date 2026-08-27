@@ -171,6 +171,151 @@ int main(int argc, char** argv) {
                       "Run performance checks (build time, binary size, benchmarks); "
                       "--level quick = binary size only [default: full]");
 
+  app.set_subcommand_help(
+      "run",
+      "Usage:\n"
+      "  metis run [OPTIONS] [FILES...]\n\n"
+      "Options:\n"
+      "  --all-files              Run checks on all tracked files (default: staged only)\n"
+      "  --verbose, -V, --detail  Show detailed output\n"
+      "  --dry-run, -n            Show what would be run without executing\n"
+      "  --format, -f             Run in formatting mode (apply fixes)\n\n"
+      "Configuration (.metis.toml):\n"
+      "  [[checks]]\n"
+      "    name        = \"...\"         # Check identifier\n"
+      "    command     = \"...\"         # Executable to run\n"
+      "    args        = [...]         # Arguments passed to command\n"
+      "    patterns    = [\"*.cpp\"]     # File patterns to match\n"
+      "    enabled     = true          # Whether check is active\n"
+      "    timeout     = 0             # Timeout in seconds (0 = none)\n"
+      "    severity    = \"error\"       # Failure severity level\n\n"
+      "  [execution]\n"
+      "    parallel    = true          # Run checks concurrently\n\n"
+      "  [exclude]\n"
+      "    paths       = [\"build/\", \"third_party/\"]\n");
+
+  app.set_subcommand_help("test",
+                          "Usage:\n"
+                          "  metis test [OPTIONS] [BUILD_DIR]\n\n"
+                          "Options:\n"
+                          "  --coverage               Enable coverage reporting\n"
+                          "  --verbose, -V            Show detailed output\n\n"
+                          "Configuration (.metis.toml):\n"
+                          "  [test]\n"
+                          "    build_dir          = \"build\"      # Build directory for tests\n"
+                          "    coverage           = false          # Enable coverage by default\n"
+                          "    line_threshold     = 80.0           # Minimum line coverage %\n"
+                          "    branch_threshold   = 70.0           # Minimum branch coverage %\n"
+                          "    function_threshold = 90.0           # Minimum function coverage %\n"
+                          "    timeout            = 0              # Test timeout in seconds\n");
+
+  app.set_subcommand_help("build",
+                          "Usage:\n"
+                          "  metis build [OPTIONS]\n\n"
+                          "Options:\n"
+                          "  --build-dir <dir>        Build directory [default: build]\n"
+                          "  --clean                  Clean before build\n"
+                          "  --verbose, -V            Show detailed output\n"
+                          "  -j, --jobs <n>           Parallel build jobs\n");
+
+  app.set_subcommand_help("sanitizer",
+                          "Usage:\n"
+                          "  metis sanitizer [OPTIONS]\n\n"
+                          "Options:\n"
+                          "  --verbose, -V            Show detailed output\n\n"
+                          "Configuration (.metis.toml):\n"
+                          "  [sanitizer]\n"
+                          "    enabled   = false                 # Enable sanitizer checks\n"
+                          "    types     = [\"address\", \"undefined\"]  # Sanitizer types to run\n"
+                          "    build_dir = \"build\"               # Build directory\n"
+                          "    timeout   = 0                     # Timeout in seconds\n");
+
+  app.set_subcommand_help(
+      "perf",
+      "Usage:\n"
+      "  metis perf [OPTIONS]\n\n"
+      "Options:\n"
+      "  --verbose, -V            Show detailed output\n"
+      "  --level <quick|full>     Check level [default: full]\n\n"
+      "Configuration (.metis.toml):\n"
+      "  [perf]\n"
+      "    enabled            = false         # Enable performance checks\n"
+      "    build_dir          = \"build\"       # Build directory\n"
+      "    binary_path        = \"...\"         # Path to built binary\n"
+      "    max_binary_size_mb = 0             # Max binary size in MB (0 = no limit)\n"
+      "    max_build_time_sec = 0             # Max build time in seconds (0 = no limit)\n"
+      "    benchmark_regex    = \"\"            # Regex to match benchmark names\n");
+
+  app.set_subcommand_help(
+      "init",
+      "Usage:\n"
+      "  metis init [OPTIONS]\n\n"
+      "Options:\n"
+      "  --style <google|llvm|...>              Clang-format style [default: google]\n"
+      "  --name <project-name>                  Project name\n"
+      "  --indent-width <n>                     Indentation width\n"
+      "  --column-limit <n>                     Maximum column width\n"
+      "  --pointer-alignment <Left|Right|Middle>  Pointer alignment\n"
+      "  --brace-style <Attach|Allman|...>        Brace style\n"
+      "  --enable-clang-tidy, --tidy            Enable clang-tidy checks\n"
+      "  --tidy-preset <minimal|standard|strict>  Tidy preset\n"
+      "  --tidy-severity <note|warning|error>     Tidy severity\n"
+      "  --tidy-header-filter <0|1|2>           Header filter level\n"
+      "  --enable-cmake, --cmake                Generate CMakeLists.txt\n"
+      "  --enable-conan                         Generate conanfile.py\n"
+      "  --cmake-cpp-standard <17|20|23>        C++ standard for CMake\n"
+      "  --cmake-target-type <executable|...>   CMake target type\n"
+      "  --cmake-enable-testing                 Enable testing in CMake\n"
+      "  --cmake-enable-sanitizers              Enable sanitizers in CMake\n"
+      "  --generate-src                         Generate src/main.cpp\n"
+      "  --interactive, -i                      Run interactive wizard\n");
+
+  app.set_subcommand_help(
+      "install",
+      "Usage:\n"
+      "  metis install\n\n"
+      "Installs pre-commit hook and optionally CI workflows based on .metis.toml.\n\n"
+      "Configuration (.metis.toml):\n"
+      "  [output]\n"
+      "    local_hook     = true       # Install .git/hooks/pre-commit\n"
+      "    github_actions = false      # Generate GitHub Actions workflow\n"
+      "    gitlab_ci      = false      # Generate GitLab CI workflow\n");
+
+  app.set_subcommand_help("deps",
+                          "Usage:\n"
+                          "  metis deps [OPTIONS]\n\n"
+                          "Options:\n"
+                          "  --verbose, -V            Show detailed output\n"
+                          "  --graph, -g              Generate dependency graph\n"
+                          "  --tree, -t               Display dependency tree\n");
+
+  app.set_subcommand_help("install-compiler",
+                          "Usage:\n"
+                          "  metis install-compiler [OPTIONS]\n\n"
+                          "Options:\n"
+                          "  --compiler <gcc|clang>         Compiler to install [default: gcc]\n"
+                          "  --version <version>            Specific version to install\n"
+                          "  --cpp-standard <17|20|23|26>   C++ standard [default: 20]\n"
+                          "  --prefix <path>                Installation prefix\n"
+                          "  --force                        Reinstall if already present\n"
+                          "  --dry-run, -n                  Show what would be installed\n");
+
+  app.set_subcommand_help("generate-gha",
+                          "Usage:\n"
+                          "  metis generate-gha\n\n"
+                          "Generates a GitHub Actions workflow at .github/workflows/metis.yml\n");
+
+  app.set_subcommand_help("generate-gitlab",
+                          "Usage:\n"
+                          "  metis generate-gitlab\n\n"
+                          "Generates a GitLab CI workflow at .gitlab-ci.yml\n");
+
+  app.set_subcommand_help("sync",
+                          "Usage:\n"
+                          "  metis sync\n\n"
+                          "Refreshes hooks/workflows and validates every enabled check.\n"
+                          "Self-heals missing tooling configs without overwriting user files.\n");
+
   if (!app.parse(argc, argv)) {
     return 0;
   }
@@ -552,7 +697,7 @@ int main(int argc, char** argv) {
 
       if (opts.verbose) {
         Console::print_success_block(
-            fmt::format("[metis] [INFO] completed int {:.2f}s\n", elapsed.count()));
+            fmt::format("[metis] [INFO] completed in {:.2f}s\n", elapsed.count()));
       }
 
       return exit_code;

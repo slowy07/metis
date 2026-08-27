@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <iostream>
-#include <iterator>
 #include <string>
+#include <string_view>
+
+#include "metis/presentation/console.hpp"
 
 namespace metis {
 
@@ -26,7 +28,18 @@ ArgParser& ArgParser::add_flag(std::string_view short_flag, std::string_view lon
 
 ArgParser& ArgParser::add_subcommand(std::string_view name, std::string_view desc) {
   subcommands_.emplace_back(
-      Subcommand{.name = std::string(name), .description = std::string(desc)});
+      Subcommand{.name = std::string(name), .description = std::string(desc), .help_text = ""});
+  return *this;
+}
+
+ArgParser& ArgParser::set_subcommand_help(std::string_view name, std::string_view help_text) {
+  auto it =
+      std::ranges::find_if(subcommands_, [name](const auto& cmd) { return cmd.name == name; });
+
+  if (it != subcommands_.end()) {
+    it->help_text = std::string(help_text);
+  }
+
   return *this;
 }
 
@@ -47,17 +60,36 @@ ArgParser& ArgParser::set_version(std::string_view ver) {
 // These haven't been needed.
 // Scans for --help/-h/--version/-v before anything else.
 bool ArgParser::check_early_exit() {
+  if (args_.size() >= 3) {
+    std::string_view first = args_[1];
+    auto found =
+        std::ranges::find_if(subcommands_, [first](const auto& cmd) { return cmd.name == first; });
+
+    if (found != subcommands_.end()) {
+      for (size_t i = 2; i < args_.size(); ++i) {
+        std::string_view arg = args_[i];
+        if (arg == "--help" || arg == "-h") {
+          show_subcommand_help(found->name);
+          return true;
+        }
+      }
+    }
+  }
+
   for (size_t i = 1; i < args_.size(); ++i) {
     std::string_view arg = args_[i];
+
     if (arg == "--help" || arg == "-h") {
       show_help();
       return true;
     }
+
     if (!version_.empty() && (arg == "--version" || arg == "-v")) {
       std::cout << app_name_ << " " << version_ << "\n";
       return true;
     }
   }
+
   return false;
 }
 
@@ -97,9 +129,9 @@ bool ArgParser::apply_option(size_t& i) {
     return false;
   }
 
-  const auto opt_idx = static_cast<size_t>(std::distance(options_.begin(), opt_it));
   if (!opt_it->has_value) {
-    if (opt_idx < flag_stores_.size() && flag_stores_.at(opt_it->store_index) != nullptr) {
+    if (opt_it->store_index < flag_stores_.size() &&
+        flag_stores_.at(opt_it->store_index) != nullptr) {
       *flag_stores_.at(opt_it->store_index) = true;
     }
     return true;
@@ -168,254 +200,96 @@ void ArgParser::show_help() const {
   std::cout << app_name_ << " - " << description_ << "\n\n";
 
   std::cout << "Usage:\n";
-
   std::cout << "  " << app_name_ << " [OPTIONS] <SUBCOMMAND> [ARGS]\n\n";
 
   print_section_title("Core Workflow");
-
   for (const auto& cmd : subcommands_) {
-    print_aligned(cmd.name, cmd.description);
+    std::string name_colored = presentation::Console::green(cmd.name);
+    std::cout << "  " << name_colored;
+    std::size_t visible_width = cmd.name.size();
+
+    if (visible_width < k_padding) {
+      std::cout << std::string(k_padding - visible_width, ' ');
+    } else {
+      std::cout << "\n";
+      std::cout << std::string(k_padding + 2, ' ');
+    }
+
+    std::cout << presentation::Console::dim(cmd.description) << "\n";
   }
 
   std::cout << "\n";
-
   print_section_title("Examples");
   std::cout << "  " << app_name_ << " init\n";
   std::cout << "  " << app_name_ << " init --style llvm\n";
-  std::cout << "  " << app_name_ << " init --name ultra-slowy\n";
-  std::cout << "  " << app_name_ << " init --enable-clang-tidy\n";
-  std::cout << "  " << app_name_ << " init --enable-cmake\n";
-  std::cout << "  " << app_name_ << " install\n";
   std::cout << "  " << app_name_ << " run --all-files\n";
   std::cout << "  " << app_name_ << " run src/main.cpp\n";
-  std::cout << "  " << app_name_
-            << " generate-gha > "
-               ".github/workflows/metis.yml\n";
-  std::cout << "  " << app_name_ << " install-compiler --compiler gcc --cpp-standard 20\n";
-  std::cout << "  " << app_name_ << " test --coverage\n\n";
-
-  print_section_title("Subcommands");
-
-  std::cout << "  init\n";
-
-  std::cout << "      Create:\n";
-
-  std::cout << "        - .metis.toml\n";
-
-  std::cout << "        - .clang-format\n";
-
-  std::cout << "        - [--enable-clang-tidy] .clang-tidy\n";
-
-  std::cout << "        - [--enable-cmake]     CMakeLists.txt + src/main.cpp\n";
-
-  std::cout << "        - [--enable-conan]     conanfile.py\n";
-
-  std::cout << "        - [--generate-src]     src/main.cpp\n\n";
-
-  std::cout << "      Options:\n";
-
-  std::cout << "        --style "
-               "<google|llvm|chromium|mozilla|webkit|microsoft|gnu>\n";
-
-  std::cout << "        --name <project-name>\n";
-
-  std::cout << "        --indent-width <n>\n";
-
-  std::cout << "        --column-limit <n>\n";
-
-  std::cout << "        --pointer-alignment "
-               "<Left|Right|Middle>\n";
-
-  std::cout << "        --brace-style <Attach|Allman|...>\n";
-
-  std::cout << "        --enable-clang-tidy, --tidy\n";
-
-  std::cout << "        --tidy-preset "
-               "<minimal|standard|strict|custom>\n";
-
-  std::cout << "        --tidy-severity "
-               "<note|warning|error>\n";
-
-  std::cout << "        --tidy-header-filter <0|1|2>\n";
-
-  std::cout << "        --enable-cmake, --cmake\n";
-
-  std::cout << "        --enable-conan\n";
-
-  std::cout << "        --cmake-cpp-standard "
-               "<17|20|23>\n";
-
-  std::cout << "        --cmake-target-type "
-               "<executable|static|shared|header-only>\n";
-
-  std::cout << "        --cmake-enable-testing\n";
-
-  std::cout << "        --cmake-enable-sanitizers\n";
-
-  std::cout << "        --generate-src\n\n";
-
-  std::cout << "  install\n";
-
-  std::cout << "      Generate and install:\n";
-
-  std::cout << "        .git/hooks/pre-commit\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis install\n\n";
-
-  std::cout << "  run\n";
-
-  std::cout << "      Execute configured checks.\n\n";
-
-  std::cout << "      Modes:\n";
-
-  std::cout << "        --all-files\n";
-
-  std::cout << "        --staged\n";
-
-  std::cout << "        --detail\n";
-
-  std::cout << "        <explicit files>\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis run --all-files\n";
-
-  std::cout << "        metis run src/main.cpp\n";
-
-  std::cout << "        metis run --format --all-files\n\n";
-
-  std::cout << "  generate-gha\n";
-
-  std::cout << "      Generate production-grade "
-               "GitHub Actions workflow.\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis generate-gha\n";
-  std::cout << "        metis generate-gha > "
-               ".github/workflows/metis.yml\n\n";
-
-  std::cout << "  generate-gitlab\n";
-
-  std::cout << "      Generate GitLab CI workflow.\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis generate-gitlab\n";
-  std::cout << "        metis generate-gitlab > .gitlab-ci.yml\n\n";
-
-  std::cout << "  install-compiler\n";
-
-  std::cout << "      Download and install a C++ toolchain.\n\n";
-
-  std::cout << "      Options:\n";
-
-  std::cout << "        --compiler <gcc|clang>         [default: gcc]\n";
-
-  std::cout << "        --version <version>\n";
-
-  std::cout << "        --cpp-standard <17|20|23|26>   [default: 20]\n";
-
-  std::cout << "        --prefix <path>\n";
-
-  std::cout << "        --force\n";
-
-  std::cout << "        --dry-run, -n\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis install-compiler\n";
-  std::cout << "        metis install-compiler --compiler gcc --cpp-standard 20\n";
-  std::cout << "        metis install-compiler --compiler clang --dry-run\n\n";
-
-  std::cout << "  test\n";
-
-  std::cout << "      Run ctest and optional coverage checks.\n\n";
-
-  std::cout << "      Options:\n";
-
-  std::cout << "        --coverage\n";
-
-  std::cout << "        --verbose, -V\n";
-
-  std::cout << "        <build-dir>                   [default: build]\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis test\n";
-  std::cout << "        metis test --coverage\n";
-  std::cout << "        metis test --verbose build/\n\n";
-
-  std::cout << "  sanitizer\n";
-
-  std::cout << "      Run sanitizer checks (ASan, UBSan, TSan, LSan).\n\n";
-
-  std::cout << "      Options:\n";
-
-  std::cout << "        --verbose, -V\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis sanitizer\n";
-  std::cout << "        metis sanitizer --verbose\n\n";
-
-  std::cout << "  deps\n";
-
-  std::cout << "      Validate project dependencies (conan, vcpkg, cmake).\n\n";
-
-  std::cout << "      Options:\n";
-
-  std::cout << "        --verbose, -V\n\n";
-  std::cout << "        --graph, -g    Generate Dependencies\n\n";
-
-  std::cout << "      Usage:\n";
-
-  std::cout << "        metis deps\n";
-  std::cout << "        metis deps --graph\n\n";
-
-  std::cout << "  build\n";
-  std::cout << "      Configure and build the project with CMake.\n\n";
-  std::cout << "      Options:\n";
-  std::cout << "        --build-dir <dir>            [default: build]\n";
-  std::cout << "        --clean                      Clean before build\n";
-  std::cout << "        --verbose, -V\n";
-  std::cout << "        -j, --jobs <n>               Parallel jobs\n\n";
-  std::cout << "      Usage:\n";
-  std::cout << "        metis build\n";
-  std::cout << "        metis build --clean --jobs 8\n\n";
+  std::cout << "  " << app_name_ << " test --coverage\n";
+  std::cout << "  " << app_name_ << " build --clean --jobs 8\n";
+  std::cout << "  " << app_name_ << " generate-gha > .github/workflows/metis.yml\n\n";
+
+  std::cout << "Run '" << app_name_
+            << " <command> --help' for detailed usage and configuration.\n\n";
 
   print_section_title("Global Options");
-
   for (const auto& opt : options_) {
     std::string left;
-
     if (!opt.short_flag.empty()) {
       left += std::string(opt.short_flag);
       left += ", ";
     }
-
     left += std::string(opt.long_flag);
-
     if (opt.has_value) {
       left += " <value>";
     }
-
     std::string desc = std::string(opt.description);
-
     if (!opt.default_value.empty() && opt.has_value) {
       desc += " [default: " + opt.default_value + "]";
     }
-
     print_aligned(left, desc);
   }
 
   if (!version_.empty()) {
     print_aligned("-v, --version", "Show version");
   }
-
   print_aligned("-h, --help", "Show help message");
+}
+
+void ArgParser::show_subcommand_help(std::string_view name) const {
+  auto it =
+      std::ranges::find_if(subcommands_, [name](const auto& cmd) { return cmd.name == name; });
+  if (it == subcommands_.end()) {
+    return;
+  }
+
+  std::cout << app_name_ << " " << presentation::Console::green(name) << " — " << it->description
+            << "\n\n";
+
+  if (!it->help_text.empty()) {
+    std::cout << it->help_text << "\n";
+  }
+
+  std::cout << "Global Options:\n";
+  for (const auto& opt : options_) {
+    std::string left;
+    if (!opt.short_flag.empty()) {
+      left += std::string(opt.short_flag);
+      left += ", ";
+    }
+    left += std::string(opt.long_flag);
+    if (opt.has_value) {
+      left += " <value>";
+    }
+    std::string desc = std::string(opt.description);
+    if (!opt.default_value.empty() && opt.has_value) {
+      desc += " [default: " + opt.default_value + "]";
+    }
+    print_aligned(left, desc);
+  }
+  if (!version_.empty()) {
+    print_aligned("-v, --version", "Show version");
+  }
+  print_aligned("-h, --help", "Show this help message");
 }
 
 }  // namespace metis
