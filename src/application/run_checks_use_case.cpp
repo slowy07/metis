@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "metis/application/checks/build_check.hpp"
@@ -30,6 +31,7 @@
 #include "metis/domain/error_codes.hpp"
 #include "metis/domain/ports/shell_executor.hpp"
 #include "metis/glob_match.hpp"
+#include "metis/infrastructure/check_cache.hpp"
 #include "metis/spinner.hpp"
 #include "metis/util.hpp"
 
@@ -181,7 +183,28 @@ struct CheckResult {
 CheckResult run_check_for_files(std::unique_ptr<domain::Check> check,
                                 const std::vector<std::string>& matched_files,
                                 const RunOptions& opts, SyncPrinter& printer,
-                                domain::ports::IShellExecutor* shell) {
+                                domain::ports::IShellExecutor* shell,
+                                infrastructure::CheckCache* cache) {
+  if (cache != nullptr && !opts.dry_run) {
+    int cached_exit = 0;
+
+    if (cache->lookup(check->name(), check->command(), check->arguments(), matched_files,
+                      cached_exit)) {
+      if (opts.verbose) {
+        printer.print_verbose(
+            fmt::format("[metis] [CACHE] {} - using cached result\n", check->name()));
+      }
+
+      if (cached_exit == 0) {
+        printer.print_check_result(check->name(), "Passed");
+      } else {
+        printer.print_check_result(check->name(), "Failed", cached_exit, "", opts.verbose);
+      }
+
+      return {.check_name_ = check->name(), .exit_code_ = cached_exit, .output_ = {}};
+    }
+  }
+
   auto result = check->execute(matched_files, shell, opts.verbose, opts.dry_run);
 
   if (result.exit_code == 0) {
@@ -189,6 +212,11 @@ CheckResult run_check_for_files(std::unique_ptr<domain::Check> check,
   } else {
     printer.print_check_result(check->name(), "Failed", result.exit_code, result.output,
                                opts.verbose);
+  }
+
+  if (cache != nullptr && !opts.dry_run) {
+    cache->store(check->name(), check->command(), check->arguments(), matched_files,
+                 result.exit_code);
   }
 
   return {.check_name_ = check->name(), .exit_code_ = result.exit_code, .output_ = {}};
@@ -357,29 +385,34 @@ int report_failures(SyncPrinter& printer, int exit_code) {
 
 // Runs work items one at a time; returns the worst exit code seen.
 int run_sequential(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
-                   domain::ports::IShellExecutor* shell) {
+                   domain::ports::IShellExecutor* shell, infrastructure::CheckCache* cache) {
   int exit_code = static_cast<int>(ExitCode::SUCCESS);
+
   for (auto& item : items) {
     auto result =
-        run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell);
+        run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell, cache);
+
     if (result.exit_code_ != 0) {
       exit_code = result.exit_code_;
     }
   }
+
   return report_failures(printer, exit_code);
 }
 
 // Runs each work item in its own std::async task; shell is thread-safe
 // (popen/fork per process), SyncPrinter serializes output.
 int run_parallel(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
-                 domain::ports::IShellExecutor* shell) {
+                 domain::ports::IShellExecutor* shell, infrastructure::CheckCache* cache) {
   std::vector<std::future<CheckResult>> futures;
   futures.reserve(items.size());
+
   for (auto& item : items) {
-    futures.push_back(std::async(std::launch::async, [item = std::move(item), &opts, &printer,
-                                                      shell]() mutable {
-      return run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell);
-    }));
+    futures.push_back(std::async(
+        std::launch::async, [item = std::move(item), &opts, &printer, shell, cache]() mutable {
+          return run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
+                                     shell, cache);
+        }));
   }
 
   int exit_code = static_cast<int>(ExitCode::SUCCESS);
@@ -389,6 +422,7 @@ int run_parallel(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrint
       exit_code = result.exit_code_;
     }
   }
+
   return report_failures(printer, exit_code);
 }
 
@@ -442,9 +476,10 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   // Single check or parallel disabled → run sequentially.
   // Sequential is simpler and avoids thread overhead for trivial workloads.
   if (!cfg.parallel || work_items.size() == 1) {
-    return run_sequential(work_items, opts, printer, shell_.get());
+    return run_sequential(work_items, opts, printer, shell_.get(), cache_);
   }
-  return run_parallel(work_items, opts, printer, shell_.get());
+
+  return run_parallel(work_items, opts, printer, shell_.get(), cache_);
 }
 
 // Runs clang-format in-place on eligible C/C++ files.

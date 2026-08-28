@@ -17,6 +17,7 @@ FetchContent_MakeAvailable(googletest)
 
 # Collect all test source files
 set(TEST_SOURCES
+  test_argparse.cpp
   test_binary_runtime.cpp
   test_config_generators.cpp
   test_config_manager.cpp

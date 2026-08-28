@@ -32,6 +32,7 @@
 #include "metis/domain/workflow.hpp"
 #include "metis/generators/clang_format_generator.hpp"
 #include "metis/generators/clang_tidy_generator.hpp"
+#include "metis/infrastructure/check_cache.hpp"
 #include "metis/infrastructure/cli_git_repository.hpp"
 #include "metis/infrastructure/os_file_system.hpp"
 #include "metis/infrastructure/process_shell_executor.hpp"
@@ -180,6 +181,7 @@ int main(int argc, char** argv) {
       "  --verbose, -V, --detail  Show detailed output\n"
       "  --dry-run, -n            Show what would be run without executing\n"
       "  --format, -f             Run in formatting mode (apply fixes)\n\n"
+      "  --no-cache               Bypass check cache, force re-check\n\n"
       "Configuration (.metis.toml):\n"
       "  [[checks]]\n"
       "    name        = \"...\"         # Check identifier\n"
@@ -640,6 +642,7 @@ int main(int argc, char** argv) {
       bool verbose = false;
       bool dry_run = false;
       bool format_mode = false;
+      bool no_cache = false;
       std::vector<std::string> run_files;
 
       for (size_t i = 1; i < args.size(); ++i) {
@@ -655,6 +658,8 @@ int main(int argc, char** argv) {
           dry_run = true;
         } else if (arg == "--format" || arg == "-f") {
           format_mode = true;
+        } else if (arg == "--no-cache") {
+          no_cache = true;
         } else if (!arg.starts_with('-')) {
           run_files.emplace_back(arg);
         }
@@ -677,9 +682,15 @@ int main(int argc, char** argv) {
         opts.explicit_files = std::move(run_files);
       }
 
-      auto start = std::chrono::steady_clock::now();
+      auto check_cache = std::make_unique<infrastructure::CheckCache>(repo_root);
       application::RunChecksUseCase run_use_case(std::move(shell), std::move(git_repo),
                                                  std::move(fs));
+
+      if (!no_cache) {
+        run_use_case.set_cache(check_cache.get());
+      }
+
+      auto start = std::chrono::steady_clock::now();
       int exit_code = run_use_case.execute(cfg, opts);
       auto end = std::chrono::steady_clock::now();
       std::chrono::duration<double> elapsed = end - start;

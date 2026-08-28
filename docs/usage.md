@@ -29,10 +29,12 @@ Exit code `0` = all checks passed, non-zero = at least one failed.
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
+| `build` | Configure and build the project with CMake |
 | `perf` | Run performance checks (build time, binary size, benchmarks); `--level quick` = binary size only; default: `full` |
 | `-h, --help` / `-v, --version` | Help / version |
 
-Global flag: `-c, --config <path>` (default `.metis.toml`).
+Global flag: `-c, --config <path>` (default `.metis.toml`). Every subcommand
+accepts `--help` to show its own detailed usage, e.g. `metis run --help`.
 
 ## init
 
@@ -68,6 +70,7 @@ metis init --style google --enable-clang-tidy
 | `--compiler-cpp-standard` | `17`, `20`, `23`, `26` | `20` |
 | `--compiler-werror` / `--compiler-no-werror` | flag | on |
 | `--compiler-debug-and-release` | flag | off |
+| `--enable-security-checks`, `--security-checks` | flag | off |
 
 What `init` creates: `.metis.toml` always; `.clang-format` always;
 `.clang-tidy` with `--enable-clang-tidy`; `CMakeLists.txt` + `src/main.cpp`
@@ -76,6 +79,9 @@ With `--enable-compiler-checks`, `.metis.toml` gains `[[checks]]`
 entries that syntax-check each file with your compiler (`g++ -std=c++20 -Wall
 -Wextra -Wpedantic [-Werror] -fsyntax-only ...`). `--compiler-debug-and-release`
 emits two checks (`-O0 -g -D_DEBUG` / `-O2 -DNDEBUG`) instead of one.
+With `--enable-security-checks`, `.metis.toml` gains `metis-security` (hardcoded
+secrets / dangerous functions) and `metis-dep-security` (dependency vulnerability
+scan) checks.
 
 ## run
 
@@ -86,7 +92,12 @@ metis run src/a.cpp include/b.hpp  # explicit files
 metis run --dry-run --all-files    # list files, don't execute
 metis run --verbose --all-files    # echo each shell command
 metis run --format            # run clang-format -i in-place
+metis run --no-cache          # bypass the check result cache
 ```
+
+Successful check results are cached in `.metis-cache/` and reused when the
+check config and inputs are unchanged, so unchanged files are skipped on
+repeat runs. Pass `--no-cache` to always re-run.
 
 ## Config file
 

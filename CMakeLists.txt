@@ -150,6 +150,7 @@ set(METIS_SOURCES
   src/infrastructure/toolchain_factory.cpp
   src/infrastructure/windows_gcc_provider.cpp
   src/infrastructure/zip_archive_extractor.cpp
+  src/infrastructure/check_cache.cpp
   src/generators/clang_format_generator.cpp
   src/generators/clang_tidy_generator.cpp
   src/generators/cmake_generator.cpp
@@ -210,6 +211,7 @@ set(METIS_HEADERS
   include/metis/infrastructure/windows_clang_provider.hpp
   include/metis/infrastructure/windows_gcc_provider.hpp
   include/metis/infrastructure/zip_archive_extractor.hpp
+  include/metis/infrastructure/check_cache.hpp
   include/metis/generators/clang_format_generator.hpp
   include/metis/generators/clang_tidy_generator.hpp
   include/metis/generators/cmake_generator.hpp

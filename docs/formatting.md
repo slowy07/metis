@@ -32,5 +32,5 @@ metis install
 
 # The hook runs checks by default. To run format mode instead,
 # edit .git/hooks/pre-commit to use:
-metis run --format --staged
+metis run --format
 ```

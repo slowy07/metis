@@ -102,7 +102,7 @@ FetchContent_Declare(
 ```
 
 `FetchContent_MakeAvailable(...)` and `target_link_libraries(...)` lines are
-not generated — add them to suit your target setup.
+not generated; add them to suit your target setup.
 
 With `--enable-conan`, `find_package(<name> REQUIRED)` is emitted instead of
 FetchContent blocks, and a `conanfile.py` is generated.

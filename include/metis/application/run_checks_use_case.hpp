@@ -13,6 +13,10 @@
 #include "metis/domain/ports/git_repository.hpp"
 #include "metis/domain/ports/shell_executor.hpp"
 
+namespace metis::infrastructure {
+class CheckCache;
+}
+
 namespace metis::application {
 
 enum class FileSource : std::uint8_t {
@@ -45,6 +49,8 @@ class RunChecksUseCase {
                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
                    std::unique_ptr<domain::ports::IFileSystem> file_system);
 
+  void set_cache(infrastructure::CheckCache* cache) { cache_ = cache; }
+
   [[nodiscard]] int execute(const domain::config::ProjectConfig& cfg, const RunOptions& opts);
 
  private:
@@ -60,6 +66,7 @@ class RunChecksUseCase {
   std::unique_ptr<domain::ports::IShellExecutor> shell_;
   std::unique_ptr<domain::ports::IGitRepository> git_repo_;
   std::unique_ptr<domain::ports::IFileSystem> file_system_;
+  infrastructure::CheckCache* cache_ = nullptr;
 };
 
 }  // namespace metis::application

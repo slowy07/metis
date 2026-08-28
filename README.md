@@ -67,11 +67,13 @@ metis run --all-files
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
 | `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
+| `build` | Configure and build the project with CMake |
 | `perf` | Run performance checks (build time, binary size, benchmarks); `--level quick` = binary size only; default: `full` |
 | `--version`, `-v` | Print version and exit |
 | `--help` | Print help and exit |
 
 Global flag: `--config <path>`: use a non-default config file path with any subcommand.
+Every subcommand accepts `--help` to show detailed usage, e.g. `metis run --help`.
 
 ## Dependencies
 
@@ -184,8 +186,13 @@ metis init \
   --brace-style Attach \
   --enable-clang-tidy \
   --tidy-preset strict \
-  --tidy-severity error
+  --tidy-severity error \
+  --enable-security-checks
 ```
+
+`--enable-security-checks` adds `metis-security` (hardcoded secrets / dangerous
+functions) and `metis-dep-security` (dependency vulnerability scan) checks to
+the generated `.metis.toml`.
 
 **Custom config path**
 
@@ -237,7 +244,13 @@ metis run --dry-run --all-files
 
 # verbose (print each shell command)
 metis run --verbose --all-files
+
+# bypass the check result cache
+metis run --no-cache
 ```
+
+Successful checks are cached in `.metis-cache/` and skipped on repeat runs
+when the check config and inputs are unchanged.
 
 Exit code: `0` if all checks pass, non-zero if any check fails.
 

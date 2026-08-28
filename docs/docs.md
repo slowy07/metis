@@ -66,7 +66,7 @@ metis/
 │       │   ├── generate_workflow_use_case.hpp # GenerateWorkflowUseCase
 │       │   ├── dependency_check_use_case.hpp  # DependencyCheckUseCase
 │       │   ├── perf_checks_use_case.hpp     # PerfChecksUseCase (perf subcommand)
-│       │   ├── performance_check_use_case.hpp # PerformanceCheckUseCase (individual perf runs)
+│       │   ├── build_use_case.hpp           # BuildUseCase (build subcommand)
 │       │   ├── dependency.hpp                 # Dependency, DependencyCheckResult
 │       │   └── checks/                      # concrete Check implementations
 │       │       ├── shell_check.hpp          # ShellCheck (custom commands)
@@ -97,6 +97,7 @@ metis/
 │       │   ├── posix_toolchain_provider.hpp  # GCC install via package manager
 │       │   ├── windows_gcc_provider.hpp     # MinGW-w64 download + install
 │       │   ├── windows_clang_provider.hpp   # LLVM/Clang download + install
+│       │   ├── check_cache.hpp              # Reusable check-result cache (run)
 │       │   └── toolchain_factory.hpp        # Platform-conditional provider factory
 │       └── presentation/
 │           ├── interactive_init.hpp         # TUI prompts for init wizard
@@ -121,7 +122,8 @@ metis/
 │   │   ├── sanitizer_checks_use_case.cpp
 │   │   ├── dependency_check_use_case.cpp
 │   │   ├── generate_workflow_use_case.cpp
-│   │   ├── performance_check_use_case.cpp
+│   │   ├── perf_checks_use_case.cpp
+│   │   ├── build_use_case.cpp
 │   │   └── checks/
 │   │       ├── shell_check.cpp
 │   │       ├── clang_format_check.cpp
@@ -151,6 +153,7 @@ metis/
 │   │   ├── posix_toolchain_provider.cpp
 │   │   ├── windows_gcc_provider.cpp
 │   │   ├── windows_clang_provider.cpp
+│   │   ├── check_cache.cpp
 │   │   └── toolchain_factory.cpp
 │   └── presentation/
 │       ├── interactive_init.cpp
@@ -261,6 +264,7 @@ metis
 | `20` | `PERF_CHECK_FAILURE` | Perf check failed (missing build dir, failed build, benchmark failure) |
 | `21` | `PERF_BINARY_TOO_LARGE` | Binary exceeds `max_binary_size_mb` |
 | `22` | `PERF_BUILD_TOO_SLOW` | Build time exceeds `max_build_time_sec` |
+| `23` | `BUILD_FAILURE` | CMake configure/build failed |
 
 ---
 
@@ -348,6 +352,18 @@ struct BuildInfo {
 ### Out-of-Source Build Enforcement
 
 The CMakeLists.txt explicitly blocks in-source builds with a fatal error message if `CMAKE_SOURCE_DIR == CMAKE_BINARY_DIR`.
+
+### Install Targets
+
+`cmake --install build` installs:
+- `metis` binary to `bin/`
+- public headers to `include/metis/`
+- `README.md` to `share/doc/metis/`
+- `LICENSE` to `share/licenses/metis/`
+
+Use `--prefix` to override the destination (default depends on
+`CMAKE_INSTALL_PREFIX`), e.g. a user-local install:
+`cmake --install build --prefix "$HOME/.local"`.
 
 ---
 
@@ -719,6 +735,13 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 | `--detail` | Alias for `--verbose` |
 | `--dry-run`, `-n` | List files that would be checked without running checks |
 | `--format`, `-f` | Run clang-format in-place instead of checking |
+| `--no-cache` | Bypass the result cache and re-run every check |
+
+**Result cache:** `RunChecksUseCase` caches successful check results in
+`.metis-cache/`, keyed by a hash of the check command/args plus per-file
+size/mtime fingerprints. On repeat runs, unchanged checks skip files whose
+cache entry is still valid, so clean runs stay fast. `--no-cache` disables
+this.
 
 **File source selection (mutually exclusive, listed in priority order):**
 
@@ -743,6 +766,10 @@ A **header-only, template-based** argument parser. No external dependency.
 - **`add_flag()`** registers a boolean flag (no value argument).
 - **`add_subcommand()`** registers a named subcommand with a description.
 - **`parse()`** iterates `argv` once, checking for `--help`, `--version`, and subcommand matching.
+
+Each subcommand registers detailed usage text via `set_subcommand_help()`, so
+`metis <command> --help` (e.g. `metis run --help`) prints that command's flags
+and defaults instead of the summary help.
 
 #### Type Constraints
 
@@ -871,7 +898,7 @@ Seven port interfaces define the contracts between layers:
 
 **File:** `include/metis/domain/error_codes.hpp`
 
-Provides a typed enum with 20 exit code values for consistent error reporting.
+Provides a typed enum with 24 exit code values for consistent error reporting.
 
 ### Application Layer
 
@@ -1076,7 +1103,7 @@ sources, and checks for missing lockfiles.
 
 ### Infrastructure Layer
 
-Ten adapters implement the port interfaces:
+Eleven adapters implement the port interfaces:
 
 | Adapter | Port | Implementation |
 |---------|------|----------------|
@@ -1313,6 +1340,7 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 | `test_test_checks_use_case.cpp` | Test checks use case (missing build dir) |
 | `test_toolchain_install.cpp` | Toolchain installation flow |
 | `test_tooling_config.cpp` | Tooling configuration generation |
+| `test_argparse.cpp` | ArgParser CLI argument and per-subcommand help parsing |
 
 ### CI Pipeline
 
