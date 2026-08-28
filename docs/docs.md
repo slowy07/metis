@@ -730,7 +730,8 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 
 | Flag | Description |
 |------|-------------|
-| `--all-files` | Run checks on all files tracked by git (via `git ls-files`) |
+| `--diff-only` | Check only the diff (staged files); cache enabled |
+| `--all-files` | Run checks on all files tracked by git (via `git ls-files`); no cache |
 | `--verbose`, `-V` | Print detailed per-file execution output |
 | `--detail` | Alias for `--verbose` |
 | `--dry-run`, `-n` | List files that would be checked without running checks |
@@ -740,8 +741,10 @@ Executes checks directly from the binary (no generated script needed). Accepts t
 **Result cache:** `RunChecksUseCase` caches successful check results in
 `.metis-cache/`, keyed by a hash of the check command/args plus per-file
 size/mtime fingerprints. On repeat runs, unchanged checks skip files whose
-cache entry is still valid, so clean runs stay fast. `--no-cache` disables
-this.
+cache entry is still valid, so clean runs stay fast. Caching only applies to
+a diff (`--diff-only` or staged/explicit files); a full-codebase sweep
+(`--all-files`) never uses the cache and always re-checks everything.
+`--no-cache` disables caching on a diff run.
 
 **File source selection (mutually exclusive, listed in priority order):**
 
@@ -1341,6 +1344,7 @@ ctest --test-dir build --test-suite="SanitizerChecksTest"
 | `test_toolchain_install.cpp` | Toolchain installation flow |
 | `test_tooling_config.cpp` | Tooling configuration generation |
 | `test_argparse.cpp` | ArgParser CLI argument and per-subcommand help parsing |
+| `test_check_cache.cpp` | CheckCache store/lookup, fingerprint invalidation |
 
 ### CI Pipeline
 

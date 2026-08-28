@@ -60,7 +60,7 @@ metis run --all-files
 | `init` | Generate `.metis.toml`, `.clang-format` (plus `.clang-tidy` / `CMakeLists.txt` with `--enable-*` flags) |
 | `install` | Install pre-commit hook + optional CI workflow |
 | `sync` | Refresh hooks/workflows, generate missing tool configs, validate all checks |
-| `run` | Execute checks on files (staged by default, `--all-files` for tracked) |
+| `run` | Execute checks on files (staged by default; `--diff-only` = diff only, `--all-files` = tracked) |
 | `generate-gha` | Write GitHub Actions workflow to `.github/workflows/metis.yml` |
 | `generate-gitlab` | Write GitLab CI workflow to `.gitlab-ci.yml` |
 | `install-compiler` | Download and install a C++ toolchain |
@@ -233,6 +233,9 @@ Or re-run `metis install` to regenerate both files from config.
 # staged files only (default)
 metis run
 
+# diff only (staged files, cached)
+metis run --diff-only
+
 # all tracked files
 metis run --all-files
 
@@ -250,7 +253,9 @@ metis run --no-cache
 ```
 
 Successful checks are cached in `.metis-cache/` and skipped on repeat runs
-when the check config and inputs are unchanged.
+when the check config and inputs are unchanged. Caching applies only to a
+diff (`--diff-only` or staged/explicit files); a full-codebase sweep
+(`--all-files`) always re-checks everything and never uses the cache.
 
 Exit code: `0` if all checks pass, non-zero if any check fails.
 

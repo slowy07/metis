@@ -19,6 +19,7 @@ FetchContent_MakeAvailable(googletest)
 set(TEST_SOURCES
   test_argparse.cpp
   test_binary_runtime.cpp
+  test_check_cache.cpp
   test_config_generators.cpp
   test_config_manager.cpp
   test_dependency_checks.cpp

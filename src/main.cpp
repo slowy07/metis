@@ -177,7 +177,8 @@ int main(int argc, char** argv) {
       "Usage:\n"
       "  metis run [OPTIONS] [FILES...]\n\n"
       "Options:\n"
-      "  --all-files              Run checks on all tracked files (default: staged only)\n"
+      "  --all-files              Run checks on all tracked files (cache disabled)\n"
+      "  --diff-only              Run checks on the diff only (staged files, cache enabled)\n"
       "  --verbose, -V, --detail  Show detailed output\n"
       "  --dry-run, -n            Show what would be run without executing\n"
       "  --format, -f             Run in formatting mode (apply fixes)\n\n"
@@ -639,6 +640,7 @@ int main(int argc, char** argv) {
 
     if (subcmd == "run") {
       bool all_files = false;
+      bool diff_only = false;
       bool verbose = false;
       bool dry_run = false;
       bool format_mode = false;
@@ -652,6 +654,8 @@ int main(int argc, char** argv) {
         }
         if (arg == "--all-files") {
           all_files = true;
+        } else if (arg == "--diff-only") {
+          diff_only = true;
         } else if (arg == "--verbose" || arg == "-V" || arg == "--detail") {
           verbose = true;
         } else if (arg == "--dry-run" || arg == "-n") {
@@ -672,6 +676,8 @@ int main(int argc, char** argv) {
 
       if (all_files) {
         opts.source = application::FileSource::ALL_REPO;
+      } else if (diff_only) {
+        opts.source = application::FileSource::STAGED;
       } else if (!run_files.empty()) {
         opts.source = application::FileSource::EXPLICIT;
       } else {
@@ -682,11 +688,15 @@ int main(int argc, char** argv) {
         opts.explicit_files = std::move(run_files);
       }
 
-      auto check_cache = std::make_unique<infrastructure::CheckCache>(repo_root);
       application::RunChecksUseCase run_use_case(std::move(shell), std::move(git_repo),
                                                  std::move(fs));
 
-      if (!no_cache) {
+      // The cache is only useful for a diff (staged/explicit files); a
+      // full-codebase sweep re-checks everything, so skip the cache there.
+      // check_cache must outlive execute() so cache_ isn't dangling.
+      std::unique_ptr<infrastructure::CheckCache> check_cache;
+      if (opts.source != application::FileSource::ALL_REPO && !no_cache) {
+        check_cache = std::make_unique<infrastructure::CheckCache>(repo_root);
         run_use_case.set_cache(check_cache.get());
       }
 

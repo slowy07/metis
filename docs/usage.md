@@ -86,8 +86,9 @@ scan) checks.
 ## run
 
 ```bash
-metis run                     # staged files (default)
-metis run --all-files         # all tracked files
+metis run                     # staged files (default, cached)
+metis run --diff-only         # check just the diff (staged files, cached)
+metis run --all-files         # all tracked files (no cache)
 metis run src/a.cpp include/b.hpp  # explicit files
 metis run --dry-run --all-files    # list files, don't execute
 metis run --verbose --all-files    # echo each shell command
@@ -95,9 +96,12 @@ metis run --format            # run clang-format -i in-place
 metis run --no-cache          # bypass the check result cache
 ```
 
-Successful check results are cached in `.metis-cache/` and reused when the
-check config and inputs are unchanged, so unchanged files are skipped on
-repeat runs. Pass `--no-cache` to always re-run.
+The cache only helps on a diff: successful staged/explicit-file check
+results are cached in `.metis-cache/` and reused when the check config and
+inputs are unchanged, so unchanged files are skipped on repeat runs.
+`--diff-only` runs just the diff (staged files) with the cache enabled. A
+full-codebase sweep (`--all-files`) always re-checks everything and never
+uses the cache. Pass `--no-cache` to disable caching on a diff run.
 
 ## Config file
 
