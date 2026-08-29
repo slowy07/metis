@@ -22,12 +22,12 @@ Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality befor
 
 ```bash
 # POSIX (Linux, macOS)
-curl -LsSf https://raw.githubusercontent.com/slowy07/metis/develop/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/slowy07/metis/main/install.sh | sh
 ```
 
 ```powershell
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/slowy07/metis/develop/install.ps1 | iex
+irm https://raw.githubusercontent.com/slowy07/metis/main/install.ps1 | iex
 ```
 
 The script detects your platform, downloads the latest release binary, and adds it to your `PATH`.
