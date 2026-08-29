@@ -67,7 +67,7 @@ EOF
     exit 0
     ;;
   --version)
-    echo "metis installer 0.3.26"
+    echo "metis installer 0.5.0"
     exit 0
     ;;
   --verbose) VERBOSE=true ;;
@@ -180,12 +180,24 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 install_prebuilt() {
-  ARCHIVE_EXT="tar.gz"
-  case "${OS}" in
-  pc-windows-msvc) ARCHIVE_EXT="zip" ;;
+  # CI publishes a prebuilt binary per target using the release artifact name:
+  #   linux-x86_64.tar.gz and windows-x86_64.zip (see .github/workflows/release.yml).
+  case "${TARGET}" in
+  *-unknown-linux-gnu)
+    ARTIFACT_TARGET="linux-x86_64"
+    ARCHIVE_EXT="tar.gz"
+    ;;
+  *-pc-windows-msvc)
+    ARTIFACT_TARGET="windows-x86_64"
+    ARCHIVE_EXT="zip"
+    ;;
+  *)
+    # No prebuilt artifact for this target; caller falls back to a source build.
+    return 1
+    ;;
   esac
 
-  ASSET="metis-${VERSION}-${TARGET}.${ARCHIVE_EXT}"
+  ASSET="metis-${ARTIFACT_TARGET}.${ARCHIVE_EXT}"
   ASSET_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ASSET}"
   CHECKSUM_URL="${ASSET_URL}.sha256"
 
