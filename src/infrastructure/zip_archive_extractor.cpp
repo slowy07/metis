@@ -1,11 +1,12 @@
-#include "sniffercommit/infrastructure/zip_archive_extractor.hpp"
+#include "metis/infrastructure/zip_archive_extractor.hpp"
 
 #include <fmt/format.h>
 
-#include "sniffercommit/domain/ports/archive_extractor.hpp"
+#include "metis/domain/ports/archive_extractor.hpp"
 
-namespace sniffercommit::infrastructure {
-ZipArchiveExtractor::ZipArchiveExtractor(domain::ports::IShellExecutor* shell) : shell_(shell) {}
+namespace metis::infrastructure {
+ZipArchiveExtractor::ZipArchiveExtractor(domain::ports::IShellExecutor* shell)
+  : shell_(shell) {}
 
 domain::ports::ExtractionResult ZipArchiveExtractor::extract(
     const std::filesystem::path& archive_path, const std::filesystem::path& dest_dir) {
@@ -31,4 +32,4 @@ domain::ports::ExtractionResult ZipArchiveExtractor::extract(
   result.extracted_root_ = dest_dir;
   return result;
 }
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

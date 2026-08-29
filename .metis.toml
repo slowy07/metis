@@ -1,0 +1,48 @@
+[project]
+name = "metis"
+
+[[checks]]
+name = "clang-format"
+command = "clang-format"
+args = [
+  "-i",
+  "--fallback-style=google",
+  "-style=file"
+]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
+name = "clang-tidy"
+command = "clang-tidy"
+args = ["--config-file=.clang-tidy", "--quiet", "--", "-std=c++20", "-Iinclude"]
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc"]
+
+[[checks]]
+name = "trailing-whitespace"
+command = "grep"
+args = ["-E", "--text", "[[:space:]]+$"]
+patterns = ["*"]
+
+[exclude]
+paths = ["build/", "third_party/", ".git/", "tests/"]
+
+[perf]
+enabled = true
+build_dir = "build"
+binary_path = "build/bin/metis"
+max_binary_size_mb = 10
+max_build_time_sec = 60
+benchmark_regex = "benchmark"
+
+[output]
+local_hook = true
+github_actions = false
+
+[execution]
+parallel = true
+
+[[checks]]
+name = "format"
+command = "clang-format"
+args = ["--dry-run", "--Werror"]
+enabled = true

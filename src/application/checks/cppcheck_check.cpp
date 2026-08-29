@@ -1,28 +1,28 @@
-#include "sniffercommit/application/checks/cppcheck_check.hpp"
+#include "metis/application/checks/cppcheck_check.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/check.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/check.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 
 CppcheckCheck::CppcheckCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {}
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {}
 
 domain::CheckResult CppcheckCheck::execute(const std::vector<std::string>& files,
                                            domain::ports::IShellExecutor* shell, bool verbose,
                                            bool dry_run) {
-  if (!shell->command_exists(command_)) {
+  if (!shell->command_exists(command())) {
     return {.exit_code = 1,
             .output = fmt::format("`{}` not found in PATH. install it or check your configuration",
-                                  command_)};
+                                  command())};
   }
 
   if (dry_run) {
@@ -32,7 +32,7 @@ domain::CheckResult CppcheckCheck::execute(const std::vector<std::string>& files
   std::string full_cmd = command_line(files);
   bool has_enable = false;
 
-  for (const auto& arguments : arguments_) {
+  for (const auto& arguments : arguments()) {
     if (arguments.find("--enable") != std::string::npos) {
       has_enable = true;
       break;
@@ -45,7 +45,7 @@ domain::CheckResult CppcheckCheck::execute(const std::vector<std::string>& files
 
   bool has_suppression = false;
 
-  for (const auto& arguments : arguments_) {
+  for (const auto& arguments : arguments()) {
     if (arguments.find("--suppress") != std::string::npos ||
         arguments.find("--suppression-list=") != std::string::npos) {
       has_suppression = true;
@@ -68,4 +68,4 @@ domain::CheckResult CppcheckCheck::execute(const std::vector<std::string>& files
   return {.exit_code = result.exit_code_, .output = output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

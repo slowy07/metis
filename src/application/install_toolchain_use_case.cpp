@@ -1,19 +1,19 @@
-#include "sniffercommit/application/install_toolchain_use_case.hpp"
+#include "metis/application/install_toolchain_use_case.hpp"
 
 #include <fmt/format.h>
 
 #include <filesystem>
 
-namespace sniffercommit::application {
+namespace metis::application {
 InstallToolchainUseCase::InstallToolchainUseCase(
     std::unique_ptr<domain::ports::IToolchainProvider> provider,
     std::unique_ptr<domain::ports::IHttpClient> http_client,
     std::unique_ptr<domain::ports::IArchiveExtractor> extractor,
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : provider_(std::move(provider)),
-      http_client_(std::move(http_client)),
-      extractor_(std::move(extractor)),
-      file_system_(std::move(file_system)) {}
+  : provider_(std::move(provider))
+  , http_client_(std::move(http_client))
+  , extractor_(std::move(extractor))
+  , file_system_(std::move(file_system)) {}
 
 InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOptions& opts) {
   InstallToolchainResult result;
@@ -54,7 +54,7 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
       return result;
     }
 
-    install_prefix = std::filesystem::path(home) / ".local" / "sniffercommit" / "toolchain" /
+    install_prefix = std::filesystem::path(home) / ".local" / "metis" / "toolchain" /
                      fmt::format("{}.{}", package.name_, package.version_);
   }
 
@@ -106,4 +106,4 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
   return result;
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

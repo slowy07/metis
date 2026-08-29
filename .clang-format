@@ -1,16 +1,28 @@
 ---
 BasedOnStyle: Google
 
+Language: Cpp
+Standard: c++20
+
 IndentWidth: 2
 ColumnLimit: 100
 
 PointerAlignment: Left
+ReferenceAlignment: Left
 BreakBeforeBraces: Attach
 
-Standard: c++20
-
 SortIncludes: true
+IncludeBlocks: Regroup
+
 ReflowComments: true
 AlignConsecutiveAssignments: false
+
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: false
+
+AlwaysBreakAfterReturnType: None
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 2
+PackConstructorInitializers: BinPack
 
 ...

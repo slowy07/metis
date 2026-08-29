@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/windows_gcc_provider.hpp"
+#include "metis/infrastructure/windows_gcc_provider.hpp"
 
 #include <fmt/format.h>
 
@@ -7,13 +7,14 @@
 #include <cstdlib>
 #include <filesystem>
 #include <optional>
+#include <ranges>
 #include <string>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/domain/ports/toolchain_provider.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/toolchain_provider.hpp"
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 std::optional<std::string> parse_sha256_token(const std::string& raw) {
@@ -41,7 +42,8 @@ std::optional<std::string> sha256_via_cerutil(domain::ports::IShellExecutor* she
   }
 
   std::istringstream iss(res.output_);
-  std::string header, hash_line;
+  std::string header;
+  std::string hash_line;
 
   if (!std::getline(iss, header)) {
     return std::nullopt;
@@ -51,9 +53,9 @@ std::optional<std::string> sha256_via_cerutil(domain::ports::IShellExecutor* she
     return std::nullopt;
   }
 
-  hash_line.erase(std::remove_if(hash_line.begin(), hash_line.end(),
-                                 [](unsigned char chr) { return std::isspace(chr); }),
-                  hash_line.end());
+  auto [first, last] =
+      std::ranges::remove_if(hash_line, [](unsigned char chr) { return std::isspace(chr); });
+  hash_line.erase(first, last);
 
   return hash_line;
 }
@@ -80,10 +82,10 @@ std::optional<std::string> fetch_expected_sha256(domain::ports::IShellExecutor* 
 
 WindowsGccProvider::WindowsGccProvider(domain::ports::IShellExecutor* shell,
                                        domain::ports::IFileSystem* fs, std::string version)
-    : shell_(shell),
-      fs_(fs),
-      version_(version.empty() ? "14.2.0" : version),
-      install_prefix_(default_install_prefix()) {}
+  : shell_(shell)
+  , fs_(fs)
+  , version_(version.empty() ? "14.2.0" : version)
+  , install_prefix_(default_install_prefix()) {}
 
 bool WindowsGccProvider::is_installed() const {
   return shell_->command_exists("gcc") || shell_->command_exists("gcc.exe");
@@ -187,11 +189,10 @@ std::filesystem::path WindowsGccProvider::default_install_prefix() const {
   }
 
   if (home == nullptr) {
-    return std::filesystem::path("C:\\") / "sniffercommit" / "toolchains" /
+    return std::filesystem::path("C:\\") / "metis" / "toolchains" /
            fmt::format("mingw-{}", version_);
   }
-  return std::filesystem::path(home) / ".sniffercommit" / "toolchains" /
-         fmt::format("mingw-{}", version_);
+  return std::filesystem::path(home) / ".metis" / "toolchains" / fmt::format("mingw-{}", version_);
 }
 
 std::string WindowsGccProvider::build_download_url() const {
@@ -245,4 +246,4 @@ int WindowsGccProvider::parse_major_version() const {
   }
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

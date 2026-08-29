@@ -10,12 +10,12 @@ assignees: ''
 **Environment**
 - OS: <!-- e.g., Ubuntu 24.04, macOS 14, Windows 11 -->
 - Compiler: <!-- e.g., GCC 13.2, Clang 17, MSVC 2022 -->
-- sniffercommit version: <!-- e.g., 0.2.1 or git commit hash -->
+- metis version: <!-- e.g., 0.2.1 or git commit hash -->
 
 **Steps to Reproduce**
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 **Expected Behavior**
 <!-- What should have happened? -->
@@ -24,7 +24,7 @@ assignees: ''
 <!-- What actually happened? Include full error output or logs. -->
 
 **Minimal Reproduction**
-<!-- Attach a minimal .sniffercommit.toml and file tree, or paste relevant config. -->
+<!-- Attach a minimal .metis.toml and file tree, or paste relevant config. -->
 
 **Additional Context**
 <!-- Screenshots, related issues, or anything else helpful. -->

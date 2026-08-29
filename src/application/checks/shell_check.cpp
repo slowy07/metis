@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/shell_check.hpp"
+#include "metis/application/checks/shell_check.hpp"
 
 #include <fmt/format.h>
 
@@ -8,10 +8,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 namespace {
 int interpret_exit_code(int raw, std::string_view cmd) {
   auto basename = std::filesystem::path(cmd).filename().string();
@@ -28,21 +28,71 @@ int interpret_exit_code(int raw, std::string_view cmd) {
 }  // namespace
 
 ShellCheck::ShellCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {
-  auto basename = std::filesystem::path(command_).filename().string();
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {
+  auto basename = std::filesystem::path(command()).filename().string();
   if (basename == "grep" || basename == "egrep" || basename == "rg") {
     invert_exit_code_ = true;
+  }
+}
+
+// Appends the executed command line to the verbose log when enabled.
+void log_command(std::string& verbose_log, const std::string& cmd, bool verbose) {
+  if (verbose) {
+    verbose_log += fmt::format("$ {}\n", cmd);
+  }
+}
+
+// Single multi-file invocation for tools that accept several file arguments
+// (faster: config/args parsed once). Records failure into overall/output.
+void run_batch(domain::ports::IShellExecutor* shell, const std::string& cmd_base,
+               const std::vector<std::string>& files, bool invert, const std::string& tool_name,
+               bool verbose, std::string& verbose_log, int& overall_exit,
+               std::string& accumulated_output) {
+  std::string full_cmd = cmd_base;
+  for (const auto& file : files) {
+    full_cmd += " " + util::shell_escape(file);
+  }
+  log_command(verbose_log, full_cmd, verbose);
+
+  auto result = shell->exec_captured(full_cmd);
+  const int code = invert ? interpret_exit_code(result.exit_code_, tool_name) : result.exit_code_;
+  if (code != 0) {
+    overall_exit = code;
+    accumulated_output = result.output_;
+  }
+}
+
+// One invocation per file; appends failing output with newline normalization.
+void run_per_file(domain::ports::IShellExecutor* shell, const std::string& cmd_base,
+                  const std::vector<std::string>& files, bool invert, const std::string& tool_name,
+                  bool verbose, std::string& verbose_log, int& overall_exit,
+                  std::string& accumulated_output) {
+  for (const auto& file : files) {
+    std::string full_cmd = fmt::format("{} {}", cmd_base, util::shell_escape(file));
+    log_command(verbose_log, full_cmd, verbose);
+
+    auto res = shell->exec_captured(full_cmd);
+    const int code = invert ? interpret_exit_code(res.exit_code_, tool_name) : res.exit_code_;
+    if (code != 0) {
+      overall_exit = code;
+      if (!res.output_.empty()) {
+        accumulated_output += res.output_;
+        if (accumulated_output.back() != '\n') {
+          accumulated_output += '\n';
+        }
+      }
+    }
   }
 }
 
 domain::CheckResult ShellCheck::execute(const std::vector<std::string>& files,
                                         domain::ports::IShellExecutor* shell, bool verbose,
                                         bool dry_run) {
-  if (!shell->command_exists(command_)) {
+  if (!shell->command_exists(command())) {
     return {.exit_code = 1,
             .output = fmt::format("`{}` not found in PATH. install it or check your configuration",
-                                  command_)};
+                                  command())};
   }
 
   if (dry_run) {
@@ -61,54 +111,17 @@ domain::CheckResult ShellCheck::execute(const std::vector<std::string>& files,
       "clang-format", "clang-tidy", "grep", "egrep", "rg", "cppcheck",
   };
   bool batch = files.size() > 1 &&
-               k_multi_file_tools.count(std::filesystem::path(command_).filename().string());
+               k_multi_file_tools.contains(std::filesystem::path(command()).filename().string());
 
   if (batch) {
-    std::string full_cmd = cmd_base;
-
-    for (const auto& file : files) {
-      full_cmd += " " + util::shell_escape(file);
-    }
-
-    if (verbose) {
-      verbose_log += fmt::format("$ {}\n", full_cmd);
-    }
-
-    auto result = shell->exec_captured(full_cmd);
-    int code =
-        invert_exit_code_ ? interpret_exit_code(result.exit_code_, command_) : result.exit_code_;
-
-    if (code != 0) {
-      overall_exit = code;
-      accumulated_output = result.output_;
-    }
+    run_batch(shell, cmd_base, files, invert_exit_code_, command(), verbose, verbose_log,
+              overall_exit, accumulated_output);
   } else {
-    for (const auto& file : files) {
-      std::string full_cmd = fmt::format("{} {}", cmd_base, util::shell_escape(file));
-
-      if (verbose) {
-        verbose_log += fmt::format("$ {}\n", full_cmd);
-      }
-
-      auto res = shell->exec_captured(full_cmd);
-      auto code =
-          invert_exit_code_ ? interpret_exit_code(res.exit_code_, command_) : res.exit_code_;
-
-      if (code != 0) {
-        overall_exit = code;
-
-        if (!res.output_.empty()) {
-          accumulated_output += res.output_;
-
-          if (!accumulated_output.empty() && accumulated_output.back() != '\n') {
-            accumulated_output += '\n';
-          }
-        }
-      }
-    }
+    run_per_file(shell, cmd_base, files, invert_exit_code_, command(), verbose, verbose_log,
+                 overall_exit, accumulated_output);
   }
 
   return {.exit_code = overall_exit, .output = verbose_log + accumulated_output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

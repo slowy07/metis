@@ -1,6 +1,6 @@
 ---
 name: Pull Request
-about: Propose changes to sniffercommit
+about: Propose changes to metis
 title: ""
 labels: ''
 assignees: ''
@@ -24,7 +24,7 @@ assignees: ''
 - [ ] Static analysis passes (`clang-tidy` standard preset or higher).
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/).
 - [ ] No compiler warnings introduced (GCC/Clang `-Wall -Wextra -Wpedantic` clean).
-- [ ] Sanitizer builds pass (`-DSNIFFERCOMMIT_ENABLE_SANITIZERS=ON`).
+- [ ] Sanitizer builds pass (`-DMETIS_ENABLE_SANITIZERS=ON`).
 - [ ] Documentation updated (README, help text, design docs, or CHANGELOG).
 
 

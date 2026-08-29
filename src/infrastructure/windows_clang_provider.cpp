@@ -1,14 +1,14 @@
-#include "sniffercommit/infrastructure/windows_clang_provider.hpp"
+#include "metis/infrastructure/windows_clang_provider.hpp"
 
 #include <fmt/format.h>
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 WindowsClangProvider::WindowsClangProvider(domain::ports::IShellExecutor* shell,
                                            domain::ports::IFileSystem* fs, std::string version)
-    : shell_(shell),
-      fs_(fs),
-      version_(version.empty() ? "19.1.0" : version),
-      install_prefix_(default_install_prefix()) {}
+  : shell_(shell)
+  , fs_(fs)
+  , version_(version.empty() ? "19.1.0" : version)
+  , install_prefix_(default_install_prefix()) {}
 
 bool WindowsClangProvider::is_installed() const {
   return shell_->command_exists("clang") || shell_->command_exists("clang.exe");
@@ -75,11 +75,10 @@ std::filesystem::path WindowsClangProvider::default_install_prefix() const {
     home = std::getenv("HOME");
   }
   if (home == nullptr) {
-    return std::filesystem::path("C:\\") / "sniffercommit" / "toolchains" /
+    return std::filesystem::path("C:\\") / "metis" / "toolchains" /
            fmt::format("llvm-{}", version_);
   }
-  return std::filesystem::path(home) / ".sniffercommit" / "toolchains" /
-         fmt::format("llvm-{}", version_);
+  return std::filesystem::path(home) / ".metis" / "toolchains" / fmt::format("llvm-{}", version_);
 }
 
 std::string WindowsClangProvider::build_download_url() const {
@@ -88,4 +87,4 @@ std::string WindowsClangProvider::build_download_url() const {
       "LLVM-{}-win64.zip",
       version_, version_);
 }
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

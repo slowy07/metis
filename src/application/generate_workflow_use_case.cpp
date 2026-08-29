@@ -1,14 +1,14 @@
-#include "sniffercommit/application/generate_workflow_use_case.hpp"
+#include "metis/application/generate_workflow_use_case.hpp"
 
 #include <filesystem>
 
-#include "sniffercommit/domain/workflow.hpp"
+#include "metis/domain/workflow.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 
 GenerateWorkflowUseCase::GenerateWorkflowUseCase(
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-    : file_system_(std::move(file_system)) {}
+  : file_system_(std::move(file_system)) {}
 
 bool GenerateWorkflowUseCase::execute(const domain::config::ProjectConfig& cfg,
                                       const std::filesystem::path& repo_root,
@@ -24,7 +24,7 @@ bool GenerateWorkflowUseCase::execute(const domain::config::ProjectConfig& cfg,
     filename = ".gitlab-ci.yml";
   } else {
     dir = repo_root / ".github" / "workflows";
-    filename = "sniffercommit.yml";
+    filename = "metis.yml";
   }
 
   if (dir != repo_root && !file_system_->exists(dir)) {
@@ -36,4 +36,4 @@ bool GenerateWorkflowUseCase::execute(const domain::config::ProjectConfig& cfg,
   return file_system_->write_file(dir / filename, content);
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

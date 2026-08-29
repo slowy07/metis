@@ -3,14 +3,14 @@
 #include <filesystem>
 #include <string>
 
-#include "sniffercommit/application/sanitizer_checks_use_case.hpp"
-#include "sniffercommit/domain/config.hpp"
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/application/sanitizer_checks_use_case.hpp"
+#include "metis/domain/config.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
 namespace {
 
-using namespace sniffercommit;
+using namespace metis;
 
 struct MockShell : domain::ports::IShellExecutor {
   std::string exec(const std::string&) override { return {}; }
@@ -24,7 +24,6 @@ struct MockFs : domain::ports::IFileSystem {
   bool create_directories(const std::filesystem::path&) override { return true; }
   bool write_file(const std::filesystem::path&, const std::string&) override { return true; }
   std::string read_file(const std::filesystem::path&) override { return {}; }
-  bool remove(const std::filesystem::path&) override { return true; }
   bool set_permissions(const std::filesystem::path&, std::filesystem::perms,
                        std::filesystem::perm_options) override {
     return true;

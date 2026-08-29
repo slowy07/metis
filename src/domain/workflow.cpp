@@ -1,12 +1,12 @@
-#include "sniffercommit/domain/workflow.hpp"
+#include "metis/domain/workflow.hpp"
 
 #include <fmt/format.h>
 
 #include <string>
 
-#include "sniffercommit/domain/config.hpp"
+#include "metis/domain/config.hpp"
 
-namespace sniffercommit::domain::workflow {
+namespace metis::domain::workflow {
 
 // Checks if the project config includes clang-format checks.
 bool requires_clang_format(const config::ProjectConfig& cfg) noexcept {
@@ -27,8 +27,12 @@ std::string generate_gha_setup_step(bool need_clang_format, bool need_clang_tidy
   }
 
   std::string packages;
-  if (need_clang_format) packages += "clang-format";
-  if (need_clang_tidy) packages += (packages.empty() ? "" : " ") + std::string("clang-tidy");
+  if (need_clang_format) {
+    packages += "clang-format";
+  }
+  if (need_clang_tidy) {
+    packages += (packages.empty() ? "" : " ") + std::string("clang-tidy");
+  }
 
   return fmt::format(
       R"yaml(      - name: Install LLVM tooling
@@ -49,8 +53,12 @@ std::string generate_gitlab_before_script(bool need_clang_format, bool need_clan
   }
 
   std::string pkgs;
-  if (need_clang_format) pkgs += " clang-format";
-  if (need_clang_tidy) pkgs += " clang-tidy";
+  if (need_clang_format) {
+    pkgs += " clang-format";
+  }
+  if (need_clang_tidy) {
+    pkgs += " clang-tidy";
+  }
 
   return fmt::format(
       R"yaml(  before_script:
@@ -65,14 +73,14 @@ std::string generate_gitlab_before_script(bool need_clang_format, bool need_clan
 // Generates a GitHub Actions workflow YAML.
 // Triggers on push and PR to all branches, with concurrency control.
 // The workflow checks out the repo, optionally installs LLVM tools,
-// then runs sniffercommit on all files.
+// then runs metis on all files.
 std::string generate_github_actions(const config::ProjectConfig& cfg,
                                     const WorkflowConfig& wf_cfg) {
   bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
   bool need_clang_tidy = wf_cfg.install_clang_tidy || requires_clang_tidy(cfg);
 
   return fmt::format(
-      R"yaml(name: sniffercommit
+      R"yaml(name: metis
 
 on:
   push:
@@ -83,7 +91,7 @@ on:
       - "**"
 
 concurrency:
-  group: sniffercommit-${{ github.ref }}
+  group: metis-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -100,10 +108,10 @@ jobs:
         with:
           fetch-depth: 0
 {setup_step}
-      - name: Make sniffercommit executable
+      - name: Make metis executable
         run: chmod +x {binary_path}
 
-      - name: Run sniffercommit
+      - name: Run metis
         shell: bash
         run: |
           set -euo pipefail
@@ -115,7 +123,7 @@ jobs:
 }
 
 // Generates a GitLab CI pipeline YAML.
-// Single-stage pipeline that runs sniffercommit on all files.
+// Single-stage pipeline that runs metis on all files.
 // Uses ubuntu:latest image, installs LLVM tools if needed.
 std::string generate_gitlab_ci(const config::ProjectConfig& cfg, const WorkflowConfig& wf_cfg) {
   bool need_clang_format = wf_cfg.install_clang_format || requires_clang_format(cfg);
@@ -160,4 +168,4 @@ std::string generate_workflow(const config::ProjectConfig& cfg, const WorkflowCo
 #endif
 }
 
-}  // namespace sniffercommit::domain::workflow
+}  // namespace metis::domain::workflow

@@ -1,4 +1,4 @@
-#include "sniffercommit/glob_match.hpp"
+#include "metis/glob_match.hpp"
 
 #include <algorithm>
 
@@ -10,9 +10,9 @@
 //   exact     — exact string match
 //   prefix    — matches files starting with the prefix
 // lazy: doesn't support ? or [character classes]. Nobody has asked for them.
-[[nodiscard]] bool sniffercommit::util::glob_match(std::string_view file,
-                                                   std::string_view pattern) noexcept {
-  if (pattern == "") {
+[[nodiscard]] bool metis::util::glob_match(std::string_view file,
+                                           std::string_view pattern) noexcept {
+  if (pattern.empty()) {
     return true;
   }
 
@@ -37,8 +37,8 @@
 
 // Returns true if the file matches any of the given patterns.
 // Empty pattern list means "match everything".
-[[nodiscard]] bool sniffercommit::util::matches_any_pattern(
-    const std::string& file, const std::vector<std::string>& patterns) {
+[[nodiscard]] bool metis::util::matches_any_pattern(std::string_view file,
+                                                    const std::vector<std::string>& patterns) {
   if (patterns.empty()) {
     return true;
   }

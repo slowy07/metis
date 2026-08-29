@@ -14,7 +14,7 @@ for target in "${targets[@]}"; do
 
   podman build \
     -f docker/$target/Dockerfile \
-    -t sniffercommit-$target \
+    -t metis-$target \
     .
 
   echo

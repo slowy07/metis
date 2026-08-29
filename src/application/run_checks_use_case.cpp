@@ -1,8 +1,9 @@
-#include "sniffercommit/application/run_checks_use_case.hpp"
+#include "metis/application/run_checks_use_case.hpp"
 
 #include <fmt/format.h>
 
 #include <algorithm>
+#include <cstring>
 #include <exception>
 #include <filesystem>
 #include <future>
@@ -11,26 +12,30 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
-#include "sniffercommit/application/checks/build_check.hpp"
-#include "sniffercommit/application/checks/clang_format_check.hpp"
-#include "sniffercommit/application/checks/clang_static_analyzer_check.hpp"
-#include "sniffercommit/application/checks/clang_tidy_check.hpp"
-#include "sniffercommit/application/checks/compiler_check.hpp"
-#include "sniffercommit/application/checks/cppcheck_check.hpp"
-#include "sniffercommit/application/checks/gcc_analyzer_check.hpp"
-#include "sniffercommit/application/checks/git_diff_check.hpp"
-#include "sniffercommit/application/checks/iwyu_check.hpp"
-#include "sniffercommit/application/checks/shell_check.hpp"
-#include "sniffercommit/domain/check.hpp"
-#include "sniffercommit/domain/error_codes.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/glob_match.hpp"
-#include "sniffercommit/spinner.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/application/checks/build_check.hpp"
+#include "metis/application/checks/clang_format_check.hpp"
+#include "metis/application/checks/clang_static_analyzer_check.hpp"
+#include "metis/application/checks/clang_tidy_check.hpp"
+#include "metis/application/checks/compiler_check.hpp"
+#include "metis/application/checks/cppcheck_check.hpp"
+#include "metis/application/checks/dependency_security_check.hpp"
+#include "metis/application/checks/gcc_analyzer_check.hpp"
+#include "metis/application/checks/git_diff_check.hpp"
+#include "metis/application/checks/iwyu_check.hpp"
+#include "metis/application/checks/security_check.hpp"
+#include "metis/application/checks/shell_check.hpp"
+#include "metis/domain/check.hpp"
+#include "metis/domain/error_codes.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/glob_match.hpp"
+#include "metis/infrastructure/check_cache.hpp"
+#include "metis/spinner.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application {
+namespace metis::application {
 
 namespace {
 
@@ -39,21 +44,26 @@ using domain::ExitCode;
 // Column width for dotted alignment in check result output
 constexpr size_t k_result_col = 68;
 
+// Pairs a concrete check with its matched files.
+struct WorkItem {
+  std::unique_ptr<domain::Check> check;
+  std::vector<std::string> matched_files;
+  std::string config_error;
+};
+
 // Maps a config check to its concrete implementation by command basename.
 // Heuristic-based dispatch: clang-format/clang-tidy/compilers/cmake/git get
 // specialized behavior; everything else is a custom shell command.
 // config if the heuristics start misrouting checks.
+}  // namespace
+
 bool is_compiler(const std::string& basename) {
   static const std::vector<std::string> k_prefixes = {"gcc",     "g++", "clang",
                                                       "clang++", "cc",  "c++"};
-  for (const auto& prefix : k_prefixes) {
-    if (basename == prefix ||
-        (basename.size() > prefix.size() && basename.compare(0, prefix.size(), prefix) == 0 &&
-         basename[prefix.size()] == '-')) {
-      return true;
-    }
-  }
-  return false;
+  return std::ranges::any_of(k_prefixes, [&basename](const auto& prefix) {
+    return basename == prefix || (basename.size() > prefix.size() && basename.starts_with(prefix) &&
+                                  basename[prefix.size()] == '-');
+  });
 }
 
 std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
@@ -85,8 +95,16 @@ std::unique_ptr<domain::Check> make_check(const domain::config::Check& config) {
   if (basename == "gcc-analyzer") {
     return std::make_unique<checks::GCCAnalyzerCheck>(config);
   }
+  if (basename == "metis-security") {
+    return std::make_unique<checks::SecurityCheck>(config);
+  }
+  if (basename == "metis-dep-security") {
+    return std::make_unique<checks::DependencySecurityCheck>(config);
+  }
   return std::make_unique<checks::ShellCheck>(config);
 }
+
+namespace {
 
 // Thread-safe printer for concurrent check output.
 // Checks run in parallel via std::async; without a mutex, output from
@@ -96,7 +114,7 @@ class SyncPrinter {
  public:
   void print_check_result(const std::string& name, std::string_view result, int exit_code = 0,
                           std::string_view tool_output = {}, bool verbose = false) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     size_t dot_count = (name.length() < k_result_col) ? k_result_col - name.length() : 1;
     std::cout << name << std::string(dot_count, '.') << result << "\n";
     if (!tool_output.empty() && (exit_code != 0 || verbose)) {
@@ -125,7 +143,7 @@ class SyncPrinter {
 
   void print_file_result(const std::string& file_name, std::string_view status,
                          size_t indent_col = 2) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::string label = std::string(indent_col, ' ') + file_name;
     size_t effective_col = k_result_col - indent_col;
     if (effective_col > label.length()) {
@@ -136,12 +154,12 @@ class SyncPrinter {
   }
 
   void print_verbose(std::string_view msg) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::cout << msg;
   }
 
   void print_error(std::string_view msg) {
-    std::lock_guard lock(mutex_);
+    std::scoped_lock lock(mutex_);
     std::cerr << msg;
   }
 
@@ -151,9 +169,9 @@ class SyncPrinter {
 
 // Result of running a single check against a set of matched files.
 struct CheckResult {
-  std::string check_name_{};
+  std::string check_name_;
   int exit_code_{0};
-  std::string output_{};
+  std::string output_;
   bool verbose_{false};
 };
 
@@ -165,7 +183,28 @@ struct CheckResult {
 CheckResult run_check_for_files(std::unique_ptr<domain::Check> check,
                                 const std::vector<std::string>& matched_files,
                                 const RunOptions& opts, SyncPrinter& printer,
-                                domain::ports::IShellExecutor* shell) {
+                                domain::ports::IShellExecutor* shell,
+                                infrastructure::CheckCache* cache) {
+  if (cache != nullptr && !opts.dry_run) {
+    int cached_exit = 0;
+
+    if (cache->lookup(check->name(), check->command(), check->arguments(), matched_files,
+                      cached_exit)) {
+      if (opts.verbose) {
+        printer.print_verbose(
+            fmt::format("[metis] [CACHE] {} - using cached result\n", check->name()));
+      }
+
+      if (cached_exit == 0) {
+        printer.print_check_result(check->name(), "Passed");
+      } else {
+        printer.print_check_result(check->name(), "Failed", cached_exit, "", opts.verbose);
+      }
+
+      return {.check_name_ = check->name(), .exit_code_ = cached_exit, .output_ = {}};
+    }
+  }
+
   auto result = check->execute(matched_files, shell, opts.verbose, opts.dry_run);
 
   if (result.exit_code == 0) {
@@ -173,6 +212,11 @@ CheckResult run_check_for_files(std::unique_ptr<domain::Check> check,
   } else {
     printer.print_check_result(check->name(), "Failed", result.exit_code, result.output,
                                opts.verbose);
+  }
+
+  if (cache != nullptr && !opts.dry_run) {
+    cache->store(check->name(), check->command(), check->arguments(), matched_files,
+                 result.exit_code);
   }
 
   return {.check_name_ = check->name(), .exit_code_ = result.exit_code, .output_ = {}};
@@ -190,7 +234,8 @@ bool is_format_eligible(const std::string& file) {
   std::string ext = file_path.extension().string();
   std::ranges::transform(ext, ext.begin(),
                          [](unsigned char chr) { return static_cast<char>(std::tolower(chr)); });
-  return std::ranges::any_of(k_format_extensions, [&ext](const auto& e) { return ext == e; });
+  return std::ranges::any_of(k_format_extensions,
+                             [&ext](const auto& ext_entry) { return ext == ext_entry; });
 }
 
 std::vector<std::string> filter_format_files(const std::vector<std::string>& files) {
@@ -208,8 +253,10 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 
 RunChecksUseCase::RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
-                                   std::unique_ptr<domain::ports::IFileSystem> fs)
-    : shell_(std::move(shell)), git_repo_(std::move(git_repo)), fs_(std::move(fs)) {}
+                                   std::unique_ptr<domain::ports::IFileSystem> file_system)
+  : shell_(std::move(shell))
+  , git_repo_(std::move(git_repo))
+  , file_system_(std::move(file_system)) {}
 
 // Collects the list of files to check based on the run mode:
 //   STAGED  - git staged files (default for pre-commit hook)
@@ -230,11 +277,19 @@ std::vector<std::string> RunChecksUseCase::collect_files(
   //   Prefix match:   "build/" matches "build/debug/foo.cpp"
   auto is_excluded = [&exclude_paths](const std::string& file) -> bool {
     for (const auto& excl : exclude_paths) {
-      if (file == excl) return true;
-      if (excl.starts_with("*.") && file.ends_with(excl.substr(1))) return true;
+      if (file == excl) {
+        return true;
+      }
+      if (excl.starts_with("*.") && file.ends_with(excl.substr(1))) {
+        return true;
+      }
       std::string norm_e = excl;
-      if (!norm_e.empty() && norm_e.back() != '/') norm_e += '/';
-      if (file.starts_with(norm_e)) return true;
+      if (!norm_e.empty() && norm_e.back() != '/') {
+        norm_e += '/';
+      }
+      if (file.starts_with(norm_e)) {
+        return true;
+      }
     }
     return false;
   };
@@ -251,7 +306,7 @@ std::vector<std::string> RunChecksUseCase::collect_files(
     }
   }
 
-  std::erase_if(files, [&](const std::string& f) { return is_excluded(f); });
+  std::erase_if(files, [&](const std::string& file) { return is_excluded(file); });
 
   std::ranges::sort(files);
   auto [first, last] = std::ranges::unique(files);
@@ -266,7 +321,7 @@ std::vector<std::string> RunChecksUseCase::collect_files(
 int RunChecksUseCase::execute(const domain::config::ProjectConfig& cfg, const RunOptions& opts) {
   std::filesystem::path repo_root;
   try {
-    repo_root = git_repo_->find_repo_root(fs_->current_path());
+    repo_root = git_repo_->find_repo_root(file_system_->current_path());
   } catch (const std::exception& e) {
     std::cerr << "[ERROR] " << e.what() << "\n";
     return static_cast<int>(ExitCode::NOT_A_GIT_REPO);
@@ -279,6 +334,96 @@ int RunChecksUseCase::execute(const domain::config::ProjectConfig& cfg, const Ru
   }
 
   return execute_checks(repo_root, cfg, files, opts);
+}
+
+// Matches enabled checks to files and pre-validates their configs.
+// Skipped checks (disabled or no matching files) are reported when verbose.
+std::vector<WorkItem> build_work_items(const domain::config::ProjectConfig& cfg,
+                                       const std::vector<std::string>& files,
+                                       const std::filesystem::path& repo_root,
+                                       const RunOptions& opts, SyncPrinter& printer) {
+  std::vector<WorkItem> work_items;
+  work_items.reserve(cfg.checks.size());
+
+  for (const auto& check : cfg.checks) {
+    if (!check.enabled) {
+      if (opts.verbose) {
+        printer.print_verbose(fmt::format("[metis] [SKIP] {} (disabled)\n", check.name));
+      }
+      continue;
+    }
+
+    std::vector<std::string> matched;
+    for (const auto& file_name : files) {
+      if (util::matches_any_pattern(file_name, check.patterns)) {
+        matched.push_back(file_name);
+      }
+    }
+
+    if (matched.empty()) {
+      if (opts.verbose) {
+        printer.print_verbose(fmt::format("[metis] [SKIP] {}\n", check.name));
+      }
+      continue;
+    }
+
+    auto impl = make_check(check);
+    std::string config_err = impl->validate(repo_root);
+    work_items.push_back({.check = std::move(impl),
+                          .matched_files = std::move(matched),
+                          .config_error = std::move(config_err)});
+  }
+  return work_items;
+}
+
+int report_failures(SyncPrinter& printer, int exit_code) {
+  if (exit_code != 0) {
+    printer.print_error("One or more checks failed.\n");
+  }
+  return exit_code;
+}
+
+// Runs work items one at a time; returns the worst exit code seen.
+int run_sequential(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
+                   domain::ports::IShellExecutor* shell, infrastructure::CheckCache* cache) {
+  int exit_code = static_cast<int>(ExitCode::SUCCESS);
+
+  for (auto& item : items) {
+    auto result =
+        run_check_for_files(std::move(item.check), item.matched_files, opts, printer, shell, cache);
+
+    if (result.exit_code_ != 0) {
+      exit_code = result.exit_code_;
+    }
+  }
+
+  return report_failures(printer, exit_code);
+}
+
+// Runs each work item in its own std::async task; shell is thread-safe
+// (popen/fork per process), SyncPrinter serializes output.
+int run_parallel(std::vector<WorkItem>& items, const RunOptions& opts, SyncPrinter& printer,
+                 domain::ports::IShellExecutor* shell, infrastructure::CheckCache* cache) {
+  std::vector<std::future<CheckResult>> futures;
+  futures.reserve(items.size());
+
+  for (auto& item : items) {
+    futures.push_back(std::async(
+        std::launch::async, [item = std::move(item), &opts, &printer, shell, cache]() mutable {
+          return run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
+                                     shell, cache);
+        }));
+  }
+
+  int exit_code = static_cast<int>(ExitCode::SUCCESS);
+  for (auto& future : futures) {
+    auto result = future.get();
+    if (result.exit_code_ != 0) {
+      exit_code = result.exit_code_;
+    }
+  }
+
+  return report_failures(printer, exit_code);
 }
 
 // Runs all configured checks against the collected files.
@@ -304,45 +449,7 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
     return static_cast<int>(ExitCode::SUCCESS);
   }
 
-  // A work item pairs a concrete check with its matched files.
-  // Config errors are pre-validated before any execution begins.
-  struct WorkItem {
-    std::unique_ptr<domain::Check> check;
-    std::vector<std::string> matched_files;
-    std::string config_error;
-  };
-
-  std::vector<WorkItem> work_items;
-  work_items.reserve(cfg.checks.size());
-
-  for (const auto& check : cfg.checks) {
-    if (!check.enabled) {
-      if (opts.verbose) {
-        printer.print_verbose(fmt::format("[sniffercommit] [SKIP] {} (disabled)\n", check.name));
-      }
-      continue;
-    }
-
-    std::vector<std::string> matched;
-    for (const auto& file_name : files) {
-      if (util::matches_any_pattern(file_name, check.patterns)) {
-        matched.push_back(file_name);
-      }
-    }
-
-    if (matched.empty()) {
-      if (opts.verbose) {
-        printer.print_verbose(fmt::format("[sniffercommit] [SKIP] {}\n", check.name));
-      }
-      continue;
-    }
-
-    auto impl = make_check(check);
-    std::string config_err = impl->validate(repo_root);
-    work_items.push_back({.check = std::move(impl),
-                          .matched_files = std::move(matched),
-                          .config_error = std::move(config_err)});
-  }
+  auto work_items = build_work_items(cfg, files, repo_root, opts, printer);
 
   if (work_items.empty()) {
     return static_cast<int>(ExitCode::SUCCESS);
@@ -369,48 +476,10 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   // Single check or parallel disabled → run sequentially.
   // Sequential is simpler and avoids thread overhead for trivial workloads.
   if (!cfg.parallel || work_items.size() == 1) {
-    int exit_code = static_cast<int>(ExitCode::SUCCESS);
-    for (auto& item : work_items) {
-      auto result = run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
-                                        shell_.get());
-      if (result.exit_code_ != 0) {
-        exit_code = result.exit_code_;
-      }
-    }
-
-    if (exit_code != 0) {
-      printer.print_error("One or more checks failed.\n");
-    }
-    return exit_code;
+    return run_sequential(work_items, opts, printer, shell_.get(), cache_);
   }
 
-  // Parallel execution: each check runs in its own std::async task.
-  // shell_ is thread-safe (popen/fork are per-process), so concurrent
-  // access is safe. SyncPrinter handles output serialization.
-  std::vector<std::future<CheckResult>> futures;
-  futures.reserve(work_items.size());
-
-  for (auto& item : work_items) {
-    futures.push_back(
-        std::async(std::launch::async, [item = std::move(item), &opts, &printer, this]() mutable {
-          return run_check_for_files(std::move(item.check), item.matched_files, opts, printer,
-                                     shell_.get());
-        }));
-  }
-
-  int exit_code = static_cast<int>(ExitCode::SUCCESS);
-  for (auto& future : futures) {
-    auto result = future.get();
-    if (result.exit_code_ != 0) {
-      exit_code = result.exit_code_;
-    }
-  }
-
-  if (exit_code != 0) {
-    printer.print_error("One or more checks failed.\n");
-  }
-
-  return exit_code;
+  return run_parallel(work_items, opts, printer, shell_.get(), cache_);
 }
 
 // Runs clang-format in-place on eligible C/C++ files.
@@ -435,14 +504,14 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
   bool has_config =
       std::filesystem::exists(".clang-format") || std::filesystem::exists("_clang-format");
   if (!has_config) {
-    printer.print_error("[ERROR] No .clang-format config found. Run 'sniffercommit init' first.\n");
+    printer.print_error("[ERROR] No .clang-format config found. Run 'metis init' first.\n");
     std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::CONFIG_ERROR);
   }
 
   auto format_files = filter_format_files(files);
   if (format_files.empty()) {
-    printer.print_verbose("[sniffercommit] [INFO] No format-eligible files found.\n");
+    printer.print_verbose("[metis] [INFO] No format-eligible files found.\n");
     std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::SUCCESS);
   }
@@ -458,7 +527,7 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
 
   if (opts.verbose) {
     printer.print_verbose(
-        fmt::format("[sniffercommit] [INFO] Formatting {} file(s)\n", format_files.size()));
+        fmt::format("[metis] [INFO] Formatting {} file(s)\n", format_files.size()));
   }
 
   Spinner spinner("Formatting files...");
@@ -499,16 +568,15 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
 
   if (exit_code == 0) {
     if (formatted_count > 0) {
-      printer.print_verbose(
-          fmt::format("[sniffercommit] [INFO] Formatted {} file(s), {} already clean.\n",
-                      formatted_count, clean_count));
-      printer.print_verbose("[sniffercommit] [INFO] Stage changes with: git add -u\n");
+      printer.print_verbose(fmt::format("[metis] [INFO] Formatted {} file(s), {} already clean.\n",
+                                        formatted_count, clean_count));
+      printer.print_verbose("[metis] [INFO] Stage changes with: git add -u\n");
     }
   } else {
-    printer.print_error("[sniffercommit] [ERROR] Formatting failed on some files.\n");
+    printer.print_error("[metis] [ERROR] Formatting failed on some files.\n");
   }
 
   return exit_code;
 }
 
-}  // namespace sniffercommit::application
+}  // namespace metis::application

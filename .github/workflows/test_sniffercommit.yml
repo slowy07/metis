@@ -29,10 +29,10 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DSNIFFERCOMMIT_BUILD_TESTS=ON \
-            -DSNIFFERCOMMIT_USE_SYSTEM_FMT=OFF \
-            -DSNIFFERCOMMIT_USE_SYSTEM_TOMLPLUSPLUS=OFF \
-            -DSNIFFERCOMMIT_VERBOSE_CONFIG=ON
+            -DMETIS_BUILD_TESTS=ON \
+            -DMETIS_USE_SYSTEM_FMT=OFF \
+            -DMETIS_USE_SYSTEM_TOMLPLUSPLUS=OFF \
+            -DMETIS_VERBOSE_CONFIG=ON
 
       - name: Build tests
         run: cmake --build build --parallel

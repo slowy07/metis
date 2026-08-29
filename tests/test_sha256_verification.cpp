@@ -4,13 +4,13 @@
 #include <functional>
 #include <string>
 
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/infrastructure/windows_gcc_provider.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/infrastructure/windows_gcc_provider.hpp"
 
 namespace {
 
-using namespace sniffercommit;
+using namespace metis;
 
 // Real SHA-256 of winlibs-x86_64-posix-seh-gcc-14.2.0-llvm-19.1.1-mingw-w64ucrt-12.0.0-r2.zip.
 constexpr char kRealHash[] = "12fa72d2566e641c3bf0213a946d33d8bef2e0757af2fb3ed60a995e05d74606";
@@ -30,7 +30,6 @@ struct MockFileSystem : domain::ports::IFileSystem {
   bool create_directories(const std::filesystem::path&) override { return true; }
   bool write_file(const std::filesystem::path&, const std::string&) override { return true; }
   std::string read_file(const std::filesystem::path&) override { return {}; }
-  bool remove(const std::filesystem::path&) override { return true; }
   bool set_permissions(const std::filesystem::path&, std::filesystem::perms,
                        std::filesystem::perm_options) override {
     return true;

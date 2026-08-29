@@ -1,4 +1,4 @@
-#include "sniffercommit/util.hpp"
+#include "metis/util.hpp"
 
 #include <cstdlib>
 #include <exception>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #endif
 
-namespace sniffercommit::util {
+namespace metis::util {
 
 // Checks if a command exists in PATH.
 // lazy: duplicates ProcessShellExecutor::command_exists() — one should be deleted.
@@ -75,7 +75,7 @@ std::string shell_escape(const std::string& value) {
 // and restores it on destruction. Used by run_checks_use_case
 // to run checks from the repo root.
 CwdGuard::CwdGuard(const std::filesystem::path& target)
-    : original_cwd(std::filesystem::current_path()) {
+  : original_cwd(std::filesystem::current_path()) {
   std::filesystem::current_path(target);
 }
 
@@ -87,4 +87,4 @@ CwdGuard::~CwdGuard() {
   }
 }
 
-}  // namespace sniffercommit::util
+}  // namespace metis::util

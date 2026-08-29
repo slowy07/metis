@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/process_shell_executor.hpp"
+#include "metis/infrastructure/process_shell_executor.hpp"
 
 #include <algorithm>
 #include <array>
@@ -17,7 +17,7 @@
 #include <unistd.h>
 #endif
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 namespace {
 
@@ -69,7 +69,7 @@ std::string ProcessShellExecutor::exec(const std::string& cmd) {
   // 2. Fork the process
   // 3. Child: redirect stdout to pipe, exec the command
   // 4. Parent: read from pipe, wait for child completion
-  int fds[2];
+  int fds[2];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays) POSIX pipe API
   if (::pipe(fds) == -1) {
     throw std::runtime_error("pipe() failed");
   }
@@ -86,6 +86,8 @@ std::string ProcessShellExecutor::exec(const std::string& cmd) {
     ::close(fds[0]);
     ::dup2(fds[1], STDOUT_FILENO);
     ::close(fds[1]);
+    // vararg here is the POSIX API shape, not a design choice.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     ::execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
     ::_exit(127);  // exec failed
   }
@@ -94,10 +96,9 @@ std::string ProcessShellExecutor::exec(const std::string& cmd) {
   ::close(fds[1]);
 
   std::array<char, 4096> buffer{};
-  ssize_t n;
-  while ((n = ::read(fds[0], buffer.data(), buffer.size() - 1)) > 0) {
-    buffer[static_cast<size_t>(n)] = '\0';
-    result += buffer.data();
+  ssize_t bytes_read = 0;
+  while ((bytes_read = ::read(fds[0], buffer.data(), buffer.size())) > 0) {
+    result.append(buffer.data(), static_cast<size_t>(bytes_read));
   }
   ::close(fds[0]);
 
@@ -134,7 +135,7 @@ domain::ports::CapturedResult ProcessShellExecutor::exec_captured(const std::str
 #else
   // Unix path: same as exec(), but also redirects stderr to the pipe
   // so we capture both stdout and stderr in one string.
-  int fds[2];
+  int fds[2];  // NOLINT(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays) POSIX pipe API
   if (::pipe(fds) == -1) {
     return {.exit_code_ = 1, .output_ = "pipe() failed"};
   }
@@ -152,6 +153,7 @@ domain::ports::CapturedResult ProcessShellExecutor::exec_captured(const std::str
     ::dup2(fds[1], STDOUT_FILENO);
     ::dup2(fds[1], STDERR_FILENO);
     ::close(fds[1]);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     ::execl("/bin/sh", "sh", "-c", cmd.c_str(), nullptr);
     ::_exit(127);
   }
@@ -160,10 +162,9 @@ domain::ports::CapturedResult ProcessShellExecutor::exec_captured(const std::str
   ::close(fds[1]);
 
   std::array<char, 4096> buffer{};
-  ssize_t n;
-  while ((n = ::read(fds[0], buffer.data(), buffer.size() - 1)) > 0) {
-    buffer[static_cast<size_t>(n)] = '\0';
-    output += buffer.data();
+  ssize_t bytes_read = 0;
+  while ((bytes_read = ::read(fds[0], buffer.data(), buffer.size())) > 0) {
+    output.append(buffer.data(), static_cast<size_t>(bytes_read));
   }
   ::close(fds[0]);
 
@@ -227,4 +228,4 @@ bool ProcessShellExecutor::command_exists(const std::string& cmd) {
 #endif
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

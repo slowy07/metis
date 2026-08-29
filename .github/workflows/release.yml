@@ -31,7 +31,7 @@ jobs:
           sudo apt-get install -y cmake ninja-build g++ git
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DSNIFFERCOMMIT_BUILD_TESTS=ON
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DMETIS_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -46,24 +46,14 @@ jobs:
         include:
           - os: ubuntu-latest
             target: linux-x86_64
-            cmake_args: -DSNIFFERCOMMIT_PORTABLE_RELEASE=ON -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            cmake_args: -DMETIS_PORTABLE_RELEASE=ON -DMETIS_BUILD_TESTS=OFF
             artifact_ext: tar.gz
-            pack_cmd: tar czf ../sniffercommit-linux-x86_64.tar.gz sniffercommit
-          - os: macos-13
-            target: macos-x86_64
-            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
-            artifact_ext: tar.gz
-            pack_cmd: tar czf ../sniffercommit-macos-x86_64.tar.gz sniffercommit
-          - os: macos-latest
-            target: macos-arm64
-            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
-            artifact_ext: tar.gz
-            pack_cmd: tar czf ../sniffercommit-macos-arm64.tar.gz sniffercommit
+            pack_cmd: tar czf ../metis-linux-x86_64.tar.gz metis
           - os: windows-latest
             target: windows-x86_64
-            cmake_args: -DSNIFFERCOMMIT_BUILD_TESTS=OFF
+            cmake_args: -DMETIS_BUILD_TESTS=OFF
             artifact_ext: zip
-            pack_cmd: Compress-Archive -Path sniffercommit.exe -DestinationPath ../sniffercommit-windows-x86_64.zip
+            pack_cmd: Compress-Archive -Path metis.exe -DestinationPath ../metis-windows-x86_64.zip
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -82,9 +72,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            build/bin/Release/sniffercommit.exe --version
+            build/bin/Release/metis.exe --version
           else
-            ./build/bin/sniffercommit --version
+            ./build/bin/metis --version
           fi
 
       - name: Package
@@ -95,8 +85,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sniffercommit-${{ matrix.target }}
-          path: build/bin/sniffercommit-${{ matrix.target }}.${{ matrix.artifact_ext }}
+          name: metis-${{ matrix.target }}
+          path: build/bin/metis-${{ matrix.target }}.${{ matrix.artifact_ext }}
 
   create-release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -113,8 +103,6 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            sniffercommit-linux-x86_64/sniffercommit-linux-x86_64.tar.gz
-            sniffercommit-macos-x86_64/sniffercommit-macos-x86_64.tar.gz
-            sniffercommit-macos-arm64/sniffercommit-macos-arm64.tar.gz
-            sniffercommit-windows-x86_64/sniffercommit-windows-x86_64.zip
+            metis-linux-x86_64/metis-linux-x86_64.tar.gz
+            metis-windows-x86_64/metis-windows-x86_64.zip
           generate_release_notes: true

@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/clang_format_check.hpp"
+#include "metis/application/checks/clang_format_check.hpp"
 
 #include <fmt/format.h>
 
@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
-#include "sniffercommit/util.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
+#include "metis/util.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 namespace {
 bool is_format_eligible(const std::string& file) {
   static const std::vector<std::string> k_exts = {".cpp", ".cc", ".cxx", ".c++", ".hpp",
@@ -38,18 +38,18 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 }  // namespace
 
 ClangFormatCheck::ClangFormatCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {
   // In-place formatting is the point of this check; strip a user-supplied -i
   // so the batch command below can build it explicitly.
-  std::erase(arguments_, "-i");
+  erase_argument("-i");
 }
 
 std::string ClangFormatCheck::validate(const std::filesystem::path& repo_root) const {
   bool has_config = std::filesystem::exists(repo_root / ".clang-format") ||
                     std::filesystem::exists(repo_root / "_clang-format");
   if (!has_config) {
-    return "No .clang-format config found. Run 'sniffercommit init' first.";
+    return "No .clang-format config found. Run 'metis init' first.";
   }
   return "";
 }
@@ -79,7 +79,7 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
   }
 
   std::string cmd_base = "clang-format -i";
-  for (const auto& arg : arguments_) {
+  for (const auto& arg : arguments()) {
     if (arg != "-i") {
       cmd_base += " ";
       cmd_base += util::shell_escape(arg);
@@ -130,4 +130,4 @@ domain::CheckResult ClangFormatCheck::execute(const std::vector<std::string>& fi
   return {.exit_code = 0, .output = output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

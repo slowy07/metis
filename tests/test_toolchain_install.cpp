@@ -2,15 +2,15 @@
 
 #include <filesystem>
 
-#include "sniffercommit/application/install_toolchain_use_case.hpp"
-#include "sniffercommit/domain/ports/archive_extractor.hpp"
-#include "sniffercommit/domain/ports/file_system.hpp"
-#include "sniffercommit/domain/ports/http_client.hpp"
-#include "sniffercommit/domain/ports/toolchain_provider.hpp"
+#include "metis/application/install_toolchain_use_case.hpp"
+#include "metis/domain/ports/archive_extractor.hpp"
+#include "metis/domain/ports/file_system.hpp"
+#include "metis/domain/ports/http_client.hpp"
+#include "metis/domain/ports/toolchain_provider.hpp"
 
 namespace {
 
-using namespace sniffercommit;
+using namespace metis;
 
 struct MockProvider : domain::ports::IToolchainProvider {
   bool installed_ = false;
@@ -73,7 +73,6 @@ struct MockFileSystem : domain::ports::IFileSystem {
     return true;
   }
   std::string read_file(const std::filesystem::path& /*path*/) override { return {}; }
-  bool remove(const std::filesystem::path& /*path*/) override { return true; }
   bool set_permissions(const std::filesystem::path& /*path*/, std::filesystem::perms /*perms*/,
                        std::filesystem::perm_options /*opts*/) override {
     return true;

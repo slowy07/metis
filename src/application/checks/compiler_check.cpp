@@ -1,4 +1,4 @@
-#include "sniffercommit/application/checks/compiler_check.hpp"
+#include "metis/application/checks/compiler_check.hpp"
 
 #include <fmt/format.h>
 
@@ -6,30 +6,30 @@
 #include <string>
 #include <vector>
 
-#include "sniffercommit/domain/ports/shell_executor.hpp"
+#include "metis/domain/ports/shell_executor.hpp"
 
-namespace sniffercommit::application::checks {
+namespace metis::application::checks {
 
 CompilerCheck::CompilerCheck(const domain::config::Check& config)
-    : domain::Check(config.name, config.description, config.enabled, config.patterns,
-                    config.command, config.args, config.timeout, config.severity) {
+  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
+                  config.args, config.timeout, config.severity) {
   // If the user already specified a compilation mode (-c, -S, -E, -fsyntax-only),
   // respect it. Otherwise default to syntax-only (safe for pre-commit hooks).
-  bool has_mode = std::ranges::any_of(arguments_, [](const std::string& arg) {
+  bool has_mode = std::ranges::any_of(arguments(), [](const std::string& arg) {
     return arg == "-c" || arg == "-S" || arg == "-E" || arg == "-fsyntax-only";
   });
   if (!has_mode) {
-    arguments_.push_back("-fsyntax-only");
+    add_argument("-fsyntax-only");
   }
 }
 
 domain::CheckResult CompilerCheck::execute(const std::vector<std::string>& files,
                                            domain::ports::IShellExecutor* shell, bool verbose,
                                            bool dry_run) {
-  if (!shell->command_exists(command_)) {
+  if (!shell->command_exists(command())) {
     return {.exit_code = 1,
             .output = fmt::format("`{}` not found in PATH. install it or check your configuration",
-                                  command_)};
+                                  command())};
   }
 
   if (dry_run) {
@@ -64,4 +64,4 @@ domain::CheckResult CompilerCheck::execute(const std::vector<std::string>& files
   return {.exit_code = overall_exit, .output = verbose_log + accumulated_output};
 }
 
-}  // namespace sniffercommit::application::checks
+}  // namespace metis::application::checks

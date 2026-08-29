@@ -1,4 +1,4 @@
-#include "sniffercommit/infrastructure/os_file_system.hpp"
+#include "metis/infrastructure/os_file_system.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -7,7 +7,7 @@
 #include <string>
 #include <system_error>
 
-namespace sniffercommit::infrastructure {
+namespace metis::infrastructure {
 
 bool OsFileSystem::exists(const std::filesystem::path& path) {
   std::error_code err_code;
@@ -75,11 +75,6 @@ std::string OsFileSystem::read_file(const std::filesystem::path& path) {
   return stringstream.str();
 }
 
-bool OsFileSystem::remove(const std::filesystem::path& path) {
-  std::error_code err_code;
-  return std::filesystem::remove(path, err_code);
-}
-
 bool OsFileSystem::set_permissions(const std::filesystem::path& path, std::filesystem::perms perms,
                                    std::filesystem::perm_options opts) {
   std::error_code err_code;
@@ -99,4 +94,4 @@ std::filesystem::path OsFileSystem::absolute(const std::filesystem::path& path) 
   return err_code ? std::filesystem::path{} : abs_path;
 }
 
-}  // namespace sniffercommit::infrastructure
+}  // namespace metis::infrastructure

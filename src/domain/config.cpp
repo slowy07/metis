@@ -1,4 +1,4 @@
-#include "sniffercommit/domain/config.hpp"
+#include "metis/domain/config.hpp"
 
 #include <fmt/format.h>
 
@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-namespace sniffercommit::domain::config {
+namespace metis::domain::config {
 
 // Validates a single check definition.
 // Returns empty string if valid, error message if not.
@@ -120,7 +120,7 @@ severity = "error"
   return result;
 }
 
-// Generates a basic .sniffercommit.toml with clang-format and trailing-whitespace checks.
+// Generates a basic .metis.toml with clang-format and trailing-whitespace checks.
 // This is the default config when no special options are enabled.
 std::string generate_default_config(const std::string& project_name,
                                     const std::string& fallback_style,
@@ -266,4 +266,48 @@ timeout = {}
       types_str, build_dir, timeout);
 }
 
-}  // namespace sniffercommit::domain::config
+std::string generate_security_checks_config() {
+  return R"CONFIG(
+[[checks]]
+name = "security-scan"
+description = "Source security scan (dangerous functions, secrets, syscalls)"
+enabled = true
+command = "metis-security"
+args = []
+patterns = ["*.cpp", "*.hpp", "*.h", "*.cc", "*.c"]
+timeout = 0
+severity = "error"
+
+[[checks]]
+name = "dependency-security"
+description = "Dependency CVE scan and SBOM generation"
+enabled = true
+command = "metis-dep-security"
+args = []
+patterns = ["*"]
+timeout = 300
+severity = "warning"
+)CONFIG";
+}
+
+std::string generate_perf_config(const std::string& build_dir, std::size_t max_binary_size_mb,
+                                 std::size_t max_build_time_sec,
+                                 const std::string& benchmark_regex) {
+  std::string result = R"([perf]
+enabled = true
+build_dir = ")" + build_dir +
+                       "\"\n";
+
+  if (max_binary_size_mb > 0) {
+    result += "max_binary_size_mb = " + std::to_string(max_binary_size_mb) + "\n";
+  }
+  if (max_build_time_sec > 0) {
+    result += "max_build_time_sec = " + std::to_string(max_build_time_sec) + "\n";
+  }
+  if (!benchmark_regex.empty()) {
+    result += "benchmark_regex = \"" + benchmark_regex + "\"\n";
+  }
+  return result;
+}
+
+}  // namespace metis::domain::config
