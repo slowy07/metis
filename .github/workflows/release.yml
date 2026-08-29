@@ -49,16 +49,6 @@ jobs:
             cmake_args: -DMETIS_PORTABLE_RELEASE=ON -DMETIS_BUILD_TESTS=OFF
             artifact_ext: tar.gz
             pack_cmd: tar czf ../metis-linux-x86_64.tar.gz metis
-          - os: macos-13
-            target: macos-x86_64
-            cmake_args: -DMETIS_BUILD_TESTS=OFF
-            artifact_ext: tar.gz
-            pack_cmd: tar czf ../metis-macos-x86_64.tar.gz metis
-          - os: macos-latest
-            target: macos-arm64
-            cmake_args: -DMETIS_BUILD_TESTS=OFF
-            artifact_ext: tar.gz
-            pack_cmd: tar czf ../metis-macos-arm64.tar.gz metis
           - os: windows-latest
             target: windows-x86_64
             cmake_args: -DMETIS_BUILD_TESTS=OFF
@@ -114,7 +104,5 @@ jobs:
         with:
           files: |
             metis-linux-x86_64/metis-linux-x86_64.tar.gz
-            metis-macos-x86_64/metis-macos-x86_64.tar.gz
-            metis-macos-arm64/metis-macos-arm64.tar.gz
             metis-windows-x86_64/metis-windows-x86_64.zip
           generate_release_notes: true

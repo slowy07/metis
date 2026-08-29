@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 
 project(metis
   LANGUAGES CXX
-  VERSION 0.4.0
+  VERSION 0.5.0
   DESCRIPTION "Fast, C++ pre-commit hook and CI generator"
   HOMEPAGE_URL "https://github.com/slowy07/metis"
 )
