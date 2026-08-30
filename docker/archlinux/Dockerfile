@@ -4,7 +4,7 @@ ENV CC=clang
 ENV CXX=clang++
 
 RUN pacman -Syu --noconfirm && \
-    pacman -S --noconfirm \
+    pacman -S --noconfirm --needed \
         base-devel \
         cmake \
         ninja \
@@ -23,11 +23,10 @@ WORKDIR /home/builder/project
 
 COPY --chown=builder:builder . .
 
-WORKDIR /home/builder/project/packaging/aur
-
-RUN makepkg -sf --noconfirm
+RUN cmake -B build -DCMAKE_INSTALL_PREFIX=/usr && \
+    make -C build
 
 RUN mkdir -p /home/builder/artifacts && \
-    cp *.pkg.tar.zst /home/builder/artifacts/
+    cp build/metis /home/builder/artifacts/metis
 
 CMD ["bash"]
