@@ -2,6 +2,71 @@
 
 metis supports adding external C++ dependencies to your project via CMake [FetchContent](https://cmake.org/cmake/help/latest/module/FetchContent.html). Dependencies are declared during `metis init` and validated before any files are created.
 
+Once a project is initialized, the `metis deps` subcommand inspects and manages the live dependency manifests (CMake FetchContent, `conanfile.py`, or `vcpkg.json`) in the current repository.
+
+```bash
+metis deps [OPTIONS]
+```
+
+---
+
+## `metis deps` Subcommand
+
+`metis deps` reads the dependency manifests found in the current repository and reports or edits them. It detects all three manifest types and inspects every one that is present.
+
+### Inspect options
+
+| Option | Description |
+|--------|-------------|
+| `--verbose, -V` | Show detailed per-dependency output |
+| `--tree, -t` | Display dependencies as a tree |
+| `--graph, -g` | Generate a dependency graph |
+| `--check-updates, -u` | Query registered sources for newer versions |
+
+```bash
+# Show every declared dependency
+metis deps
+
+# Show a dependency tree
+metis deps --tree
+
+# Show which dependencies have newer versions available
+metis deps --check-updates
+```
+
+`deps` (without options) validates each resolved dependency: its version, whether it is installed locally (Conan/vcpkg), whether a lockfile is present, duplicates across sources, and fetchability.
+
+### Manage options
+
+| Option | Description |
+|--------|-------------|
+| `--add <name> <version>` | Add a dependency |
+| `--remove <name>` | Remove a dependency |
+| `--update <name> <version>` | Change a dependency's version |
+| `--source <conan\|vcpkg\|cmake>` | Restrict to a single manifest |
+| `--yes, -y` | Skip confirmation prompts |
+
+```bash
+# Add fmt at version 11.0.2 to vcpkg.json
+metis deps --add fmt 11.0.2 --source vcpkg
+
+# Add spdlog to conanfile.py
+metis deps --add spdlog 1.14.0 --source conan
+
+# Change fmt's version in CMakeLists.txt
+metis deps --update fmt 11.0.2 --source cmake
+
+# Remove a dependency across every manifest that declares it
+metis deps --remove fmt
+```
+
+- `--source` value:
+  - `conan` edits `conanfile.py` (`self.requires("name/version")`)
+  - `vcpkg` edits `vcpkg.json` (`dependencies` array of objects or plain strings)
+  - `cmake` edits `CMakeLists.txt` (`FetchContent_Declare` / `FetchContent_MakeAvailable`)
+- When `--source` is omitted, the operation applies to **every** manifest that contains the dependency.
+- `--update` and `--add` require both a name and a version; `--remove` takes only a name.
+
 ---
 
 ## Overview

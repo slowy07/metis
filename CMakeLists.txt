@@ -125,6 +125,8 @@ set(METIS_SOURCES
   src/application/generate_workflow_use_case.cpp
   src/application/install_toolchain_use_case.cpp
   src/application/dependency_check_use_case.cpp
+  src/application/dependency_composite.cpp
+  src/application/dependency_manage_use_case.cpp
   src/application/perf_checks_use_case.cpp
   src/application/build_use_case.cpp
   src/application/checks/shell_check.cpp
@@ -151,6 +153,9 @@ set(METIS_SOURCES
   src/infrastructure/windows_gcc_provider.cpp
   src/infrastructure/zip_archive_extractor.cpp
   src/infrastructure/check_cache.cpp
+  src/infrastructure/cmake_dependency_provider.cpp
+  src/infrastructure/conan_dependency_provider.cpp
+  src/infrastructure/vcpkg_dependency_provider.cpp
   src/generators/clang_format_generator.cpp
   src/generators/clang_tidy_generator.cpp
   src/generators/cmake_generator.cpp
@@ -178,12 +183,17 @@ set(METIS_HEADERS
   include/metis/domain/ports/http_client.hpp
   include/metis/domain/ports/archive_extractor.hpp
   include/metis/domain/ports/git_repository.hpp
+  include/metis/domain/ports/dependency_manifest_editor.hpp
+  include/metis/domain/ports/dependency_parser.hpp
+  include/metis/domain/ports/dependency_version_checker.hpp
   include/metis/application/init_use_case.hpp
   include/metis/application/install_use_case.hpp
   include/metis/application/run_checks_use_case.hpp
   include/metis/application/generate_workflow_use_case.hpp
   include/metis/application/install_toolchain_use_case.hpp
   include/metis/application/perf_checks_use_case.hpp
+  include/metis/application/dependency_composite.hpp
+  include/metis/application/dependency_manage_use_case.hpp
   include/metis/application/checks/shell_check.hpp
   include/metis/application/checks/clang_format_check.hpp
   include/metis/application/checks/clang_tidy_check.hpp
@@ -212,6 +222,9 @@ set(METIS_HEADERS
   include/metis/infrastructure/windows_gcc_provider.hpp
   include/metis/infrastructure/zip_archive_extractor.hpp
   include/metis/infrastructure/check_cache.hpp
+  include/metis/infrastructure/cmake_dependency_provider.hpp
+  include/metis/infrastructure/conan_dependency_provider.hpp
+  include/metis/infrastructure/vcpkg_dependency_provider.hpp
   include/metis/generators/clang_format_generator.hpp
   include/metis/generators/clang_tidy_generator.hpp
   include/metis/generators/cmake_generator.hpp

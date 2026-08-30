@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -53,7 +54,8 @@ void SummaryReporter::print_test_summary(const TestSummary& summary) {
 void SummaryReporter::print_dep_summary(const DepSummary& summary) {
   std::vector<std::string> box_lines;
 
-  if (summary.invalid == 0 && summary.duplicates == 0 && summary.lockfile_issues == 0) {
+  if (summary.invalid == 0 && summary.duplicates == 0 && summary.lockfile_issues == 0 &&
+      summary.outdated == 0) {
     box_lines.push_back(Console::green("Dependencies OK") + "  " +
                         Console::dim(fmt::format("({} total)", summary.total)));
   } else {
@@ -70,9 +72,37 @@ void SummaryReporter::print_dep_summary(const DepSummary& summary) {
       box_lines.push_back("  " + Console::yellow("⚠") + " " +
                           Console::dim(fmt::format("{} lockfile issues", summary.lockfile_issues)));
     }
+    if (summary.outdated > 0) {
+      box_lines.push_back("  " + Console::cyan("⬆") + " " +
+                          Console::dim(fmt::format("{} updates available", summary.outdated)));
+    }
   }
 
   Console::print_summary_box(box_lines);
+}
+
+void SummaryReporter::print_dep_updates(const DepUpdateSummary& summary) {
+  if (summary.outdated.empty()) {
+    Console::print_success_block("All dependencies are up to date");
+    return;
+  }
+
+  Console::print_header("Available Updates");
+
+  size_t name_width = 0;
+  for (const auto& dep : summary.outdated) {
+    name_width = std::max(name_width, dep.name.size());
+  }
+
+  for (const auto& dep : summary.outdated) {
+    std::cout << "  " << Console::cyan("⬆") << " " << dep.name
+              << std::string(name_width - dep.name.size(), ' ') << "  " << Console::dim(dep.version)
+              << " → " << Console::green(dep.latest_version.value()) << "  "
+              << Console::dim("(" + dep.source + ")") << "\n";
+  }
+
+  std::cout << "\n";
+  Console::print_hint_block("Run 'metis deps --update' to apply all updates");
 }
 
 void SummaryReporter::print_phase_summary(const PhaseSummary& summary) {
@@ -94,7 +124,7 @@ void SummaryReporter::print_phase_summary(const PhaseSummary& summary) {
 }
 
 void SummaryReporter::print_init_summary(const InitSummary& summary) {
-  Console::print_header("metis initialied");
+  Console::print_header("metis initialized");
 
   std::cout << "\n" << Console::bold("Project") << "\n";
   Console::print_bullet("Name:   " + summary.project_name);

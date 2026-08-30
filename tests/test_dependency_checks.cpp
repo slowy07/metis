@@ -7,6 +7,9 @@
 #include "metis/domain/dependency.hpp"
 #include "metis/domain/ports/file_system.hpp"
 #include "metis/domain/ports/shell_executor.hpp"
+#include "metis/infrastructure/cmake_dependency_provider.hpp"
+#include "metis/infrastructure/conan_dependency_provider.hpp"
+#include "metis/infrastructure/vcpkg_dependency_provider.hpp"
 
 namespace {
 
@@ -55,6 +58,15 @@ struct MockFs : domain::ports::IFileSystem {
   }
 };
 
+void register_parsers(application::DependencyCheckUseCase& use_case, MockFs& fs) {
+  use_case.register_parser(
+      std::make_unique<infrastructure::ConanDependencyParser>(&fs));
+  use_case.register_parser(
+      std::make_unique<infrastructure::VcpkgDependencyParser>(&fs));
+  use_case.register_parser(
+      std::make_unique<infrastructure::CMakeDependencyParser>(&fs));
+}
+
 TEST(DependencyCheckTest, EmptyRepoReturnsSuccess) {
   MockShell shell;
   MockFs mock_fs;
@@ -82,6 +94,7 @@ class Pkg(ConanFile):
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 
@@ -108,6 +121,7 @@ FetchContent_Declare(spdlog
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 
@@ -125,6 +139,7 @@ TEST(DependencyCheckTest, InvalidSemverIsInvalid) {
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 
@@ -142,6 +157,7 @@ TEST(DependencyCheckTest, DetectsDuplicateAcrossSources) {
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 
@@ -176,6 +192,7 @@ TEST(DependencyCheckTest, ParsesVcpkgManifest) {
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 
@@ -193,6 +210,7 @@ TEST(DependencyCheckTest, ParsesVcpkgPlainStringDeps) {
 
   application::DependencyCheckUseCase use_case(std::make_unique<MockShell>(shell),
                                                std::make_unique<MockFs>(mock_fs));
+  register_parsers(use_case, mock_fs);
 
   auto result = use_case.execute("/mock", {});
 

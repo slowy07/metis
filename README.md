@@ -66,7 +66,7 @@ metis run --all-files
 | `install-compiler` | Download and install a C++ toolchain |
 | `test` | Run ctest and optional coverage checks |
 | `sanitizer` | Run sanitizer checks (ASan, UBSan, TSan, LSan) |
-| `deps` | Check project dependencies (Conan, vcpkg, CMake FetchContent) |
+| `deps` | Check and manage dependencies (Conan, vcpkg, CMake FetchContent): inspect, tree/graph, check updates, add/remove/update |
 | `build` | Configure and build the project with CMake |
 | `perf` | Run performance checks (build time, binary size, benchmarks); `--level quick` = binary size only; default: `full` |
 | `--version`, `-v` | Print version and exit |

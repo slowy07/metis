@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstddef>
 #include <fstream>
@@ -14,6 +15,8 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+
+#include "metis/domain/ports/dependency_parser.hpp"
 
 namespace metis::application {
 
@@ -41,19 +44,30 @@ DependencyCheckUseCase::DependencyCheckUseCase(
   : shell_(std::move(shell))
   , file_system_(std::move(file_system)) {}
 
+void DependencyCheckUseCase::register_parser(
+    std::unique_ptr<domain::ports::IDependencyParser> parser) {
+  parsers_.add_parser(std::move(parser));
+}
+
+void DependencyCheckUseCase::register_version_checker(
+    std::unique_ptr<domain::ports::IDependencyVersionChecker> checker) {
+  version_checkers_.add_checker(std::move(checker));
+}
+
 domain::DependencyCheckResult DependencyCheckUseCase::execute(
     const std::filesystem::path& repo_root, const DependencyCheckOptions& opts) {
   domain::DependencyCheckResult result;
-  std::vector<domain::Dependency> all_deps;
+  std::vector<domain::Dependency> all_deps = parsers_.parse_all(repo_root);
 
-  auto conan_deps = parse_conanfile(repo_root);
-  all_deps.insert(all_deps.end(), conan_deps.begin(), conan_deps.end());
-
-  auto vcpkg_deps = parse_vcpkg_json(repo_root);
-  all_deps.insert(all_deps.end(), vcpkg_deps.begin(), vcpkg_deps.end());
-
-  auto cmake_deps = parse_cmake_fetchcontent(repo_root);
-  all_deps.insert(all_deps.end(), cmake_deps.begin(), cmake_deps.end());
+  if (opts.check_updates) {
+    for (auto& dep : all_deps) {
+      auto latest = version_checkers_.latest_version(dep);
+      if (latest.has_value() && !latest->empty()) {
+        dep.latest_version = latest;
+        dep.has_update = !dep.version.empty() && dep.version != *latest;
+      }
+    }
+  }
 
   if (opts.display_tree) {
     display_tree(all_deps);
@@ -88,6 +102,14 @@ domain::DependencyCheckResult DependencyCheckUseCase::execute(
     result.validations.push_back(std::move(deps_validation));
   }
 
+  if (opts.check_updates) {
+    for (const auto& dep : all_deps) {
+      if (dep.is_outdated()) {
+        result.outdated.push_back(dep);
+      }
+    }
+  }
+
   check_lockfiles(repo_root, result);
   detect_duplicates(all_deps, result);
   if (opts.generate_graph) {
@@ -95,154 +117,6 @@ domain::DependencyCheckResult DependencyCheckUseCase::execute(
   }
 
   return result;
-}
-
-std::vector<domain::Dependency> DependencyCheckUseCase::parse_conanfile(
-    const std::filesystem::path& repo_root) {
-  std::vector<domain::Dependency> out;
-  auto path = repo_root / "conanfile.py";
-  if (!file_system_->exists(path)) {
-    return out;
-  }
-
-  std::string content = file_system_->read_file(path);
-  if (content.empty()) {
-    return out;
-  }
-
-  std::regex req_re{R"(self\.requires\s*\(\s*"([^"/@]+)/([^"/@]+)[^"]*"\s*\))"};
-  std::sregex_iterator iter(content.begin(), content.end(), req_re);
-  std::sregex_iterator end;
-  for (; iter != end; ++iter) {
-    domain::Dependency deps;
-    deps.name = (*iter)[1].str();
-    deps.version = (*iter)[2].str();
-    deps.source = "conan";
-    out.push_back(std::move(deps));
-  }
-
-  std::regex test_re{R"(self\.test_requires\s*\(\s*"([^"/@]+)/([^"/@]+)[^"]*"\s*\))"};
-  iter = std::sregex_iterator(content.begin(), content.end(), test_re);
-  for (; iter != end; ++iter) {
-    domain::Dependency deps;
-    deps.name = (*iter)[1].str();
-    deps.version = (*iter)[2].str();
-    deps.source = "conan";
-    out.push_back(std::move(deps));
-  }
-
-  return out;
-}
-
-std::vector<domain::Dependency> DependencyCheckUseCase::parse_vcpkg_json(
-    const std::filesystem::path& repo_root) {
-  std::vector<domain::Dependency> out;
-  auto path = repo_root / "vcpkg.json";
-
-  if (!file_system_->exists(path)) {
-    return out;
-  }
-
-  std::string content = file_system_->read_file(path);
-  auto dep_pos = content.find("\"dependencies\"");
-  if (content.empty() || dep_pos == std::string::npos) {
-    return out;
-  }
-
-  auto arr_start = content.find('[', dep_pos);
-  auto arr_end = content.find(']', arr_start);
-  if (arr_start == std::string::npos || arr_end == std::string::npos) {
-    return out;
-  }
-
-  // nested-object manifest needs a real JSON parser
-  const std::string slice = content.substr(arr_start, arr_end - arr_start + 1);
-
-  static const std::regex obj_re{R"re(\{[^{}]*\})re"};
-  for (std::sregex_iterator it(slice.begin(), slice.end(), obj_re); it != std::sregex_iterator{};
-       ++it) {
-    parse_vcpkg_entry(it->str(), out);
-  }
-
-  if (out.empty()) {
-    static const std::regex str_re{R"re("([^"]+)")re"};
-    for (std::sregex_iterator it(slice.begin(), slice.end(), str_re); it != std::sregex_iterator{};
-         ++it) {
-      domain::Dependency deps;
-      deps.name = (*it)[1].str();
-      deps.source = "vcpkg";
-      out.push_back(std::move(deps));
-    }
-  }
-
-  return out;
-}
-
-void DependencyCheckUseCase::parse_vcpkg_entry(const std::string& entry,
-                                               std::vector<domain::Dependency>& out) {
-  static const std::regex name_re{R"re("name"\s*:\s*"([^"]+)")re"};
-  static const std::regex ver_re{R"re("version>=?"?\s*:\s*"([^"]+)")re"};
-
-  std::smatch match;
-  if (!std::regex_search(entry, match, name_re)) {
-    return;
-  }
-
-  domain::Dependency deps;
-  deps.name = match[1].str();
-  deps.source = "vcpkg";
-
-  if (std::regex_search(entry, match, ver_re)) {
-    deps.version = match[1].str();
-  }
-
-  out.push_back(std::move(deps));
-}
-
-std::vector<domain::Dependency> DependencyCheckUseCase::parse_cmake_fetchcontent(
-    const std::filesystem::path& repo_root) {
-  std::vector<domain::Dependency> out;
-  auto path = repo_root / "CMakeLists.txt";
-
-  if (!file_system_->exists(path)) {
-    return out;
-  }
-
-  std::string content = file_system_->read_file(path);
-  if (content.empty()) {
-    return out;
-  }
-
-  std::regex fc_re{
-      R"(FetchContent_Declare\s*\(\s*([A-Za-z0-9_\-]+)[^\)]*VERSION\s+([0-9]+\.[0-9]+(?:\.[0-9]+)?)\s*[^\)]*\))",
-      std::regex::icase};
-  std::sregex_iterator iter(content.begin(), content.end(), fc_re);
-  std::sregex_iterator end;
-  for (; iter != end; ++iter) {
-    domain::Dependency domain_deps;
-    domain_deps.name = (*iter)[1].str();
-    domain_deps.version = (*iter)[2].str();
-    domain_deps.source = "cmake-fetchcontent";
-    out.push_back(std::move(domain_deps));
-  }
-
-  std::regex git_re{
-      R"(FetchContent_Declare\s*\(\s*([A-Za-z0-9_\-]+)[^\)]*GIT_TAG\s+([vV]?[0-9]+\.[0-9]+(?:\.[0-9]+)?)\s*[^\)]*\))",
-      std::regex::icase};
-  iter = std::sregex_iterator(content.begin(), content.end(), git_re);
-  for (; iter != end; ++iter) {
-    domain::Dependency domain_deps;
-    domain_deps.name = (*iter)[1].str();
-    domain_deps.version = (*iter)[2].str();
-    if (!domain_deps.version.empty() &&
-        (domain_deps.version[0] == 'v' || domain_deps.version[0] == 'V')) {
-      domain_deps.version = domain_deps.version.substr(1);
-    }
-    domain_deps.source = "cmake-fetchcontent";
-    out.push_back(std::move(domain_deps));
-  }
-
-  return out;
 }
 
 bool DependencyCheckUseCase::is_valid_semver(std::string_view version) {

@@ -510,7 +510,7 @@ Core Workflow:
   install-compiler Download and install a C++ toolchain
   test            Run test and optional coverage checks
   sanitizer       Run sanitizer checks (ASan, UBSan, TSan, LSan)
-  deps            Check project dependencies (Conan, vcpkg, CMake FetchContent)
+  deps            Check and manage dependencies (Conan, vcpkg, CMake FetchContent): inspect, tree/graph, check updates, add/remove/update
   sync            Sync environment: refresh hooks/workflows + validate checks
   build           Configure and build the project with CMake
   perf            Run performance checks (build time, binary size, benchmarks);

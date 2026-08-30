@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "metis/domain/config.hpp"
+#include "metis/domain/dependency.hpp"
 
 namespace metis::presentation {
 class SummaryReporter {
@@ -28,9 +29,16 @@ class SummaryReporter {
     int invalid = 0;
     int duplicates = 0;
     int lockfile_issues = 0;
+    int outdated = 0;
   };
 
   static void print_dep_summary(const DepSummary& summary);
+
+  struct DepUpdateSummary {
+    std::vector<domain::Dependency> outdated;
+  };
+
+  static void print_dep_updates(const DepUpdateSummary& summary);
 
   struct PhaseSummary {
     std::string phase_name;

@@ -17,6 +17,7 @@
 
 #include "metis/application/build_use_case.hpp"
 #include "metis/application/dependency_check_use_case.hpp"
+#include "metis/application/dependency_manage_use_case.hpp"
 #include "metis/application/generate_workflow_use_case.hpp"
 #include "metis/application/init_use_case.hpp"
 #include "metis/application/install_toolchain_use_case.hpp"
@@ -34,10 +35,13 @@
 #include "metis/generators/clang_tidy_generator.hpp"
 #include "metis/infrastructure/check_cache.hpp"
 #include "metis/infrastructure/cli_git_repository.hpp"
+#include "metis/infrastructure/cmake_dependency_provider.hpp"
+#include "metis/infrastructure/conan_dependency_provider.hpp"
 #include "metis/infrastructure/os_file_system.hpp"
 #include "metis/infrastructure/process_shell_executor.hpp"
 #include "metis/infrastructure/toml_config_repository.hpp"
 #include "metis/infrastructure/toolchain_factory.hpp"
+#include "metis/infrastructure/vcpkg_dependency_provider.hpp"
 #include "metis/presentation/console.hpp"
 #ifdef _WIN32
 #include "metis/infrastructure/zip_archive_extractor.hpp"
@@ -287,10 +291,17 @@ int main(int argc, char** argv) {
   app.set_subcommand_help("deps",
                           "Usage:\n"
                           "  metis deps [OPTIONS]\n\n"
-                          "Options:\n"
+                          "Inspect:\n"
                           "  --verbose, -V            Show detailed output\n"
                           "  --graph, -g              Generate dependency graph\n"
-                          "  --tree, -t               Display dependency tree\n");
+                          "  --tree, -t               Display dependency tree\n"
+                          "  --check-updates, -u      Check for newer versions\n\n"
+                          "Manage:\n"
+                          "  --add <name> <version>   Add a dependency\n"
+                          "  --remove <name>          Remove a dependency\n"
+                          "  --update <name> <version>  Change a dependency's version\n"
+                          "  --source <conan|vcpkg|cmake>  Restrict to one manifest\n"
+                          "  --yes, -y                Skip confirmation prompts\n");
 
   app.set_subcommand_help("install-compiler",
                           "Usage:\n"
@@ -868,6 +879,8 @@ int main(int argc, char** argv) {
 
     if (subcmd == "deps") {
       application::DependencyCheckOptions dep_opts;
+      application::DependencyManageOptions manage_opts;
+      bool do_manage = false;
 
       for (size_t i = 2; i < args.size(); ++i) {
         std::string_view arg = args[i];
@@ -877,12 +890,94 @@ int main(int argc, char** argv) {
           dep_opts.generate_graph = true;
         } else if (arg == "--tree" || arg == "-t") {
           dep_opts.display_tree = true;
+        } else if (arg == "--check-updates" || arg == "-u") {
+          dep_opts.check_updates = true;
+        } else if (arg == "--update") {
+          do_manage = true;
+          manage_opts.action = application::DependencyManageOptions::Action::UPDATE;
+          if (i + 1 < args.size() && !std::string_view(args[i + 1]).starts_with("-")) {
+            manage_opts.dependency_name = args[++i];
+          }
+          if (i + 1 < args.size() && !std::string_view(args[i + 1]).starts_with("-")) {
+            manage_opts.version = args[++i];
+          }
+        } else if (arg == "--remove") {
+          do_manage = true;
+          manage_opts.action = application::DependencyManageOptions::Action::REMOVE;
+          if (i + 1 < args.size() && !std::string_view(args[i + 1]).starts_with("-")) {
+            manage_opts.dependency_name = args[++i];
+          }
+        } else if (arg == "--add") {
+          do_manage = true;
+          manage_opts.action = application::DependencyManageOptions::Action::ADD;
+          if (i + 1 < args.size() && !std::string_view(args[i + 1]).starts_with("-")) {
+            manage_opts.dependency_name = args[++i];
+          }
+          if (i + 1 < args.size() && !std::string_view(args[i + 1]).starts_with("-")) {
+            manage_opts.version = args[++i];
+          }
+        } else if (arg == "--source" && i + 1 < args.size()) {
+          manage_opts.source = args[++i];
+        } else if (arg == "--yes" || arg == "-y") {
+          manage_opts.yes = true;
         }
       }
 
-      application::DependencyCheckUseCase deps_uc(
-          std::make_unique<infrastructure::ProcessShellExecutor>(),
-          std::make_unique<infrastructure::OsFileSystem>());
+      auto deps_fs = std::make_unique<infrastructure::OsFileSystem>();
+      auto deps_shell = std::make_unique<infrastructure::ProcessShellExecutor>();
+      auto deps_http = std::make_unique<infrastructure::CurlHttpClient>(deps_shell.get());
+      domain::ports::IFileSystem* fs_ptr = deps_fs.get();
+      domain::ports::IShellExecutor* shell_ptr = deps_shell.get();
+
+      if (do_manage) {
+        if (manage_opts.dependency_name.empty()) {
+          Console::print_error_block("Missing dependency name",
+                                     "Usage: metis deps --remove <name>");
+          return static_cast<int>(domain::ExitCode::INVALID_ARGUMENTS);
+        }
+
+        application::DependencyManageUseCase manage_uc(std::move(deps_fs));
+        manage_uc.register_editor(
+            std::make_unique<infrastructure::ConanManifestEditor>(fs_ptr));
+        manage_uc.register_editor(
+            std::make_unique<infrastructure::VcpkgManifestEditor>(fs_ptr));
+        manage_uc.register_editor(
+            std::make_unique<infrastructure::CMakeManifestEditor>(fs_ptr));
+
+        auto result = manage_uc.execute(repo_root, manage_opts);
+
+        for (const auto& msg : result.messages) {
+          if (result.success) {
+            Console::print_success_block(msg);
+          } else {
+            Console::print_error_block(msg);
+          }
+        }
+
+        if (!result.modified_files.empty()) {
+          Console::print_info_block("Modified manifests:");
+          for (const auto& f : result.modified_files) {
+            Console::print_bullet(f, 4);
+          }
+        }
+
+        return static_cast<int>(result.success ? domain::ExitCode::SUCCESS
+                                               : domain::ExitCode::GENERAL_ERROR);
+      }
+
+      application::DependencyCheckUseCase deps_uc(std::move(deps_shell), std::move(deps_fs));
+      deps_uc.register_parser(
+          std::make_unique<infrastructure::ConanDependencyParser>(fs_ptr));
+      deps_uc.register_parser(
+          std::make_unique<infrastructure::VcpkgDependencyParser>(fs_ptr));
+      deps_uc.register_parser(
+          std::make_unique<infrastructure::CMakeDependencyParser>(fs_ptr));
+      deps_uc.register_version_checker(
+          std::make_unique<infrastructure::ConanVersionChecker>(shell_ptr));
+      deps_uc.register_version_checker(
+          std::make_unique<infrastructure::VcpkgVersionChecker>(shell_ptr));
+      deps_uc.register_version_checker(std::make_unique<infrastructure::CMakeVersionChecker>(
+          deps_http.get()));
 
       auto result = deps_uc.execute(repo_root, dep_opts);
 
@@ -905,6 +1000,10 @@ int main(int argc, char** argv) {
 
             if (!res_validation.dep.version.empty()) {
               std::cout << "  " << Console::dim(res_validation.dep.version);
+            }
+
+            if (res_validation.dep.has_update && res_validation.dep.latest_version.has_value()) {
+              std::cout << "  " << Console::cyan("→ " + res_validation.dep.latest_version.value());
             }
 
             if (!res_validation.ok) {
@@ -936,6 +1035,12 @@ int main(int argc, char** argv) {
         Console::print_info_block("Dependency graph written to " + dep_opts.graph_output_path);
       }
 
+      if (dep_opts.check_updates) {
+        SummaryReporter::DepUpdateSummary update_summary;
+        update_summary.outdated = result.outdated;
+        SummaryReporter::print_dep_updates(update_summary);
+      }
+
       SummaryReporter::DepSummary summary;
       summary.total = static_cast<int>(result.validations.size());
       summary.valid = static_cast<int>(
@@ -943,6 +1048,7 @@ int main(int argc, char** argv) {
       summary.invalid = summary.total - summary.valid;
       summary.duplicates = static_cast<int>(result.duplicates.size());
       summary.lockfile_issues = static_cast<int>(result.lockfile_issues.size());
+      summary.outdated = static_cast<int>(result.outdated.size());
       SummaryReporter::print_dep_summary(summary);
 
       return static_cast<int>(result.success() ? domain::ExitCode::SUCCESS
