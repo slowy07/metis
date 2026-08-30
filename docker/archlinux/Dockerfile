@@ -27,6 +27,6 @@ RUN cmake -B build -DCMAKE_INSTALL_PREFIX=/usr && \
     make -C build
 
 RUN mkdir -p /home/builder/artifacts && \
-    cp build/metis /home/builder/artifacts/metis
+    cp build/bin/metis /home/builder/artifacts/metis
 
 CMD ["bash"]
