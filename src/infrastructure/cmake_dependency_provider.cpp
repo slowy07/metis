@@ -22,10 +22,14 @@ std::vector<domain::Dependency> CMakeDependencyParser::parse(
     const std::filesystem::path& repo_root) const {
   std::vector<domain::Dependency> out;
   auto path = repo_root / "CMakeLists.txt";
-  if (!fs_->exists(path)) { return out; }
+  if (!fs_->exists(path)) {
+    return out;
+  }
 
   std::string content = fs_->read_file(path);
-  if (content.empty()) { return out; }
+  if (content.empty()) {
+    return out;
+  }
 
   std::regex decl_re{R"(FetchContent_Declare\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s+([^)]*)\))",
                      std::regex::icase};
@@ -37,8 +41,9 @@ std::vector<domain::Dependency> CMakeDependencyParser::parse(
     dep.source = "cmake-fetchcontent";
     std::string rest = (*iter)[2].str();
     std::smatch m;
-    if (std::regex_search(rest, m, std::regex{R"((?:GIT_TAG|VERSION)\s+([vV]?[0-9][^ )\r\n]*))",
-                                                std::regex::icase})) {
+    if (std::regex_search(
+            rest, m,
+            std::regex{R"((?:GIT_TAG|VERSION)\s+([vV]?[0-9][^ )\r\n]*))", std::regex::icase})) {
       dep.version = m[1].str();
       if (dep.version.size() > 1 && (dep.version[0] == 'v' || dep.version[0] == 'V')) {
         dep.version = dep.version.substr(1);
@@ -51,7 +56,8 @@ std::vector<domain::Dependency> CMakeDependencyParser::parse(
 
 std::string CMakeDependencyParser::source_name() const { return "cmake-fetchcontent"; }
 
-CMakeVersionChecker::CMakeVersionChecker(domain::ports::IHttpClient* http) : http_(http) {}
+CMakeVersionChecker::CMakeVersionChecker(domain::ports::IHttpClient* http)
+  : http_(http) {}
 
 std::optional<std::string> CMakeVersionChecker::latest_version(
     const std::string& package_name) const {
@@ -72,8 +78,8 @@ domain::ports::ManifestEditResult CMakeManifestEditor::add_dependency(
       version.empty()
           ? fmt::format("\nFetchContent_Declare({0} GIT_REPOSITORY <REPO_URL> GIT_TAG main)\n",
                         name)
-          : fmt::format("\nFetchContent_Declare({0} GIT_REPOSITORY <REPO_URL> GIT_TAG {1})\n",
-                        name, version);
+          : fmt::format("\nFetchContent_Declare({0} GIT_REPOSITORY <REPO_URL> GIT_TAG {1})\n", name,
+                        version);
   content += entry;
   content += "\nFetchContent_MakeAvailable(" + name + ")\n";
 
@@ -88,7 +94,8 @@ domain::ports::ManifestEditResult CMakeManifestEditor::add_dependency(
   return result;
 }
 
-CMakeManifestEditor::CMakeManifestEditor(domain::ports::IFileSystem* fs) : fs_(fs) {}
+CMakeManifestEditor::CMakeManifestEditor(domain::ports::IFileSystem* fs)
+  : fs_(fs) {}
 
 bool CMakeManifestEditor::can_edit(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "CMakeLists.txt");
@@ -132,14 +139,14 @@ domain::ports::ManifestEditResult CMakeManifestEditor::update_dependency(
   auto path = repo_root / "CMakeLists.txt";
   std::string content = fs_->read_file(path);
 
-  std::regex ver_re{
-      std::string("(FetchContent_Declare\\s*\\(\\s*") + name + "[^)]*VERSION)\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)",
-      std::regex::icase};
+  std::regex ver_re{std::string("(FetchContent_Declare\\s*\\(\\s*") + name +
+                        "[^)]*VERSION)\\s+([0-9]+\\.[0-9]+(?:\\.[0-9]+)?)",
+                    std::regex::icase};
   std::string replaced = std::regex_replace(content, ver_re, "$1 " + new_version);
 
-  std::regex git_re{
-      std::string("(FetchContent_Declare\\s*\\(\\s*") + name + "[^)]*GIT_TAG)\\s+([vV]?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)",
-      std::regex::icase};
+  std::regex git_re{std::string("(FetchContent_Declare\\s*\\(\\s*") + name +
+                        "[^)]*GIT_TAG)\\s+([vV]?[0-9]+\\.[0-9]+(?:\\.[0-9]+)?)",
+                    std::regex::icase};
   replaced = std::regex_replace(replaced, git_re, "$1 v" + new_version);
 
   if (replaced == content) {

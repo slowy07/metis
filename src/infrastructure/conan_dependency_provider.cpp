@@ -129,7 +129,8 @@ bool ConanManifestEditor::can_edit(const std::filesystem::path& repo_root) const
 }
 
 domain::ports::ManifestEditResult ConanManifestEditor::add_dependency(
-    const std::filesystem::path& repo_root, const std::string& name, const std::string& version) const {
+    const std::filesystem::path& repo_root, const std::string& name,
+    const std::string& version) const {
   domain::ports::ManifestEditResult result;
   auto path = repo_root / "conanfile.py";
   std::string content = fs_->read_file(path);
@@ -198,9 +199,8 @@ domain::ports::ManifestEditResult ConanManifestEditor::update_dependency(
   auto path = repo_root / "conanfile.py";
   std::string content = fs_->read_file(path);
 
-  std::regex req_re{
-      std::string("(self\\.requires\\s*\\(\\s*\"") + normalize_conan_name(name) +
-      ")(/[^\"/@]+)([^\"]*\"\\s*\\))"};
+  std::regex req_re{std::string("(self\\.requires\\s*\\(\\s*\"") + normalize_conan_name(name) +
+                    ")(/[^\"/@]+)([^\"]*\"\\s*\\))"};
 
   std::string replaced = std::regex_replace(content, req_re, fmt::format("$1/{}$3", new_version));
 

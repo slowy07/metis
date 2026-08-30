@@ -937,12 +937,9 @@ int main(int argc, char** argv) {
         }
 
         application::DependencyManageUseCase manage_uc(std::move(deps_fs));
-        manage_uc.register_editor(
-            std::make_unique<infrastructure::ConanManifestEditor>(fs_ptr));
-        manage_uc.register_editor(
-            std::make_unique<infrastructure::VcpkgManifestEditor>(fs_ptr));
-        manage_uc.register_editor(
-            std::make_unique<infrastructure::CMakeManifestEditor>(fs_ptr));
+        manage_uc.register_editor(std::make_unique<infrastructure::ConanManifestEditor>(fs_ptr));
+        manage_uc.register_editor(std::make_unique<infrastructure::VcpkgManifestEditor>(fs_ptr));
+        manage_uc.register_editor(std::make_unique<infrastructure::CMakeManifestEditor>(fs_ptr));
 
         auto result = manage_uc.execute(repo_root, manage_opts);
 
@@ -966,18 +963,15 @@ int main(int argc, char** argv) {
       }
 
       application::DependencyCheckUseCase deps_uc(std::move(deps_shell), std::move(deps_fs));
-      deps_uc.register_parser(
-          std::make_unique<infrastructure::ConanDependencyParser>(fs_ptr));
-      deps_uc.register_parser(
-          std::make_unique<infrastructure::VcpkgDependencyParser>(fs_ptr));
-      deps_uc.register_parser(
-          std::make_unique<infrastructure::CMakeDependencyParser>(fs_ptr));
+      deps_uc.register_parser(std::make_unique<infrastructure::ConanDependencyParser>(fs_ptr));
+      deps_uc.register_parser(std::make_unique<infrastructure::VcpkgDependencyParser>(fs_ptr));
+      deps_uc.register_parser(std::make_unique<infrastructure::CMakeDependencyParser>(fs_ptr));
       deps_uc.register_version_checker(
           std::make_unique<infrastructure::ConanVersionChecker>(shell_ptr));
       deps_uc.register_version_checker(
           std::make_unique<infrastructure::VcpkgVersionChecker>(shell_ptr));
-      deps_uc.register_version_checker(std::make_unique<infrastructure::CMakeVersionChecker>(
-          deps_http.get()));
+      deps_uc.register_version_checker(
+          std::make_unique<infrastructure::CMakeVersionChecker>(deps_http.get()));
 
       auto result = deps_uc.execute(repo_root, dep_opts);
 

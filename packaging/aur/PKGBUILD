@@ -1,0 +1,13 @@
+pkgname=metis
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Dependency management subsystem"
+arch=('x86_64')
+url="https://github.com/slowy07/metis"
+license=('MIT')
+
+build() {
+  cd "${srcdir}"
+  cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
+  make -C build DESTDIR="${pkgdir}" install
+}

@@ -112,7 +112,8 @@ bool VcpkgManifestEditor::can_edit(const std::filesystem::path& repo_root) const
 }
 
 domain::ports::ManifestEditResult VcpkgManifestEditor::add_dependency(
-    const std::filesystem::path& repo_root, const std::string& name, const std::string& version) const {
+    const std::filesystem::path& repo_root, const std::string& name,
+    const std::string& version) const {
   domain::ports::ManifestEditResult result;
   auto path = repo_root / "vcpkg.json";
   std::string content = fs_->read_file(path);
@@ -143,8 +144,9 @@ domain::ports::ManifestEditResult VcpkgManifestEditor::add_dependency(
       result.message = "Invalid dependencies array in vcpkg.json";
       return result;
     }
-    bool array_empty = content.substr(arr_start + 1, arr_end - arr_start - 1).find_first_not_of(" \t\r\n") ==
-                       std::string::npos;
+    bool array_empty =
+        content.substr(arr_start + 1, arr_end - arr_start - 1).find_first_not_of(" \t\r\n") ==
+        std::string::npos;
     std::string entry = array_empty ? fmt::format("\n    {0}", entry_payload)
                                     : fmt::format("\n    {0},", entry_payload);
     content.insert(arr_start + 1, entry);
@@ -201,9 +203,8 @@ domain::ports::ManifestEditResult VcpkgManifestEditor::update_dependency(
   auto path = repo_root / "vcpkg.json";
   std::string content = fs_->read_file(path);
 
-  std::regex ver_re{
-      std::string("(\\\"name\\\"\\s*:\\s*\\\"") + name +
-      "\\\"[^}]*\\\"version>=?\\\"?\\s*:\\s*)(\\\"[^\\\"]*\\\")"};
+  std::regex ver_re{std::string("(\\\"name\\\"\\s*:\\s*\\\"") + name +
+                    "\\\"[^}]*\\\"version>=?\\\"?\\s*:\\s*)(\\\"[^\\\"]*\\\")"};
   std::string replaced =
       std::regex_replace(content, ver_re, "$1\"" + std::string(new_version) + "\"");
 
