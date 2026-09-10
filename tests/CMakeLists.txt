@@ -33,6 +33,7 @@ set(TEST_SOURCES
   test_test_checks_use_case.cpp
   test_toolchain_install.cpp
   test_tooling_config.cpp
+  test_workspace.cpp
 )
 
 add_executable(metis_tests ${TEST_SOURCES})

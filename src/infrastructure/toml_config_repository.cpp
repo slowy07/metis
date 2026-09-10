@@ -160,6 +160,25 @@ void parse_execution(toml::table& tbl, domain::config::ProjectConfig& cfg) {
   cfg.parallel = exec == nullptr || get_bool_safe(*exec, "parallel", true);
 }
 
+// [workspace]: multi-project workspace members.
+void parse_workspace(toml::table& tbl, domain::config::ProjectConfig& cfg) {
+  auto* ws = as_table_safe(safe_get(tbl, "workspace"));
+  if (ws == nullptr) {
+    return;
+  }
+  cfg.workspace.enabled = get_bool_safe(*ws, "enabled", true);
+  if (auto* members = (*ws)["members"].as_array()) {
+    for (auto& item : *members) {
+      cfg.workspace.members.emplace_back(item.value_or(""));
+    }
+  }
+  if (auto* exclude = (*ws)["exclude"].as_array()) {
+    for (auto& item : *exclude) {
+      cfg.workspace.exclude.emplace_back(item.value_or(""));
+    }
+  }
+}
+
 domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::path& path) {
   if (!fs_->exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
@@ -183,6 +202,7 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   parse_output(tbl, cfg);
   parse_perf(tbl, cfg);
   parse_execution(tbl, cfg);
+  parse_workspace(tbl, cfg);
 
   if (auto err = cfg.validate(); !err.empty()) {
     throw std::runtime_error("Config validation failed: " + err);

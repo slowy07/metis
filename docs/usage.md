@@ -181,6 +181,21 @@ fails if the binary exceeds the size. `benchmark_regex` runs
 `ctest --test-dir <build_dir> -R "<regex>" --output-on-failure`. Exit codes:
 `21` binary too large, `22` build too slow, `20` other perf failure.
 
+## Workspace config
+
+```toml
+[workspace]
+enabled = true
+members = ["services/*"]        # glob; expanded to dirs with their own .metis.toml
+exclude = ["services/legacy"]   # glob; removes matching members
+```
+
+`[workspace]` marks `.metis.toml` as a workspace (monorepo) root. `members`
+are glob patterns expanded against the workspace root into member directories
+that contain their own `.metis.toml`; `exclude` globs filter those out. When
+running inside a member, metis walks up to the nearest `.metis.toml` that
+declares a `[workspace]` table to find the workspace root.
+
 ## Check types
 
 `[[checks]]` is generic: the behavior is selected **automatically by `command`

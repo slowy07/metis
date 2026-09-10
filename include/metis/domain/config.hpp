@@ -25,6 +25,12 @@ struct Check {
   [[nodiscard]] std::string validate() const noexcept;
 };
 
+struct WorkspaceConfig {
+  std::vector<std::string> members;
+  std::vector<std::string> exclude;
+  bool enabled = false;
+};
+
 // Top-level project configuration loaded from .metis.toml.
 // Contains project metadata, check definitions, and output preferences.
 struct ProjectConfig {
@@ -64,6 +70,7 @@ struct ProjectConfig {
   };
   PerfConfig perf;
 
+  WorkspaceConfig workspace;
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept { return validate().empty(); }
   [[nodiscard]] bool has_command(std::string_view cmd) const noexcept;

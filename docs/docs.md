@@ -48,6 +48,7 @@ metis/
 │       │   ├── config.hpp        # ProjectConfig, Check structs
 │       │   ├── error_codes.hpp   # Typed exit codes
 │       │   ├── workflow.hpp      # Platform enum, WorkflowConfig, workflow generation
+│       │   ├── workspace.hpp     # Workspace member resolution
 │       │   └── ports/
 │       │       ├── config_repository.hpp   # IConfigRepository interface
 │       │       ├── file_system.hpp         # IFileSystem interface
@@ -98,6 +99,7 @@ metis/
 │       │   ├── windows_gcc_provider.hpp     # MinGW-w64 download + install
 │       │   ├── windows_clang_provider.hpp   # LLVM/Clang download + install
 │       │   ├── check_cache.hpp              # Reusable check-result cache (run)
+│       │   ├── workspace_resolver.hpp        # Workspace root discovery
 │       │   └── toolchain_factory.hpp        # Platform-conditional provider factory
 │       └── presentation/
 │           ├── interactive_init.hpp         # TUI prompts for init wizard
@@ -112,7 +114,8 @@ metis/
 │   ├── domain/
 │   │   ├── check.cpp
 │   │   ├── config.cpp
-│   │   └── workflow.cpp
+│   │   ├── workflow.cpp
+│   │   └── workspace.cpp
 │   ├── application/
 │   │   ├── init_use_case.cpp
 │   │   ├── install_use_case.cpp
@@ -154,6 +157,7 @@ metis/
 │   │   ├── windows_gcc_provider.cpp
 │   │   ├── windows_clang_provider.cpp
 │   │   ├── check_cache.cpp
+│   │   ├── workspace_resolver.cpp
 │   │   └── toolchain_factory.cpp
 │   └── presentation/
 │       ├── interactive_init.cpp
@@ -220,6 +224,7 @@ metis
 ├── domain::config     : ProjectConfig, Check, config string generation
 ├── domain::check      : Check base class, CheckResult
 ├── domain::workflow   : Platform, WorkflowConfig, workflow generation
+├── domain::workspace  : member glob resolution (resolve_members, is_workspace_member)
 ├── domain::ports      : IConfigRepository, IFileSystem, IGitRepository, IShellExecutor,
 │                         IToolchainProvider, IHttpClient, IArchiveExtractor
 ├── application        : InitUseCase, InstallUseCase, RunChecksUseCase,
@@ -232,7 +237,7 @@ metis
 ├── infrastructure     : TomlConfigRepository, OsFileSystem, CliGitRepository,
 │                         ProcessShellExecutor, CurlHttpClient, TarArchiveExtractor,
 │                         ZipArchiveExtractor, PosixToolchainProvider, WindowsGccProvider,
-│                         WindowsClangProvider, ToolchainFactory
+│                         WindowsClangProvider, ToolchainFactory, WorkspaceResolver
 ├── presentation       : interactive_init
 └── (global)           : ArgParser, glob_match, spinner, util
 ```
@@ -424,6 +429,11 @@ binary_path = ""
 max_binary_size_mb = 0
 max_build_time_sec = 0
 benchmark_regex = ""
+
+[workspace]
+enabled = true
+members = ["services/*"]
+exclude = ["services/legacy"]
 ```
 
 ### Sections
@@ -459,6 +469,9 @@ benchmark_regex = ""
 | `[perf]` | `max_binary_size_mb` | int | `0` | Max binary size in MiB (`0` = skip check) |
 | `[perf]` | `max_build_time_sec` | int | `0` | Max build seconds (`0` = skip check) |
 | `[perf]` | `benchmark_regex` | string | `""` | ctest `-R` regex; empty skips benchmarks |
+| `[workspace]` | `enabled` | bool | `false` | Marks this `.metis.toml` as a workspace root |
+| `[workspace]` | `members` | string[] | `[]` | Glob patterns expanded to member dirs (containing their own `.metis.toml`) |
+| `[workspace]` | `exclude` | string[] | `[]` | Glob patterns matching members to exclude |
 
 ### Pattern Matching
 
@@ -825,6 +838,13 @@ struct ProjectConfig {
     int timeout = 0;
   };
   SanitizerConfig sanitizer;
+
+  struct WorkspaceConfig {
+    bool enabled = false;
+    std::vector<std::string> members;
+    std::vector<std::string> exclude;
+  };
+  WorkspaceConfig workspace;
 
   [[nodiscard]] std::string validate() const noexcept;
   [[nodiscard]] bool is_valid() const noexcept;

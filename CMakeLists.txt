@@ -119,6 +119,7 @@ set(METIS_SOURCES
   src/domain/config.cpp
   src/domain/check.cpp
   src/domain/workflow.cpp
+  $<$<NOT:$<PLATFORM_ID:Windows>>:src/domain/workspace.cpp>
   src/application/init_use_case.cpp
   src/application/install_use_case.cpp
   src/application/run_checks_use_case.cpp
@@ -153,6 +154,7 @@ set(METIS_SOURCES
   src/infrastructure/windows_gcc_provider.cpp
   src/infrastructure/zip_archive_extractor.cpp
   src/infrastructure/check_cache.cpp
+  src/infrastructure/workspace_resolver.cpp
   src/infrastructure/cmake_dependency_provider.cpp
   src/infrastructure/conan_dependency_provider.cpp
   src/infrastructure/vcpkg_dependency_provider.cpp
@@ -174,6 +176,7 @@ set(METIS_HEADERS
   include/metis/argparse.hpp
   include/metis/domain/config.hpp
   include/metis/domain/workflow.hpp
+  include/metis/domain/workspace.hpp
   include/metis/domain/error_codes.hpp
   include/metis/domain/check.hpp
   include/metis/domain/ports/config_repository.hpp
@@ -222,6 +225,7 @@ set(METIS_HEADERS
   include/metis/infrastructure/windows_gcc_provider.hpp
   include/metis/infrastructure/zip_archive_extractor.hpp
   include/metis/infrastructure/check_cache.hpp
+  include/metis/infrastructure/workspace_resolver.hpp
   include/metis/infrastructure/cmake_dependency_provider.hpp
   include/metis/infrastructure/conan_dependency_provider.hpp
   include/metis/infrastructure/vcpkg_dependency_provider.hpp
