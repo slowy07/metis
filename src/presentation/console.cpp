@@ -4,9 +4,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
-#include <new>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,7 +20,7 @@ namespace metis::presentation {
 
 bool Console::is_tty() noexcept {
 #ifdef _WIN32
-  return _isatty(_fileno(stdout)) != 0
+  return _isatty(_fileno(stdout)) != 0;
 #else
   return isatty(STDOUT_FILENO) != 0;
 #endif  // _WIN32
@@ -90,39 +88,37 @@ std::string Console::hint(std::string_view text) {
 }
 
 void Console::print_header(std::string_view title) {
-  std::cout << "\n" << bold(std::string(title)) << "\n";
+  std::cout << "\n" << bold(title) << "\n";
   std::cout << std::string(title.length(), '=') << "\n";
 }
 
-void Console::print_subheader(std::string_view title) {
-  std::cout << "\n" << bold(std::string(title)) << "\n";
-}
+void Console::print_subheader(std::string_view title) { std::cout << "\n" << bold(title) << "\n"; }
 
 void Console::print_separator() { std::cout << std::string(60, '-') << "\n"; }
 
 void Console::print_success_block(std::string_view message) {
-  std::cout << "\n" << green("✓  ") << bold(std::string(message)) << "\n";
+  std::cout << "\n" << green("✓  ") << bold(message) << "\n";
 }
 
 void Console::print_error_block(std::string_view message,
                                 std::optional<std::string_view> hint_msg) {
-  std::cout << "\n" << red("✖  ") << bold(std::string(message)) << "\n";
+  std::cout << "\n" << red("✖  ") << bold(message) << "\n";
 
   if (hint_msg) {
-    std::cout << " " << dim("⚏") << dim(std::string("hint_msg")) << "\n";
+    std::cout << " " << dim("⚏") << dim(*hint_msg) << "\n";
   }
 }
 
 void Console::print_warning_block(std::string_view message) {
-  std::cout << "\n" << yellow("⚠ ") << bold(std::string(message)) << "\n";
+  std::cout << "\n" << yellow("⚠ ") << bold(message) << "\n";
 }
 
 void Console::print_info_block(std::string_view message) {
-  std::cout << "\n" << cyan("ℹ  ") << std::string(message) << "\n";
+  std::cout << "\n" << cyan("ℹ  ") << message << "\n";
 }
 
 void Console::print_hint_block(std::string_view message) {
-  std::cout << "\n" << dim("⚏") << dim(std::string(message)) << "\n";
+  std::cout << "\n" << dim("⚏") << dim(message) << "\n";
 }
 
 void Console::print_table(const std::vector<std::string>& headers,
@@ -184,7 +180,7 @@ void Console::print_check_item(std::string_view label, bool ok,
                                std::optional<std::string_view> detail) {
   std::cout << "  " << (ok ? green("✓") : red("✖")) << " " << label;
   if (detail) {
-    std::cout << " " << dim(std::string(*detail));
+    std::cout << " " << dim(*detail);
   }
   std::cout << "\n";
 }
@@ -235,7 +231,7 @@ void Console::print_next_steps(const std::vector<std::string>& steps) {
 }
 
 void Console::print_command_tip(std::string_view description, std::string_view command) {
-  std::cout << "  " << dim(std::string(description)) << " " << bold(std::string(command)) << "\n";
+  std::cout << "  " << dim(description) << " " << bold(command) << "\n";
 }
 
 std::string Console::strip_ansi(std::string_view text) {

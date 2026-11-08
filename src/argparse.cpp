@@ -17,11 +17,14 @@ ArgParser::ArgParser(std::string_view name, std::string_view desc)
 // When the flag is present, storage is set to true.
 ArgParser& ArgParser::add_flag(std::string_view short_flag, std::string_view long_flag,
                                std::string_view desc, bool& storage) {
-  options_.emplace_back(Option{.short_flag = short_flag,
-                               .long_flag = long_flag,
-                               .description = desc,
-                               .default_value = "false",
-                               .has_value = false});
+  options_.emplace_back(Option{
+      .short_flag = short_flag,
+      .long_flag = long_flag,
+      .description = desc,
+      .default_value = "false",
+      .has_value = false,
+      .store_index = flag_stores_.size(),
+  });
   flag_stores_.emplace_back(&storage);
   return *this;
 }
