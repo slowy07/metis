@@ -2,6 +2,10 @@
 
 #include <glob.h>
 
+#ifndef GLOB_ONLYDIR
+#define GLOB_ONLYDIR 0
+#endif // !GLOB_ONLYDIR
+
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
@@ -32,24 +36,25 @@ std::vector<std::filesystem::path> resolve_members(const std::vector<std::string
 
   if (!exclude_globs.empty()) {
     members.erase(
-        std::remove_if(members.begin(), members.end(),
-                       [&](const auto& mod_path) {
-                         for (const auto& ex : exclude_globs) {
-                           auto ex_abs = (workspace_root / ex).string();
-                           glob_t ex_glob{};
+        std::ranges::remove_if(members,
+                               [&](const auto& mod_path) {
+                                 for (const auto& ex : exclude_globs) {
+                                   auto ex_abs = (workspace_root / ex).string();
+                                   glob_t ex_glob{};
 
-                           if (glob(ex_abs.c_str(), GLOB_ONLYDIR, nullptr, &ex_glob) == 0) {
-                             for (size_t i = 0; i < ex_glob.gl_pathc; ++i) {
-                               if (mod_path == std::filesystem::path(ex_glob.gl_pathv[i])) {
-                                 globfree(&ex_glob);
-                                 return true;
-                               }
-                             }
-                           }
-                           globfree(&ex_glob);
-                         }
-                         return false;
-                       }),
+                                   if (glob(ex_abs.c_str(), GLOB_ONLYDIR, nullptr, &ex_glob) == 0) {
+                                     for (size_t i = 0; i < ex_glob.gl_pathc; ++i) {
+                                       if (std::filesystem::path(ex_glob.gl_pathv[i]) == mod_path) {
+                                         globfree(&ex_glob);
+                                         return true;
+                                       }
+                                     }
+                                   }
+                                   globfree(&ex_glob);
+                                 }
+                                 return false;
+                               })
+            .begin(),
         members.end());
   }
 
