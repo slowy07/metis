@@ -32,6 +32,7 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
     result.success_ = true;
     result.was_already_installed_ = true;
     result.version_ = ver.value_or("unknown");
+    result.installed_cpp_standard_ = opts.cpp_standard_;
     result.error_message_ =
         fmt::format("{} is already installed (version: {}), use --force to reinstall",
                     provider_->description(), result.version_);
@@ -67,6 +68,7 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
     result.success_ = true;
     result.installed_path_ = install_prefix.string();
     result.version_ = package.version_;
+    result.installed_cpp_standard_ = opts.cpp_standard_;
     result.error_message_ =
         fmt::format("[DRY-RUN] Would install {} {} to {}", provider_->description(),
                     package.version_, install_prefix.string());
@@ -102,6 +104,7 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
   result.success_ = true;
   result.installed_path_ = install_result.installed_path_;
   result.version_ = install_result.version_;
+  result.installed_cpp_standard_ = opts.cpp_standard_;
 
   return result;
 }

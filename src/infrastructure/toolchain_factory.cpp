@@ -8,6 +8,12 @@
 #include "metis/domain/ports/toolchain_provider.hpp"
 #include "metis/infrastructure/posix_toolchain_provider.hpp"
 
+#ifdef _WIN32
+#include "metis/infrastructure/windows_clang_provider.hpp"
+#else
+#include "metis/infrastructure/windows_gcc_provider.hpp"
+#endif  // _WIN32
+
 namespace metis::infrastructure {
 
 std::unique_ptr<domain::ports::IToolchainProvider> ToolchainFactory::create(
