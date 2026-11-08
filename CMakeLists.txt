@@ -78,6 +78,8 @@ if(NOT METIS_GIT_COMMIT)
   set(METIS_GIT_COMMIT "unknown")
 endif()
 
+set(METIS_VERSION "${PROJECT_VERSION}")
+
 configure_file(
   ${CMAKE_SOURCE_DIR}/cmake/config.hpp.in
   ${CMAKE_BINARY_DIR}/generated/metis/config_build.hpp
@@ -93,7 +95,7 @@ else()
   FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG        11.1.0
+    GIT_TAG        12.2.1
     GIT_SHALLOW    ON
     EXCLUDE_FROM_ALL
   )
@@ -111,6 +113,15 @@ else()
     EXCLUDE_FROM_ALL
   )
   FetchContent_MakeAvailable(tomlplusplus)
+endif()
+
+# Sanitizers (Debug only, applied to every target in this directory and below)
+if(METIS_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    message(STATUS "Enabling AddressSanitizer + UndefinedBehaviorSanitizer")
+    add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+  endif()
 endif()
 
 # Library target (core logic)
@@ -326,17 +337,6 @@ endfunction()
 
 apply_warnings_and_hardening(metis)
 apply_warnings_and_hardening(metis_lib)
-
-# Sanitizers (Debug only, applied to both library and executable)
-if(METIS_ENABLE_SANITIZERS AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    message(STATUS "Enabling AddressSanitizer + UndefinedBehaviorSanitizer")
-    foreach(target IN ITEMS metis metis_lib)
-      target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
-      target_link_options(${target} PRIVATE -fsanitize=address,undefined)
-    endforeach()
-  endif()
-endif()
 
 # Unit tests (Google Test)
 if(METIS_BUILD_TESTS)
