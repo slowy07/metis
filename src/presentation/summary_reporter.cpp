@@ -43,7 +43,7 @@ void SummaryReporter::print_test_summary(const TestSummary& summary) {
 
   Console::print_summary_box(box_lines);
 
-  if (summary.success) {
+  if (!summary.success) {
     Console::print_next_steps({
         "Run " + Console::bold("metis test --verbose") + " to see failure details",
         "Fix failing tests and re-run",
