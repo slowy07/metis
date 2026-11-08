@@ -60,6 +60,20 @@ int get_int_safe(const toml::table& tbl, std::string_view key, int default_val) 
   return default_val;
 }
 
+double get_double_safe(const toml::table& tbl, std::string_view key, double default_val) {
+  if (const auto* node = safe_get(tbl, key)) {
+    if (const auto* fval = node->as_floating_point()) {
+      return fval->get();
+    }
+
+    if (const auto* ival = node->as_integer()) {
+      return static_cast<double>(ival->get());
+    }
+  }
+
+  return default_val;
+}
+
 }  // namespace
 
 TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileSystem> fs,
@@ -179,6 +193,38 @@ void parse_workspace(toml::table& tbl, domain::config::ProjectConfig& cfg) {
   }
 }
 
+void parse_test(toml::table& tbl, domain::config::ProjectConfig& cfg) {
+  auto* test_tbl = as_table_safe(safe_get(tbl, "test"));
+
+  if (test_tbl == nullptr) {
+    return;
+  }
+
+  cfg.test.build_dir = get_string_safe(*test_tbl, "build_dir", "build");
+  cfg.test.coverage = get_bool_safe(*test_tbl, "coverage", false);
+  cfg.test.line_threshold = get_double_safe(*test_tbl, "line_threshold", 80.0);
+  cfg.test.branch_threshold = get_double_safe(*test_tbl, "branch_threshold", 70.0);
+  cfg.test.function_threshold = get_double_safe(*test_tbl, "function_threshold", 90.0);
+  cfg.test.timeout = get_int_safe(*test_tbl, "timeout", 0);
+}
+
+void parse_sanitizer(toml::table& tbl, domain::config::ProjectConfig& cfg) {
+  auto* sanitizer_tbl = as_table_safe(safe_get(tbl, "sanitizers"));
+  if (sanitizer_tbl == nullptr) {
+    return;
+  }
+
+  cfg.sanitizer.enabled = get_bool_safe(*sanitizer_tbl, "enabled", false);
+  if (auto* types = (*sanitizer_tbl)["types"].as_array()) {
+    for (auto& item : *types) {
+      cfg.sanitizer.types.emplace_back(item.value_or(""));
+    }
+  }
+
+  cfg.sanitizer.build_dir = get_string_safe(*sanitizer_tbl, "build_dir", "build");
+  cfg.sanitizer.timeout = get_int_safe(*sanitizer_tbl, "timeout", 0);
+}
+
 domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::path& path) {
   if (!fs_->exists(path)) {
     throw std::runtime_error("Config file not found: " + path.string());
@@ -203,6 +249,8 @@ domain::config::ProjectConfig TomlConfigRepository::load(const std::filesystem::
   parse_perf(tbl, cfg);
   parse_execution(tbl, cfg);
   parse_workspace(tbl, cfg);
+  parse_test(tbl, cfg);
+  parse_sanitizer(tbl, cfg);
 
   if (auto err = cfg.validate(); !err.empty()) {
     throw std::runtime_error("Config validation failed: " + err);
