@@ -10,8 +10,8 @@
 namespace metis::application::checks {
 
 BuildCheck::BuildCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {}
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {}
 
 domain::CheckResult BuildCheck::execute(const std::vector<std::string>& /*files*/,
                                         domain::ports::IShellExecutor* shell, bool verbose,

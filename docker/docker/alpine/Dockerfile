@@ -1,15 +1,16 @@
-FROM alpine:3.21
+FROM alpine:3.20
 
 ENV CC=clang
 ENV CXX=clang++
 
 RUN apk add --no-cache \
     build-base \
-    cmake \
-    ninja \
     clang \
     lld \
+    cmake \
+    ninja \
     git \
+    linux-headers \
     fmt-dev
 
 WORKDIR /build
@@ -24,7 +25,9 @@ RUN cmake -B build \
 
 RUN cmake --build build --parallel
 
-RUN mkdir -p /artifacts && \
-    cp build/bin/metis /artifacts/
+RUN cpack -G TGZ --config build/CPackConfig.cmake
 
-CMD ["sh"]
+RUN mkdir -p /artifacts && \
+    cp /build/*.tar.gz /artifacts/
+
+CMD ["bash"]

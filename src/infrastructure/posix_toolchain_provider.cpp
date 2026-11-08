@@ -12,9 +12,7 @@ namespace metis::infrastructure {
 
 PosixToolchainProvider::PosixToolchainProvider(domain::ports::IShellExecutor* shell,
                                                std::string compiler, std::string version)
-  : shell_(shell)
-  , compiler_(std::move(compiler))
-  , version_(std::move(version)) {}
+    : shell_(shell), compiler_(std::move(compiler)), version_(std::move(version)) {}
 
 bool PosixToolchainProvider::is_installed() const { return shell_->command_exists(compiler_); }
 
@@ -49,60 +47,6 @@ domain::ports::ToolchainPackage PosixToolchainProvider::resolve_package() const 
     pkg.archive_type_ = "tar.xz";
   }
   return pkg;
-}
-
-domain::ports::ToolchainInstallResult PosixToolchainProvider::install(
-    const std::filesystem::path& archive_path) {
-  domain::ports::ToolchainInstallResult result;
-
-  // InstallToolchainUseCase. Find the compiler binary inside the tarball
-  // root. This heuristic (bin/<compiler>) matches LLVM's official tarball
-  // layout. Other layouts need a manifest file.
-  if (!archive_path.empty()) {
-    auto extracted = archive_path.parent_path();
-    for (const auto& entry : std::filesystem::directory_iterator(extracted)) {
-      if (!entry.is_directory()) {
-        continue;
-      }
-      auto binary = entry.path() / "bin" / compiler_;
-      if (std::filesystem::exists(binary)) {
-        result.success_ = true;
-        result.installed_path_ = binary.string();
-        auto ver = get_version();
-        result.version_ = ver.value_or(version_);
-        return result;
-      }
-    }
-    result.error_message_ =
-        fmt::format("Extracted archive does not contain {}/bin/{}", extracted.string(), compiler_);
-    return result;
-  }
-
-  // install-mode: use system package manager
-  auto pm = detect();
-  if (pm == PkgMgr::Unknown) {
-    result.error_message_ = is_macos()
-                                ? "No supported package manager found (Homebrew or MacPorts).\n"
-                                  "  Install Xcode Command Line Tools: xcode-select --install"
-                                : "No supported package manager found (apt, dnf, pacman, zypper)";
-    return result;
-  }
-
-  auto cmd = install_cmd(pm);
-  auto exec_result = shell_->exec_captured(cmd);
-  if (exec_result.exit_code_ != 0) {
-    result.error_message_ = fmt::format(
-        "Package manager failed (exit {}): {}\n"
-        "You may need to run with sudo or install manually.",
-        exec_result.exit_code_, exec_result.output_);
-    return result;
-  }
-
-  result.success_ = true;
-  result.installed_path_ = bin_path(pm);
-  auto ver = get_version();
-  result.version_ = ver.value_or("unknown");
-  return result;
 }
 
 std::string PosixToolchainProvider::description() const {

@@ -16,8 +16,7 @@ namespace metis::application {
 
 BuildUseCase::BuildUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                            std::unique_ptr<domain::ports::IFileSystem> file_system)
-  : shell_(std::move(shell))
-  , file_system_(std::move(file_system)) {}
+    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 BuildResult BuildUseCase::execute(const std::filesystem::path& repo_root,
                                   const std::string& build_dir, bool clean, bool verbose,

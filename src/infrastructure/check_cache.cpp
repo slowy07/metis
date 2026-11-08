@@ -46,8 +46,7 @@ constexpr std::string_view k_cache_file_name = "check-cache";
 }  // namespace
 
 CheckCache::CheckCache(std::filesystem::path repo_root)
-  : cache_dir_(repo_root / k_cache_dir_name)
-  , cache_file_(cache_dir_ / k_cache_file_name) {
+    : cache_dir_(repo_root / k_cache_dir_name), cache_file_(cache_dir_ / k_cache_file_name) {
   if (!std::filesystem::exists(cache_dir_)) {
     std::filesystem::create_directories(cache_dir_);
   }

@@ -11,8 +11,7 @@
 #include "metis/domain/ports/file_system.hpp"
 
 namespace metis::infrastructure {
-CMakeDependencyParser::CMakeDependencyParser(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+CMakeDependencyParser::CMakeDependencyParser(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool CMakeDependencyParser::can_parse(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "CMakeLists.txt");
@@ -56,8 +55,7 @@ std::vector<domain::Dependency> CMakeDependencyParser::parse(
 
 std::string CMakeDependencyParser::source_name() const { return "cmake-fetchcontent"; }
 
-CMakeVersionChecker::CMakeVersionChecker(domain::ports::IHttpClient* http)
-  : http_(http) {}
+CMakeVersionChecker::CMakeVersionChecker(domain::ports::IHttpClient* http) : http_(http) {}
 
 std::optional<std::string> CMakeVersionChecker::latest_version(
     const std::string& package_name) const {
@@ -94,8 +92,7 @@ domain::ports::ManifestEditResult CMakeManifestEditor::add_dependency(
   return result;
 }
 
-CMakeManifestEditor::CMakeManifestEditor(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+CMakeManifestEditor::CMakeManifestEditor(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool CMakeManifestEditor::can_edit(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "CMakeLists.txt");

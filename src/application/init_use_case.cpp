@@ -20,8 +20,7 @@ namespace metis::application {
 // file_system is used for all file writes (config, .clang-format, etc.)
 InitUseCase::InitUseCase(std::unique_ptr<infrastructure::TomlConfigRepository> config_repo,
                          std::unique_ptr<domain::ports::IFileSystem> file_system)
-  : config_repo_(std::move(config_repo))
-  , file_system_(std::move(file_system)) {}
+    : config_repo_(std::move(config_repo)), file_system_(std::move(file_system)) {}
 
 // Main entry point for project initialization.
 //

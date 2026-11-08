@@ -15,11 +15,9 @@ struct CoutCapture {
   std::ostringstream oss;
   std::streambuf* original;
 
-  explicit CoutCapture()
-    : original(std::cout.rdbuf(oss.rdbuf())) {}
+  explicit CoutCapture() : original(std::cout.rdbuf(oss.rdbuf())) {}
 
-  explicit CoutCapture(std::ostringstream& sink)
-    : original(std::cout.rdbuf(sink.rdbuf())) {}
+  explicit CoutCapture(std::ostringstream& sink) : original(std::cout.rdbuf(sink.rdbuf())) {}
 
   ~CoutCapture() { std::cout.rdbuf(original); }
 

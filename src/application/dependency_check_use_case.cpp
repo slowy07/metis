@@ -41,8 +41,7 @@ std::string normalize_name(std::string_view name) {
 DependencyCheckUseCase::DependencyCheckUseCase(
     std::unique_ptr<domain::ports::IShellExecutor> shell,
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-  : shell_(std::move(shell))
-  , file_system_(std::move(file_system)) {}
+    : shell_(std::move(shell)), file_system_(std::move(file_system)) {}
 
 void DependencyCheckUseCase::register_parser(
     std::unique_ptr<domain::ports::IDependencyParser> parser) {

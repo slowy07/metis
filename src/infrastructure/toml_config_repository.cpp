@@ -78,8 +78,7 @@ double get_double_safe(const toml::table& tbl, std::string_view key, double defa
 
 TomlConfigRepository::TomlConfigRepository(std::unique_ptr<domain::ports::IFileSystem> fs,
                                            std::unique_ptr<domain::ports::IShellExecutor> shell)
-  : fs_(std::move(fs))
-  , shell_(std::move(shell)) {}
+    : fs_(std::move(fs)), shell_(std::move(shell)) {}
 
 // Parses a .metis.toml config file into a ProjectConfig struct.
 //

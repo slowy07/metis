@@ -46,7 +46,7 @@ std::vector<std::string> split_lines(const std::string& output) {
 }  // namespace
 
 CliGitRepository::CliGitRepository(std::unique_ptr<domain::ports::IShellExecutor> shell)
-  : shell_(std::move(shell)) {}
+    : shell_(std::move(shell)) {}
 
 // Lists files staged for commit (git diff --cached --name-only --diff-filter=ACM).
 // ACM = Added, Copied, Modified (excludes deleted files).

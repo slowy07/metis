@@ -5,10 +5,10 @@
 namespace metis::infrastructure {
 WindowsClangProvider::WindowsClangProvider(domain::ports::IShellExecutor* shell,
                                            domain::ports::IFileSystem* fs, std::string version)
-  : shell_(shell)
-  , fs_(fs)
-  , version_(version.empty() ? "19.1.0" : version)
-  , install_prefix_(default_install_prefix()) {}
+    : shell_(shell),
+      fs_(fs),
+      version_(version.empty() ? "19.1.0" : version),
+      install_prefix_(default_install_prefix()) {}
 
 bool WindowsClangProvider::is_installed() const {
   return shell_->command_exists("clang") || shell_->command_exists("clang.exe");

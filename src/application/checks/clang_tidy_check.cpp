@@ -25,8 +25,8 @@ std::optional<std::string> extract_config_path(std::string_view arg, std::string
 }  // namespace
 
 ClangTidyCheck::ClangTidyCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {}
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {}
 
 std::string ClangTidyCheck::validate(const std::filesystem::path& repo_root) const {
   bool has_explicit = false;

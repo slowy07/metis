@@ -11,8 +11,8 @@
 namespace metis::application::checks {
 
 CompilerCheck::CompilerCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {
   // If the user already specified a compilation mode (-c, -S, -E, -fsyntax-only),
   // respect it. Otherwise default to syntax-only (safe for pre-commit hooks).
   bool has_mode = std::ranges::any_of(arguments(), [](const std::string& arg) {

@@ -59,12 +59,9 @@ struct MockFs : domain::ports::IFileSystem {
 };
 
 void register_parsers(application::DependencyCheckUseCase& use_case, MockFs& fs) {
-  use_case.register_parser(
-      std::make_unique<infrastructure::ConanDependencyParser>(&fs));
-  use_case.register_parser(
-      std::make_unique<infrastructure::VcpkgDependencyParser>(&fs));
-  use_case.register_parser(
-      std::make_unique<infrastructure::CMakeDependencyParser>(&fs));
+  use_case.register_parser(std::make_unique<infrastructure::ConanDependencyParser>(&fs));
+  use_case.register_parser(std::make_unique<infrastructure::VcpkgDependencyParser>(&fs));
+  use_case.register_parser(std::make_unique<infrastructure::CMakeDependencyParser>(&fs));
 }
 
 TEST(DependencyCheckTest, EmptyRepoReturnsSuccess) {

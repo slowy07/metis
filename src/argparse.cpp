@@ -10,8 +10,7 @@
 namespace metis {
 
 ArgParser::ArgParser(std::string_view name, std::string_view desc)
-  : app_name_(name)
-  , description_(desc) {}
+    : app_name_(name), description_(desc) {}
 
 // Registers a boolean flag (no value).
 // When the flag is present, storage is set to true.

@@ -6,7 +6,7 @@ namespace metis::application {
 
 DependencyManageUseCase::DependencyManageUseCase(
     std::unique_ptr<domain::ports::IFileSystem> file_system)
-  : file_system_(std::move(file_system)) {}
+    : file_system_(std::move(file_system)) {}
 
 void DependencyManageUseCase::register_editor(
     std::unique_ptr<domain::ports::IDependencyManifestEditor> editor) {

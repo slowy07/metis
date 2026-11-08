@@ -1,19 +1,21 @@
-FROM fedora:42
+FROM fedora:41
 
 ENV CC=clang
 ENV CXX=clang++
 
 RUN dnf install -y \
+    clang \
     cmake \
     ninja-build \
-    clang \
-    lld \
-    gcc-c++ \
     git \
+    make \
+    gcc-c++ \
     rpm-build \
+    rpmdevtools \
     file \
-    fmt-devel && \
-    dnf clean all
+    fmt-devel \
+ && dnf clean all \
+ && rm -rf /var/cache/dnf
 
 WORKDIR /build
 
@@ -27,10 +29,9 @@ RUN cmake -B build \
 
 RUN cmake --build build --parallel
 
+RUN cpack -G RPM --config build/CPackConfig.cmake
+
 RUN mkdir -p /artifacts && \
-    cpack \
-      -G RPM \
-      --config build/CPackConfig.cmake \
-      -B /artifacts
+    cp /build/*.rpm /artifacts/
 
 CMD ["bash"]

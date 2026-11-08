@@ -32,8 +32,7 @@ std::string normalize_conan_name(std::string_view name) {
 }
 }  // namespace
 
-ConanDependencyParser::ConanDependencyParser(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+ConanDependencyParser::ConanDependencyParser(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool ConanDependencyParser::can_parse(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "conanfile.py");
@@ -80,8 +79,7 @@ std::vector<domain::Dependency> ConanDependencyParser::parse(
 
 std::string ConanDependencyParser::source_name() const { return "conan"; }
 
-ConanVersionChecker::ConanVersionChecker(domain::ports::IShellExecutor* shell)
-  : shell_(shell) {}
+ConanVersionChecker::ConanVersionChecker(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 std::optional<std::string> ConanVersionChecker::latest_version(
     const std::string& package_name) const {
@@ -121,8 +119,7 @@ std::optional<std::string> ConanVersionChecker::latest_version(
 
 std::string ConanVersionChecker::source_name() const { return "conan"; }
 
-ConanManifestEditor::ConanManifestEditor(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+ConanManifestEditor::ConanManifestEditor(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool ConanManifestEditor::can_edit(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "conanfile.py");

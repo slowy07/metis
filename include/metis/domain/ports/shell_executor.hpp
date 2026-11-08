@@ -7,7 +7,7 @@ namespace metis::domain::ports {
 
 // Result of a command execution that captures both output and exit code.
 struct CapturedResult {
-  int exit_code_;
+  int exit_code_ = 0;
   std::string output_;
 };
 

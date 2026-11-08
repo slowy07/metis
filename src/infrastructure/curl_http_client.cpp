@@ -8,8 +8,7 @@
 #include "metis/domain/ports/shell_executor.hpp"
 
 namespace metis::infrastructure {
-CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell)
-  : shell_(shell) {}
+CurlHttpClient::CurlHttpClient(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 domain::ports::DownloadResult CurlHttpClient::download(const std::string& url,
                                                        const std::filesystem::path& dest_dir,

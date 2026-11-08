@@ -30,8 +30,8 @@ bool is_source_file(const std::filesystem::path& path) {
 }  // namespace
 
 SecurityCheck::SecurityCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {
   init_patterns();
 }
 

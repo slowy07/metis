@@ -7,8 +7,7 @@
 
 namespace metis::infrastructure {
 
-VcpkgDependencyParser::VcpkgDependencyParser(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+VcpkgDependencyParser::VcpkgDependencyParser(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool VcpkgDependencyParser::can_parse(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "vcpkg.json");
@@ -72,8 +71,7 @@ std::vector<domain::Dependency> VcpkgDependencyParser::parse(
 
 std::string VcpkgDependencyParser::source_name() const { return "vcpkg"; }
 
-VcpkgVersionChecker::VcpkgVersionChecker(domain::ports::IShellExecutor* shell)
-  : shell_(shell) {}
+VcpkgVersionChecker::VcpkgVersionChecker(domain::ports::IShellExecutor* shell) : shell_(shell) {}
 
 std::optional<std::string> VcpkgVersionChecker::latest_version(
     const std::string& package_name) const {
@@ -104,8 +102,7 @@ std::optional<std::string> VcpkgVersionChecker::latest_version(
 
 std::string VcpkgVersionChecker::source_name() const { return "vcpkg"; }
 
-VcpkgManifestEditor::VcpkgManifestEditor(domain::ports::IFileSystem* fs)
-  : fs_(fs) {}
+VcpkgManifestEditor::VcpkgManifestEditor(domain::ports::IFileSystem* fs) : fs_(fs) {}
 
 bool VcpkgManifestEditor::can_edit(const std::filesystem::path& repo_root) const {
   return fs_->exists(repo_root / "vcpkg.json");

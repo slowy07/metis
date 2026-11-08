@@ -10,8 +10,8 @@
 
 namespace metis::application::checks {
 DependencySecurityCheck::DependencySecurityCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {}
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {}
 
 std::string DependencySecurityCheck::validate(const std::filesystem::path& repo_root) const {
   (void)repo_root;

@@ -3,30 +3,30 @@ FROM archlinux:latest
 ENV CC=clang
 ENV CXX=clang++
 
-RUN pacman -Syu --noconfirm && \
-    pacman -S --noconfirm --needed \
-        base-devel \
-        cmake \
-        ninja \
-        git \
-        clang \
-        lld \
-        fmt \
-        sudo
+RUN pacman -Syu --noconfirm \
+    base-devel \
+    clang \
+    cmake \
+    ninja \
+    git \
+    fmt \
+ && pacman -Scc --noconfirm
 
-RUN useradd -m builder && \
-    echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+WORKDIR /build
 
-USER builder
+COPY . .
 
-WORKDIR /home/builder/project
+RUN cmake -B build \
+    -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DMETIS_USE_SYSTEM_FMT=ON \
+    -DMETIS_USE_SYSTEM_TOMLPLUSPLUS=OFF
 
-COPY --chown=builder:builder . .
+RUN cmake --build build --parallel
 
-RUN cmake -B build -DCMAKE_INSTALL_PREFIX=/usr && \
-    make -C build
+RUN cpack -G TGZ --config build/CPackConfig.cmake
 
 RUN mkdir -p /home/builder/artifacts && \
-    cp build/bin/metis /home/builder/artifacts/metis
+    cp /build/*.tar.gz /home/builder/artifacts/
 
 CMD ["bash"]

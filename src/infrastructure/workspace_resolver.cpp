@@ -6,8 +6,7 @@
 #include <utility>
 
 namespace metis::infrastructure {
-WorkspaceResolver::WorkspaceResolver(std::filesystem::path start)
-  : start_(std::move(start)) {}
+WorkspaceResolver::WorkspaceResolver(std::filesystem::path start) : start_(std::move(start)) {}
 
 std::optional<std::filesystem::path> WorkspaceResolver::find_root() const {
   auto current = std::filesystem::absolute(start_);

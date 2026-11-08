@@ -82,10 +82,10 @@ std::optional<std::string> fetch_expected_sha256(domain::ports::IShellExecutor* 
 
 WindowsGccProvider::WindowsGccProvider(domain::ports::IShellExecutor* shell,
                                        domain::ports::IFileSystem* fs, std::string version)
-  : shell_(shell)
-  , fs_(fs)
-  , version_(version.empty() ? "14.2.0" : version)
-  , install_prefix_(default_install_prefix()) {}
+    : shell_(shell),
+      fs_(fs),
+      version_(version.empty() ? "14.2.0" : version),
+      install_prefix_(default_install_prefix()) {}
 
 bool WindowsGccProvider::is_installed() const {
   return shell_->command_exists("gcc") || shell_->command_exists("gcc.exe");

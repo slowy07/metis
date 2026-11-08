@@ -1,17 +1,19 @@
 #include "metis/application/install_use_case.hpp"
 
 #include <fmt/format.h>
-#include <unistd.h>
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
-#include <random>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
+
+#ifndef _WIN32
+#include <unistd.h>
+#endif  // !_WIN32
 
 #include "metis/domain/config.hpp"
 #include "metis/domain/workflow.hpp"
@@ -141,9 +143,7 @@ bool validate_bash_syntax(const std::string& content) {
   struct TempFileGuard {
     std::string path;
     int fd;
-    explicit TempFileGuard(std::string p, int f)
-      : path(std::move(p))
-      , fd(f) {}
+    explicit TempFileGuard(std::string p, int f) : path(std::move(p)), fd(f) {}
     ~TempFileGuard() {
       ::close(fd);
       std::error_code ec;
@@ -181,8 +181,7 @@ bool validate_bash_syntax(const std::string& content) {
 
 InstallUseCase::InstallUseCase(std::unique_ptr<domain::ports::IFileSystem> file_system,
                                std::unique_ptr<domain::ports::IGitRepository> git_repo)
-  : file_system_(std::move(file_system))
-  , git_repo_(std::move(git_repo)) {}
+    : file_system_(std::move(file_system)), git_repo_(std::move(git_repo)) {}
 
 // Installs pre-commit hook and/or CI workflow files.
 //

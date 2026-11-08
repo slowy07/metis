@@ -28,8 +28,8 @@ int interpret_exit_code(int raw, std::string_view cmd) {
 }  // namespace
 
 ShellCheck::ShellCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {
   auto basename = std::filesystem::path(command()).filename().string();
   if (basename == "grep" || basename == "egrep" || basename == "rg") {
     invert_exit_code_ = true;

@@ -38,8 +38,8 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 }  // namespace
 
 ClangFormatCheck::ClangFormatCheck(const domain::config::Check& config)
-  : domain::Check(config.name, config.description, config.enabled, config.patterns, config.command,
-                  config.args, config.timeout, config.severity) {
+    : domain::Check(config.name, config.description, config.enabled, config.patterns,
+                    config.command, config.args, config.timeout, config.severity) {
   // In-place formatting is the point of this check; strip a user-supplied -i
   // so the batch command below can build it explicitly.
   erase_argument("-i");

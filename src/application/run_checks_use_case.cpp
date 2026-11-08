@@ -254,9 +254,9 @@ std::vector<std::string> filter_format_files(const std::vector<std::string>& fil
 RunChecksUseCase::RunChecksUseCase(std::unique_ptr<domain::ports::IShellExecutor> shell,
                                    std::unique_ptr<domain::ports::IGitRepository> git_repo,
                                    std::unique_ptr<domain::ports::IFileSystem> file_system)
-  : shell_(std::move(shell))
-  , git_repo_(std::move(git_repo))
-  , file_system_(std::move(file_system)) {}
+    : shell_(std::move(shell)),
+      git_repo_(std::move(git_repo)),
+      file_system_(std::move(file_system)) {}
 
 // Collects the list of files to check based on the run mode:
 //   STAGED  - git staged files (default for pre-commit hook)
@@ -467,9 +467,6 @@ int RunChecksUseCase::execute_checks(const std::filesystem::path& repo_root,
   }
 
   Spinner spinner("Running checks");
-  if (!opts.verbose) {
-    // spinner started automatically in constructor
-  }
 
   util::CwdGuard cwd_guard(repo_root);
 
@@ -505,14 +502,12 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
       std::filesystem::exists(".clang-format") || std::filesystem::exists("_clang-format");
   if (!has_config) {
     printer.print_error("[ERROR] No .clang-format config found. Run 'metis init' first.\n");
-    std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::CONFIG_ERROR);
   }
 
   auto format_files = filter_format_files(files);
   if (format_files.empty()) {
     printer.print_verbose("[metis] [INFO] No format-eligible files found.\n");
-    std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::SUCCESS);
   }
 
@@ -521,7 +516,6 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
     for (const auto& file : format_files) {
       printer.print_verbose(fmt::format(" {}\n", file));
     }
-    std::filesystem::current_path(orig_cwd);
     return static_cast<int>(ExitCode::SUCCESS);
   }
 
@@ -563,8 +557,6 @@ int RunChecksUseCase::execute_format(const std::filesystem::path& repo_root,
       }
     }
   }
-
-  std::filesystem::current_path(orig_cwd);
 
   if (exit_code == 0) {
     if (formatted_count > 0) {
