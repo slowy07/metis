@@ -1,7 +1,7 @@
 #include "metis/application/install_toolchain_use_case.hpp"
 
 #include <fmt/format.h>
-
+#include <cstdlib>
 #include <filesystem>
 
 namespace metis::application {
@@ -45,7 +45,7 @@ InstallToolchainResult InstallToolchainUseCase::execute(const InstallToolchainOp
   std::filesystem::path install_prefix = opts.install_prefix_;
   if (install_prefix.empty()) {
     const char* home = std::getenv("HOME");
-#ifdef WIN32
+#ifdef _WIN32
     if (home == nullptr) {
       home = std::getenv("USERPROFILE");
     }

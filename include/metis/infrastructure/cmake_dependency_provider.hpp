@@ -29,7 +29,7 @@ class CMakeDependencyParser : public domain::ports::IDependencyParser {
 
 class CMakeVersionChecker : public domain::ports::IDependencyVersionChecker {
  public:
-  explicit CMakeVersionChecker(domain::ports::IHttpClient* http);
+  CMakeVersionChecker() = default;
 
   [[nodiscard]] std::optional<std::string> latest_version(
       const std::string& package_name) const override;

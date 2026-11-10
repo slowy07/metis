@@ -19,8 +19,8 @@ constexpr std::string_view k_cache_file_name = "check-cache";
 [[nodiscard]] std::string simple_hash(const std::string& input) {
   std::uint64_t hash = 0xcbf29ce484222325ULL;
 
-  for (unsigned char chr : input) {
-    hash ^= chr;
+  for (char chr : input) {
+    hash ^= static_cast<unsigned char>(chr);
     hash *= 0x100000001b3ULL;
   }
 

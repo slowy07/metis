@@ -55,8 +55,6 @@ std::vector<domain::Dependency> CMakeDependencyParser::parse(
 
 std::string CMakeDependencyParser::source_name() const { return "cmake-fetchcontent"; }
 
-CMakeVersionChecker::CMakeVersionChecker(domain::ports::IHttpClient* http) : http_(http) {}
-
 std::optional<std::string> CMakeVersionChecker::latest_version(
     const std::string& package_name) const {
   (void)package_name;
