@@ -136,7 +136,8 @@ TEST(MakeCheckTest, DispatchesByCommandBasename) {
   domain::config::Check base;
   auto classify = [&base](const std::string& command) {
     base.command = command;
-    return std::string(typeid(*application::make_check(base)).name());
+    auto impl = application::make_check(base);
+    return std::string(typeid(*impl).name());
   };
 
   EXPECT_NE(classify("clang-format").find("ClangFormatCheck"), std::string::npos);
