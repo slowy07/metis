@@ -44,6 +44,7 @@ target_link_libraries(metis_tests
     PRIVATE
         metis_lib
         gtest_main
+        tomlplusplus::tomlplusplus
 )
 
 # Inherit the same C++ standard and flags (optional)
