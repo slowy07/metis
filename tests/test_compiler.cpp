@@ -307,14 +307,14 @@ TEST(PathCompilerDetectorTest, DetectsFakeCompilersFromPath) {
            "if [ \"$1\" = \"-std=c++20\" ]; then exit 0; fi\n"
            "exit 0\n";
   }
-  std::error_code ec;
+  std::error_code err;
   for (const auto& p : {gcc, gxx}) {
     std::filesystem::permissions(p,
                                  std::filesystem::perms::owner_exec |
                                      std::filesystem::perms::owner_read |
                                      std::filesystem::perms::owner_write,
-                                 std::filesystem::perm_options::add, ec);
-    ASSERT_FALSE(ec);
+                                 std::filesystem::perm_options::add, err);
+    ASSERT_FALSE(err);
   }
 
   ScopedEnvVar path("PATH", tmp.path().string());
@@ -414,44 +414,44 @@ TEST(EmitEnvUseCaseTest, ProjectPinTakesPrecedenceOverGlobal) {
 TEST(ResolveToolchainUseCaseTest, PinnedCompilerResolvesCcAndCxx) {
   FakeDetector detector;
   FakeRegistry registry;
-  auto c = make_compiler("gcc-13", "13", "system");
-  c.cc = "/opt/gcc/bin/gcc";
-  c.cxx = "/opt/gcc/bin/g++";
-  registry.compilers.push_back(c);
+  auto compiler = make_compiler("gcc-13", "13", "system");
+  compiler.cc = "/opt/gcc/bin/gcc";
+  compiler.cxx = "/opt/gcc/bin/g++";
+  registry.compilers.push_back(compiler);
   application::ListCompilersUseCase list(detector, registry);
   FakeToolchainConfig project;
   project.pinned = "gcc-13";
   project.config_path = "/tmp/project-toolchains.toml";
   FakeToolchainConfig global;
-  application::ResolveToolchainUseCase uc(list, project, global);
-  auto cc = uc.which("cc");
-  auto cxx = uc.which("c++");
-  ASSERT_TRUE(cc.has_value());
-  ASSERT_TRUE(cxx.has_value());
-  EXPECT_EQ(cc->string(), "/opt/gcc/bin/gcc");
-  EXPECT_EQ(cxx->string(), "/opt/gcc/bin/g++");
+  application::ResolveToolchainUseCase use_case(list, project, global);
+  auto resolved_cc = use_case.which("cc");
+  auto resolved_cxx = use_case.which("c++");
+  ASSERT_TRUE(resolved_cc.has_value());
+  ASSERT_TRUE(resolved_cxx.has_value());
+  EXPECT_EQ(resolved_cc->string(), "/opt/gcc/bin/gcc");
+  EXPECT_EQ(resolved_cxx->string(), "/opt/gcc/bin/g++");
 }
 
 TEST(ResolveToolchainUseCaseTest, ProjectPinTakesPrecedenceOverGlobal) {
   FakeDetector detector;
   FakeRegistry registry;
-  auto p = make_compiler("gcc-13", "13", "system");
-  p.cc = "/opt/project/gcc";
-  p.cxx = "/opt/project/g++";
-  auto g = make_compiler("clang-18", "18", "system");
-  g.cc = "/opt/global/clang";
-  g.cxx = "/opt/global/clang++";
-  registry.compilers.push_back(p);
-  registry.compilers.push_back(g);
+  auto project_compiler = make_compiler("gcc-13", "13", "system");
+  project_compiler.cc = "/opt/project/gcc";
+  project_compiler.cxx = "/opt/project/g++";
+  auto global_compiler = make_compiler("clang-18", "18", "system");
+  global_compiler.cc = "/opt/global/clang";
+  global_compiler.cxx = "/opt/global/clang++";
+  registry.compilers.push_back(project_compiler);
+  registry.compilers.push_back(global_compiler);
   application::ListCompilersUseCase list(detector, registry);
   FakeToolchainConfig project;
   project.pinned = "gcc-13";
   FakeToolchainConfig global;
   global.pinned = "clang-18";
-  application::ResolveToolchainUseCase uc(list, project, global);
-  auto cc = uc.which("gcc");
-  ASSERT_TRUE(cc.has_value());
-  EXPECT_EQ(cc->string(), "/opt/project/gcc");
+  application::ResolveToolchainUseCase use_case(list, project, global);
+  auto resolved = use_case.which("gcc");
+  ASSERT_TRUE(resolved.has_value());
+  EXPECT_EQ(resolved->string(), "/opt/project/gcc");
 }
 
 TEST(ResolveToolchainUseCaseTest, MissingPinnedToolchainThrowsClearError) {
@@ -462,9 +462,9 @@ TEST(ResolveToolchainUseCaseTest, MissingPinnedToolchainThrowsClearError) {
   project.pinned = "missing-toolchain";
   project.config_path = "/tmp/project/.metis/toolchains.toml";
   FakeToolchainConfig global;
-  application::ResolveToolchainUseCase uc(list, project, global);
+  application::ResolveToolchainUseCase use_case(list, project, global);
   try {
-    (void)uc.which("cc");
+    (void)use_case.which("cc");
     FAIL() << "expected runtime_error";
   } catch (const std::runtime_error& e) {
     std::string msg = e.what();
@@ -480,13 +480,13 @@ TEST(ResolveToolchainUseCaseTest, NonCcCommandFallsBackToPathSearch) {
     std::ofstream out(bin);
     out << "#!/bin/sh\\nexit 0\\n";
   }
-  std::error_code ec;
+  std::error_code err;
   std::filesystem::permissions(bin,
                                std::filesystem::perms::owner_exec |
                                    std::filesystem::perms::owner_read |
                                    std::filesystem::perms::owner_write,
-                               std::filesystem::perm_options::add, ec);
-  ASSERT_FALSE(ec);
+                               std::filesystem::perm_options::add, err);
+  ASSERT_FALSE(err);
   ScopedEnvVar path("PATH", tmp.path().string());
 
   FakeDetector detector;
@@ -496,8 +496,8 @@ TEST(ResolveToolchainUseCaseTest, NonCcCommandFallsBackToPathSearch) {
   FakeToolchainConfig project;
   project.pinned = "gcc-13";
   FakeToolchainConfig global;
-  application::ResolveToolchainUseCase uc(list, project, global);
-  auto found = uc.which("mytool");
+  application::ResolveToolchainUseCase use_case(list, project, global);
+  auto found = use_case.which("mytool");
   ASSERT_TRUE(found.has_value());
 }
 
@@ -523,10 +523,14 @@ TEST(ToolchainConfigRepositoryTest, PreservesExistingProjectKeys) {
   infrastructure::compiler::TomlToolchainConfigRepository repo(path);
   repo.set_default("gcc-13");
   auto tbl = toml::parse_file(path.string());
-  auto* project = tbl["project"].as_table();
+  auto* project = tbl.get("project")->as_table();
   ASSERT_NE(project, nullptr);
-  EXPECT_EQ((*project)["name"].value_or(std::string{}), "demo");
-  EXPECT_EQ((*project)["default"].value_or(std::string{}), "gcc-13");
+  auto* name_node = project->get("name");
+  auto* default_node = project->get("default");
+  ASSERT_NE(name_node, nullptr);
+  ASSERT_NE(default_node, nullptr);
+  EXPECT_EQ(name_node->value_or(std::string{}), "demo");
+  EXPECT_EQ(default_node->value_or(std::string{}), "gcc-13");
 }
 
 TEST(ToolchainConfigRepositoryTest, CorruptFileThrows) {
@@ -551,12 +555,12 @@ TEST(ToolchainConfigRepositoryTest, FindProjectConfigPathUsesGitRoot) {
 }
 
 TEST(PosixEnvManagerTest, RendersShellEvalAbleExports) {
-  dc::Compiler c;
-  c.id = "gcc-13";
-  c.cc = "/opt/gcc/bin/gcc";
-  c.cxx = "/opt/gcc/bin/g++";
+  dc::Compiler compiler;
+  compiler.id = "gcc-13";
+  compiler.cc = "/opt/gcc/bin/gcc";
+  compiler.cxx = "/opt/gcc/bin/g++";
   infrastructure::compiler::PosixEnvManager mgr;
-  auto out = infrastructure::compiler::render_posix_env(mgr.env_for(c));
+  auto out = infrastructure::compiler::render_posix_env(mgr.env_for(compiler));
   EXPECT_NE(out.find("export CC='/opt/gcc/bin/gcc'"), std::string::npos);
   EXPECT_NE(out.find("export CXX='/opt/gcc/bin/g++'"), std::string::npos);
   EXPECT_NE(out.find("export METIS_TOOLCHAIN='gcc-13'"), std::string::npos);
@@ -581,21 +585,21 @@ TEST(ToolchainCliIntegrationTest, UseEnvWhichAndEval) {
   std::filesystem::create_directories(fakebin);
   auto fake_gcc = fakebin / "gcc";
   auto fake_gxx = fakebin / "g++";
-  for (const auto& p : {fake_gcc, fake_gxx}) {
-    std::ofstream out(p);
+  for (const auto& path_entry : {fake_gcc, fake_gxx}) {
+    std::ofstream out(path_entry);
     out << "#!/bin/sh\n"
            "if [ \"$1\" = \"--version\" ]; then echo 'g++ (GCC) 13.2.0'; exit 0; fi\n"
            "if [ \"$1\" = \"-std=c++20\" ]; then exit 0; fi\n"
            "exit 0\n";
   }
-  std::error_code ec;
-  for (const auto& p : {fake_gcc, fake_gxx}) {
-    std::filesystem::permissions(p,
+  std::error_code err;
+  for (const auto& path_entry : {fake_gcc, fake_gxx}) {
+    std::filesystem::permissions(path_entry,
                                  std::filesystem::perms::owner_exec |
                                      std::filesystem::perms::owner_read |
                                      std::filesystem::perms::owner_write,
-                                 std::filesystem::perm_options::add, ec);
-    ASSERT_FALSE(ec);
+                                 std::filesystem::perm_options::add, err);
+    ASSERT_FALSE(err);
   }
 
   ScopedEnvVar path("PATH", fakebin.string());
@@ -609,14 +613,14 @@ TEST(ToolchainCliIntegrationTest, UseEnvWhichAndEval) {
     std::array<char, 256> buf{};
     std::string out_str;
     FILE* pipe = popen(cmd.c_str(), "r");
-    int rc = -1;
+    int status = -1;
     if (pipe != nullptr) {
       while (fgets(buf.data(), static_cast<int>(buf.size()), pipe) != nullptr) {
         out_str += buf.data();
       }
-      rc = pclose(pipe);
+      status = pclose(pipe);
     }
-    return std::pair{rc, out_str};
+    return std::pair{status, out_str};
   };
 
   auto [list_rc, list_out] = run("toolchain list", nested);
