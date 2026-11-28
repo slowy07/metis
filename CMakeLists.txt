@@ -138,6 +138,8 @@ set(METIS_SOURCES
   src/application/install_toolchain_use_case.cpp
   src/application/list_compilers_use_case.cpp
   src/application/resolve_toolchain_use_case.cpp
+  src/application/switch_toolchain_use_case.cpp
+  src/application/emit_env_use_case.cpp
   src/application/dependency_check_use_case.cpp
   src/application/dependency_composite.cpp
   src/application/dependency_manage_use_case.cpp
@@ -167,6 +169,8 @@ set(METIS_SOURCES
   src/infrastructure/compiler/path_compiler_detector.cpp
   src/infrastructure/compiler/process_compiler_prober.cpp
   src/infrastructure/compiler/toml_compiler_registry.cpp
+  src/infrastructure/compiler/toml_toolchain_config_repository.cpp
+  src/infrastructure/compiler/env_manager.cpp
   src/infrastructure/windows_gcc_provider.cpp
   src/infrastructure/zip_archive_extractor.cpp
   src/infrastructure/check_cache.cpp
@@ -214,6 +218,8 @@ set(METIS_HEADERS
   include/metis/application/install_toolchain_use_case.hpp
   include/metis/application/list_compilers_use_case.hpp
   include/metis/application/resolve_toolchain_use_case.hpp
+  include/metis/application/switch_toolchain_use_case.hpp
+  include/metis/application/emit_env_use_case.hpp
   include/metis/application/perf_checks_use_case.hpp
   include/metis/application/dependency_composite.hpp
   include/metis/application/dependency_manage_use_case.hpp
@@ -244,6 +250,8 @@ set(METIS_HEADERS
   include/metis/infrastructure/compiler/path_compiler_detector.hpp
   include/metis/infrastructure/compiler/process_compiler_prober.hpp
   include/metis/infrastructure/compiler/toml_compiler_registry.hpp
+  include/metis/infrastructure/compiler/toml_toolchain_config_repository.hpp
+  include/metis/infrastructure/compiler/env_manager.hpp
   include/metis/infrastructure/windows_clang_provider.hpp
   include/metis/infrastructure/windows_gcc_provider.hpp
   include/metis/infrastructure/zip_archive_extractor.hpp

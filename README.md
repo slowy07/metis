@@ -1,6 +1,5 @@
 [![GitHub Release](https://img.shields.io/github/v/release/slowy07/metis?display_name=tag&style=flat-square)](https://github.com/slowy07/metis/releases)
-
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/metis/test_metis.yml?branch=develop&style=flat-square&label=GoogleTest)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/slowy07/metis/linux.yml?branch=main&style=flat-square&label=GoogleTest)
 ](https://github.com/slowy07/metis/actions)
 
 Fast, C++20-powered pre-commit hook and CI generator. Ensures code quality before every push with zero runtime dependencies: a single static binary that replaces Python- and Node-based pre-commit frameworks.

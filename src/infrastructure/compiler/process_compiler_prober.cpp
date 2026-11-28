@@ -1,10 +1,12 @@
 #include "metis/infrastructure/compiler/process_compiler_prober.hpp"
 
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <string_view>
 #include <system_error>
 
 #include "metis/domain/compiler/ports.hpp"
@@ -74,6 +76,29 @@ std::string shell_quote(const std::string& s) {
   return quoted;
 }
 
+std::string extract_numeric_version(std::string_view line) {
+  size_t start = line.find_first_of("123456789");
+  if (start == std::string::npos) {
+    return std::string(line);
+  }
+
+  size_t end = start;
+  while (end < line.size() &&
+         (std::isdigit(static_cast<unsigned char>(line[end])) || line[end] == '.')) {
+    ++end;
+  }
+
+  while (end > start && line[end - 1] == '.') {
+    --end;
+  }
+
+  if (end == start) {
+    return std::string(line);
+  }
+
+  return std::string(line.substr(start, end - start));
+}
+
 }  // namespace
 
 domain::compiler::ProbedCompiler ProcessCompilerProber::probe(
@@ -86,7 +111,7 @@ domain::compiler::ProbedCompiler ProcessCompilerProber::probe(
     if (pipe.get() != nullptr) {
       auto out = first_line(read_all(pipe.get()));
       if (pipe.close() == 0) {
-        result.version.raw = std::move(out);
+        result.version.raw = extract_numeric_version(out);
       }
     }
   }

@@ -2,12 +2,19 @@
 #define METIS_DOMAIN_COMPILER_PORTS_HPP
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "metis/domain/compiler/compiler.hpp"
 
 namespace metis::domain::compiler {
+
+struct EnvVar {
+  std::string key;
+  std::string value;
+};
+
 struct ProbedCompiler {
   CompilerVersion version;
   CompilerCapabilities capabilities;
@@ -32,6 +39,20 @@ class CompilerProber {
  public:
   virtual ~CompilerProber() = default;
   [[nodiscard]] virtual ProbedCompiler probe(const std::filesystem::path& cxx) const = 0;
+};
+
+class ToolchainConfigRepository {
+ public:
+  virtual ~ToolchainConfigRepository() = default;
+  [[nodiscard]] virtual std::filesystem::path path() const = 0;
+  [[nodiscard]] virtual std::optional<std::string> default_toolchain() const = 0;
+  virtual void set_default(std::string_view id) = 0;
+};
+
+class EnvironmentManager {
+ public:
+  virtual ~EnvironmentManager() = default;
+  [[nodiscard]] virtual std::vector<EnvVar> env_for(const Compiler& compiler) const = 0;
 };
 
 }  // namespace metis::domain::compiler
